@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide number input spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 96%;
+    --foreground: 240 6% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 6% 10%;
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 94%;
+    --secondary-foreground: 240 6% 20%;
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 4% 52%;
+    --accent: 211 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 90%;
+    --input: 240 5% 90%;
+    --ring: 211 100% 50%;
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { color-scheme: light; -webkit-font-smoothing: antialiased; }
+
+  body {
+    background-color: #F5F5F7;
+    color: #1D1D1F;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    letter-spacing: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), Georgia, serif;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 99px; }
+
+  /* Semantic tokens */
+  :root {
+    --warning: 35 91% 50%;              /* orange — used for LT2-zone badges & amber highlights */
+    --warning-foreground: 0 0% 100%;
+
+    /* Chart data series — referenced in lactate-chart.tsx */
+    --chart-hr:      217 91% 60%;      /* #3b82f6  heart rate line */
+    --chart-lactate: 349 95% 61%;      /* #f43f5e  lactate line */
+    --chart-vo2:     258 90% 66%;      /* #8b5cf6  VO₂ line */
+    --chart-rpe:     43  96% 56%;      /* #f59e0b  RPE/Borg line */
+    --chart-lt1:     142 71% 45%;      /* #22c55e  LT1 reference line */
+    --chart-lt2:     292 84% 60%;      /* #a855f7  LT2 reference line */
+
+    /* HR zone fills — referenced in lactate-chart.tsx */
+    --zone-1: 215 16% 47%;            /* #94a3b8  Z1 */
+    --zone-2: 142 69% 58%;            /* #4ade80  Z2 */
+    --zone-3: 48  96% 53%;            /* #facc15  Z3 */
+    --zone-4: 27  96% 61%;            /* #fb923c  Z4 */
+    --zone-5: 349 96% 62%;            /* #f43f5e  Z5 */
+  }
+}
+
+/* Compact table inputs used in live recording & edit form */
+.table-input {
+  font-size: 0.75rem;
+  background: #ffffff;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.375rem;
+  transition: border-color 150ms;
+}
+.table-input:focus {
+  outline: none;
+  border-color: rgb(0 122 255 / 0.6);
+}
+
+/* Active (focused) row in data tables */
+.row-active  { background-color: rgb(0 122 255 / 0.05); }
+
+/* Current timer stage row */
+.row-current { background-color: hsl(35 91% 50% / 0.07); }
