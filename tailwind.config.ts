@@ -1,5 +1,13 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * TYPOGRAPHY RULES (scaled up for 100% zoom readability):
+ * - text-xs (14px): MINIMUM — captions, metadata, section labels
+ * - text-sm (16px): Labels, secondary content, table headers
+ * - text-base (18px): DEFAULT body text, primary data
+ * - text-lg (20px+): Headers, emphasized text, buttons (size="lg")
+ */
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -27,6 +35,11 @@ const config: Config = {
         input:  "hsl(var(--input))",
         ring:   "hsl(var(--ring))",
       },
+      textColor: {
+        primary:      "var(--text-primary)",      /* #1D1D1F — all body text, labels, data */
+        secondary:    "var(--text-secondary)",    /* #515154 — timestamps, units, secondary info */
+        interactive:  "var(--text-interactive)",  /* #007AFF — links & buttons only */
+      },
       boxShadow: {
         "apple":       "0 2px 8px 0 rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
         "apple-md":    "0 4px 16px 0 rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
@@ -44,6 +57,17 @@ const config: Config = {
       fontFamily: {
         sans:    ["var(--font-sans)",    "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Georgia",   "serif"],
+      },
+      fontSize: {
+        xs:   ["14px", { lineHeight: "1.5" }],
+        sm:   ["16px", { lineHeight: "1.5" }],
+        base: ["18px", { lineHeight: "1.6" }],
+        lg:   ["20px", { lineHeight: "1.4" }],
+        xl:   ["22px", { lineHeight: "1.4" }],
+        "2xl": ["28px", { lineHeight: "1.3" }],
+        "3xl": ["34px", { lineHeight: "1.2" }],
+        "4xl": ["40px", { lineHeight: "1.1" }],
+        "5xl": ["48px", { lineHeight: "1" }],
       },
     },
   },

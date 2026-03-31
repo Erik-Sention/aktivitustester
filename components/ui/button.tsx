@@ -12,19 +12,19 @@ const buttonVariants = cva(
         destructive:
           "bg-red-500/10 text-red-600 rounded-full hover:bg-red-500 hover:text-white",
         outline:
-          "bg-white text-[#1D1D1F] rounded-full shadow-apple hover:bg-[#F5F5F7] border border-black/[0.08]",
+          "bg-white text-primary rounded-full shadow-apple hover:bg-[#F5F5F7] border border-black/[0.08]",
         secondary:
-          "bg-[#F5F5F7] text-[#1D1D1F] rounded-full hover:bg-[#E8E8ED]",
+          "bg-[#F5F5F7] text-primary rounded-full hover:bg-[#E8E8ED]",
         ghost:
-          "text-[#86868B] rounded-full hover:bg-[#F5F5F7] hover:text-[#1D1D1F]",
+          "text-secondary rounded-full hover:bg-[#F5F5F7] hover:text-primary",
         link:
-          "text-[#007AFF] underline-offset-4 hover:underline rounded-none",
+          "text-interactive underline-offset-4 hover:underline rounded-none",
       },
       size: {
-        default: "h-10 px-6 text-sm",
-        sm:      "h-8 px-4 text-xs",
-        lg:      "h-12 px-8 text-base",
-        icon:    "h-10 w-10 rounded-full",
+        default: "h-12 px-6 text-base",
+        sm:      "h-10 px-5 text-sm",
+        lg:      "h-14 px-10 text-lg",
+        icon:    "h-12 w-12 rounded-full",
       },
     },
     defaultVariants: {

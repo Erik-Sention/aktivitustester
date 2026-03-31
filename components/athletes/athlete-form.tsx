@@ -148,8 +148,8 @@ export function AthleteForm({ existing }: AthleteFormProps) {
             <div className="flex items-center gap-1">
               <Label htmlFor="personnummer">Personnummer</Label>
               <span className="relative group">
-                <span className="text-xs text-muted-foreground cursor-default select-none">ⓘ</span>
-                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-56 rounded-lg bg-[#1D1D1F] text-white text-xs px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                <span className="text-xs text-secondary cursor-default select-none">i</span>
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-56 rounded-lg bg-primary text-white text-xs px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
                   Används för faktureringsuppgifter. Normalt atletens personnummer, men kan ändras vid behov.
                 </span>
               </span>

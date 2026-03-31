@@ -295,7 +295,7 @@ export function StageTable({
     onChange?.(next);
   }
 
-  const inputCls = dense ? "h-7 w-14 text-xs" : "h-8 w-20 text-xs";
+  const inputCls = dense ? "h-10 w-16 text-sm" : "h-11 w-24 text-sm";
 
   return (
     <div className="space-y-2">
@@ -306,7 +306,7 @@ export function StageTable({
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="text-left py-2 px-2 text-xs text-muted-foreground font-medium whitespace-nowrap"
+                  className="text-left py-4 px-3 text-sm font-black text-[#1D1D1F] uppercase tracking-wide whitespace-nowrap"
                 >
                   {col.label}
                 </th>
@@ -323,7 +323,7 @@ export function StageTable({
                 ? (isStepEnd ? "border-b bg-[#007AFF]/[0.04] last:border-0" : "border-b last:border-0")
                 : "border-b last:border-0";
               return (
-                <tr key={rowIdx} className={rowBg}>
+                <tr key={rowIdx} className={rowBg + " [&_td]:py-4 [&_td]:px-3"}>
                   {columns.map((col, colIdx) => {
                     const isLockedCol = (isPerMinuteMode && (
                       col.key === "stageNumber" ||
@@ -333,15 +333,15 @@ export function StageTable({
                     const isStepEndOnly = isPerMinuteMode && RUNNING_STEP_END_ONLY.has(col.key);
                     const isDisabled = isStepEndOnly && !isStepEnd;
                     return (
-                      <td key={col.key} className="py-1 px-1">
+                      <td key={col.key} className="">
                         {readOnly || isLockedCol ? (
-                          <span className={`px-2 ${isLockedCol ? "text-[#86868B] tabular-nums" : ""}`}>
+                          <span className={`px-2 text-secondary ${isLockedCol ? "tabular-nums" : ""}`}>
                             {stage[col.key] ?? "—"}
                           </span>
                         ) : col.key === "stageNumber" ? (
-                          <span className="px-2 text-muted-foreground">{stage.stageNumber}</span>
+                          <span className="px-2 text-muted-foreground font-medium">{stage.stageNumber}</span>
                         ) : isDisabled ? (
-                          <span className="px-2 text-[#D1D1D6] text-xs">—</span>
+                          <span className="px-2 text-secondary/40 text-sm">—</span>
                         ) : (
                           <Input
                             ref={(el) => setRef(rowIdx, colIdx, el)}

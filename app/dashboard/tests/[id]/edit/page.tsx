@@ -22,7 +22,7 @@ export default async function EditTestPage({
       <div>
         <h1 className="text-2xl font-bold">Redigera test</h1>
         {athlete && (
-          <p className="text-sm text-slate-500 mt-0.5">{fullName(athlete.firstName, athlete.lastName)}</p>
+          <p className="text-sm text-[#86868B] mt-0.5">{fullName(athlete.firstName, athlete.lastName)}</p>
         )}
       </div>
       <EditTestForm
@@ -31,6 +31,14 @@ export default async function EditTestPage({
         testDate={testDateStr}
         notes={test.notes ?? ""}
         rawData={test.rawData}
+        sport={test.sport}
+        testType={test.testType}
+        protocol={test.protocol}
+        testLocation={test.testLocation}
+        testLeader={test.testLeader ?? ""}
+        inputParams={test.inputParams}
+        coachAssessment={test.coachAssessment ?? null}
+        settings={test.settings ?? null}
       />
     </div>
   )

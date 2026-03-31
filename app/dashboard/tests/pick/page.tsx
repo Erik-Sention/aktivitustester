@@ -48,8 +48,8 @@ export default async function PickTestPage({
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold">Nytt test</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Atlet: <span className="font-medium text-foreground">{fullName(athlete.firstName, athlete.lastName)}</span>
+        <p className="text-[#515154] text-base mt-1">
+          Atlet: <span className="font-medium text-[#1D1D1F]">{fullName(athlete.firstName, athlete.lastName)}</span>
         </p>
       </div>
 
@@ -63,7 +63,7 @@ export default async function PickTestPage({
                 </div>
                 <div>
                   <p className="font-semibold">{label}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                  <p className="text-sm text-[#515154] mt-1">{description}</p>
                 </div>
               </CardContent>
             </Card>

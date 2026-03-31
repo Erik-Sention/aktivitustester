@@ -24,7 +24,7 @@ export default async function AthletesPage() {
       </div>
 
       {athletes.length === 0 ? (
-        <p className="text-muted-foreground text-sm mt-8 text-center">
+        <p className="text-[#515154] text-base mt-8 text-center">
           Inga atleter ännu. Lägg till din första atlet för att komma igång.
         </p>
       ) : (

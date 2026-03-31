@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { cn, fullName } from "@/lib/utils"
 
@@ -22,6 +22,7 @@ interface AthletesTableProps {
 
 export function AthletesTable({ athletes }: AthletesTableProps) {
   const [query, setQuery] = useState("")
+  const router = useRouter()
 
   const filtered = query.trim()
     ? athletes.filter((a) => {
@@ -45,41 +46,29 @@ export function AthletesTable({ athletes }: AthletesTableProps) {
       />
 
       {filtered.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Inga atleter matchar sökningen.</p>
+        <p className="text-secondary text-base">Inga atleter matchar sökningen.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Namn</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Kön</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">E-post</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Telefon</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Coach</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vikt</th>
+        <div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-white shadow-sm">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50">
+                <th className="text-left px-4 py-4 text-sm font-black uppercase tracking-wider text-[#1D1D1F]">Namn</th>
+                <th className="text-left px-4 py-4 text-sm font-black uppercase tracking-wider text-[#1D1D1F]">E-post</th>
+                <th className="text-left px-4 py-4 text-sm font-black uppercase tracking-wider text-[#1D1D1F]">Telefon</th>
+                <th className="text-left px-4 py-4 text-sm font-black uppercase tracking-wider text-[#1D1D1F]">Coach</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((athlete, i) => (
+            <tbody className="divide-y divide-[hsl(var(--border))]/30">
+              {filtered.map((athlete) => (
                 <tr
                   key={athlete.id}
-                  className={cn(
-                    "border-t hover:bg-muted/30 transition-colors cursor-pointer",
-                    i % 2 === 0 ? "" : "bg-muted/10"
-                  )}
+                  onClick={() => router.push(`/dashboard/athletes/${athlete.id}`)}
+                  className="hover:bg-[#F5F5F7]/50 transition-colors cursor-pointer"
                 >
-                  <td className="px-4 py-3">
-                    <Link href={`/dashboard/athletes/${athlete.id}`} className="font-medium hover:underline">
-                      {fullName(athlete.firstName, athlete.lastName)}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{athlete.gender || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{athlete.email || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{athlete.phone || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{athlete.mainCoach || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {athlete.currentWeight ? `${athlete.currentWeight} kg` : "—"}
-                  </td>
+                  <td className="px-4 py-5 font-medium text-primary">{fullName(athlete.firstName, athlete.lastName)}</td>
+                  <td className="px-4 py-5 text-secondary">{athlete.email || "—"}</td>
+                  <td className="px-4 py-5 text-secondary">{athlete.phone || "—"}</td>
+                  <td className="px-4 py-5 text-secondary">{athlete.mainCoach || "—"}</td>
                 </tr>
               ))}
             </tbody>

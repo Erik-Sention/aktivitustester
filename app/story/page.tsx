@@ -25,7 +25,7 @@ const tokens = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-12">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#86868B] mb-4">{title}</h2>
+      <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">{title}</h2>
       {children}
     </section>
   );
@@ -35,26 +35,37 @@ export default function StoryPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#1D1D1F] mb-1">Component Story</h1>
-        <p className="text-sm text-[#86868B] mb-10">Alla UI-komponenter och design tokens på ett ställe.</p>
+        <h1 className="text-2xl font-bold text-primary mb-1">Component Story</h1>
+        <p className="text-sm text-primary mb-2">Alla UI-komponenter och design tokens på ett ställe.</p>
+
+        {/* TYPOGRAPHY RULES */}
+        <div className="mb-10 rounded-2xl bg-[#007AFF] p-5 text-white">
+          <p className="text-sm font-black uppercase tracking-wider mb-3">Typografiregler</p>
+          <ul className="text-sm space-y-1.5">
+            <li>• Minsta textstorlek för brödtext: <strong>text-sm (14px)</strong> — aldrig text-xs för viktig data</li>
+            <li>• Primär text: <strong>text-primary</strong> (#1D1D1F) — all brödtext, etiketter, rubriker, viktig data</li>
+            <li>• Sekundär text: <strong>text-secondary</strong> (#515154) — tidsstämplar, enheter, underordnad info</li>
+            <li>• Interaktiv text: <strong>text-interactive</strong> (#007AFF) — länktext och knappar endast</li>
+          </ul>
+        </div>
 
         {/* TYPOGRAPHY */}
         <Section title="Typografi">
           <div className="bg-white rounded-3xl p-8 border border-black/[0.05] shadow-sm space-y-6">
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#86868B] mb-2">Playfair Display — rubriker</p>
-              <h1 className="text-5xl font-bold text-[#1D1D1F]">H1 Aktivitus</h1>
-              <h2 className="text-4xl font-bold text-[#1D1D1F]">H2 Tröskeltest</h2>
-              <h3 className="text-3xl font-semibold text-[#1D1D1F]">H3 Resultatöversikt</h3>
-              <h4 className="text-2xl font-semibold text-[#1D1D1F]">H4 Rådata per steg</h4>
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">Playfair Display — rubriker</p>
+              <h1 className="text-5xl font-bold text-primary">H1 Aktivitus</h1>
+              <h2 className="text-4xl font-bold text-primary">H2 Tröskeltest</h2>
+              <h3 className="text-3xl font-semibold text-primary">H3 Resultatöversikt</h3>
+              <h4 className="text-2xl font-semibold text-primary">H4 Rådata per steg</h4>
             </div>
             <div className="border-t border-[hsl(var(--border))] pt-6 space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#86868B] mb-2">Rajdhani — brödtext</p>
-              <p className="text-base text-[#1D1D1F]">Regular — Laktattröskel 1 (LT1) mäter aerob förmåga vid 2.0 mmol/L.</p>
-              <p className="text-base font-medium text-[#1D1D1F]">Medium — VO₂ max representerar maximal syreupptagningsförmåga.</p>
-              <p className="text-base font-semibold text-[#1D1D1F]">Semibold — Testresultat sparas direkt i Firebase.</p>
-              <p className="text-base font-bold text-[#1D1D1F]">Bold — Atlet: Erik Hansson · 240W · 3 min/steg</p>
-              <p className="text-sm text-[#86868B]">Small muted — testdatum, protokollinfo, sidokommentarer</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">Rajdhani — brödtext</p>
+              <p className="text-base text-primary">Regular — Laktattröskel 1 (LT1) mäter aerob förmåga vid 2.0 mmol/L.</p>
+              <p className="text-base font-medium text-primary">Medium — VO₂ max representerar maximal syreupptagningsförmåga.</p>
+              <p className="text-base font-semibold text-primary">Semibold — Testresultat sparas direkt i Firebase.</p>
+              <p className="text-base font-bold text-primary">Bold — Atlet: Erik Hansson · 240W · 3 min/steg</p>
+              <p className="text-sm text-secondary">Small (secondary) — testdatum, protokollinfo, sidokommentarer</p>
             </div>
           </div>
         </Section>
@@ -69,8 +80,8 @@ export default function StoryPage() {
                   style={{ background: t.value }}
                 />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#1D1D1F] truncate">{t.label}</p>
-                  <p className="text-[10px] text-[#86868B] truncate">{t.name}</p>
+                  <p className="text-xs font-semibold text-primary truncate">{t.label}</p>
+                  <p className="text-xs text-primary/60 truncate">{t.name}</p>
                 </div>
               </div>
             ))}
@@ -82,7 +93,7 @@ export default function StoryPage() {
           <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-6">
             {(["default", "destructive", "outline", "secondary", "ghost", "link"] as const).map((variant) => (
               <div key={variant}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#86868B] mb-2">{variant}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">{variant}</p>
                 <div className="flex flex-wrap items-center gap-3">
                   <Button variant={variant} size="sm">Small</Button>
                   <Button variant={variant} size="default">Default</Button>
@@ -103,7 +114,7 @@ export default function StoryPage() {
               <CardDescription>En kortbeskrivning visas här under titeln.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-[#1D1D1F]">Kortets innehåll — formulär, text, tabeller eller vad som helst.</p>
+              <p className="text-sm text-primary">Kortets innehåll — formulär, text, tabeller eller vad som helst.</p>
             </CardContent>
             <CardFooter>
               <Button size="sm">Spara</Button>

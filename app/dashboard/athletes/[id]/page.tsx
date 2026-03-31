@@ -4,25 +4,10 @@ import { getAthlete } from "@/lib/athletes"
 import { getTests } from "@/lib/tests"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { cn, formatDate, fullName } from "@/lib/utils"
+import { cn, fullName } from "@/lib/utils"
 import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
-import { Pencil, Plus } from "lucide-react"
-
-function testTypeLabel(type: string) {
-  if (type === "troskeltest") return "Tröskeltest"
-  if (type === "vo2max") return "VO₂ max-test"
-  if (type === "wingate") return "Wingate"
-  return type
-}
-
-function sportLabel(sport: string) {
-  if (sport === "cykel") return "Cykel"
-  if (sport === "lopning") return "Löpning"
-  if (sport === "skidor_band") return "Skidor (band)"
-  if (sport === "skierg") return "Skierg"
-  if (sport === "kajak") return "Kajak"
-  return sport
-}
+import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
+import { Pencil, Mail, Phone, User, Calendar, Hash } from "lucide-react"
 
 export default async function AthleteDetailPage({
   params,
@@ -38,94 +23,113 @@ export default async function AthleteDetailPage({
 
   if (!athlete) notFound()
 
+  const serializedTests: SerializedTest[] = tests.map((t) => ({
+    id: t.id,
+    testType: t.testType,
+    sport: t.sport,
+    testDateStr: new Date(t.testDate.seconds * 1000).toLocaleDateString("sv-SE"),
+    inputParams: {
+      startWatt: t.inputParams.startWatt,
+      stepSize: t.inputParams.stepSize,
+      testDuration: t.inputParams.testDuration,
+    },
+    results: {
+      atWatt: t.results.atWatt,
+      ltWatt: t.results.ltWatt,
+      maxHR: t.results.maxHR,
+      maxLactate: t.results.maxLactate,
+    },
+  }))
+
+  const birthDateStr = athlete.birthDate
+    ? new Date(athlete.birthDate.seconds * 1000).toLocaleDateString("sv-SE")
+    : null
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{fullName(athlete.firstName, athlete.lastName)}</h1>
-          <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
-            {athlete.gender && <span>{athlete.gender === "M" ? "Man" : "Kvinna"}</span>}
-            {athlete.birthDate && (
-              <span>Född {new Date(athlete.birthDate.seconds * 1000).toLocaleDateString("sv-SE")}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+      {/* Left: Profile card */}
+      <Card className="sticky top-6">
+        <CardContent className="p-6 space-y-5">
+          {/* Name + gender */}
+          <div>
+            <h1 className="text-xl font-bold text-[#1D1D1F]">
+              {fullName(athlete.firstName, athlete.lastName)}
+            </h1>
+            {athlete.gender && (
+              <p className="text-sm text-[#515154] mt-0.5">
+                {athlete.gender === "M" ? "Man" : "Kvinna"}
+              </p>
             )}
-            {athlete.personnummer && <span>{athlete.personnummer}</span>}
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/dashboard/athletes/${id}/edit`}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-          >
-            <Pencil className="h-4 w-4" />
-            Redigera
-          </Link>
-          <DeleteAthleteButton athleteId={id} />
-        </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {athlete.email && (
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">E-post</p>
-            <p className="text-sm">{athlete.email}</p>
+          {/* Info rows */}
+          <div className="space-y-3">
+            {birthDateStr && (
+              <div className="flex items-start gap-2.5">
+                <Calendar className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Född</p>
+                  <p className="text-sm text-[#1D1D1F]">{birthDateStr}</p>
+                </div>
+              </div>
+            )}
+            {athlete.personnummer && (
+              <div className="flex items-start gap-2.5">
+                <Hash className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Personnummer</p>
+                  <p className="text-sm text-[#1D1D1F]">{athlete.personnummer}</p>
+                </div>
+              </div>
+            )}
+            {athlete.email && (
+              <div className="flex items-start gap-2.5">
+                <Mail className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">E-post</p>
+                  <p className="text-sm text-[#1D1D1F] break-all">{athlete.email}</p>
+                </div>
+              </div>
+            )}
+            {athlete.phone && (
+              <div className="flex items-start gap-2.5">
+                <Phone className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Telefon</p>
+                  <p className="text-sm text-[#1D1D1F]">{athlete.phone}</p>
+                </div>
+              </div>
+            )}
+            {athlete.mainCoach && (
+              <div className="flex items-start gap-2.5">
+                <User className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Huvudcoach</p>
+                  <p className="text-sm text-[#1D1D1F]">{athlete.mainCoach}</p>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-        {athlete.phone && (
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Telefon</p>
-            <p className="text-sm">{athlete.phone}</p>
-          </div>
-        )}
-        {athlete.mainCoach && (
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Huvudcoach</p>
-            <p className="text-sm">{athlete.mainCoach}</p>
-          </div>
-        )}
-      </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Tester</h2>
-          <Link href={`/dashboard/tests/new?athlete=${id}`} className={cn(buttonVariants({ size: "sm" }))}>
-            <Plus className="h-4 w-4" />
-            Nytt test
-          </Link>
-        </div>
+          {/* Divider */}
+          <div className="border-t border-black/[0.06]" />
 
-        {tests.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Inga tester registrerade ännu.</p>
-        ) : (
-          <div className="space-y-2">
-            {tests.map((test) => (
-              <Link key={test.id} href={`/dashboard/tests/${test.id}`}>
-                <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        {testTypeLabel(test.testType)}
-                        <span className="ml-2 font-normal text-muted-foreground">— {sportLabel(test.sport)}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {test.inputParams.startWatt > 0 && (
-                          <span>{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
-                        )}
-                        {test.inputParams.startWatt > 0 && (test.results.atWatt || test.results.ltWatt) && <span> · </span>}
-                        {test.results.atWatt ? `LT1: ${test.results.atWatt}W` : ""}
-                        {test.results.atWatt && test.results.ltWatt ? " · " : ""}
-                        {test.results.ltWatt ? `LT2: ${test.results.ltWatt}W` : ""}
-                      </p>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(test.testDate.seconds * 1000).toLocaleDateString("sv-SE")}
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Link
+              href={`/dashboard/athletes/${id}/edit`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 justify-center")}
+            >
+              <Pencil className="h-4 w-4" />
+              Redigera
+            </Link>
+            <DeleteAthleteButton athleteId={id} />
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
+
+      {/* Right: Tests */}
+      <AthleteTestsPanel tests={serializedTests} athleteId={id} />
     </div>
   )
 }

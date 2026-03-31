@@ -24,7 +24,7 @@ const TEST_TYPES = [
     label: "Wingate",
     description: "30-sekunders maximaltest för anaerob kapacitet.",
     icon: Zap,
-    color: "text-[#86868B]",
+    color: "text-secondary",
     bg: "bg-[#F5F5F7]",
   },
 ]
@@ -33,7 +33,7 @@ export default function TestsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Nytt test</h1>
-      <p className="text-muted-foreground text-sm -mt-4">Välj testtyp för att komma igång.</p>
+      <p className="text-secondary text-base -mt-4">Välj testtyp för att komma igång.</p>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {TEST_TYPES.map(({ type, label, description, icon: Icon, color, bg }) => (
@@ -45,7 +45,7 @@ export default function TestsPage() {
                 </div>
                 <div>
                   <p className="font-semibold">{label}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                  <p className="text-sm text-secondary mt-1">{description}</p>
                 </div>
               </CardContent>
             </Card>

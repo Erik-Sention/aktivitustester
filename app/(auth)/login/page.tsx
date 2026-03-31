@@ -48,8 +48,8 @@ export default function LoginPage() {
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#007AFF] text-white text-2xl font-bold shadow-[0_8px_30px_rgba(0,122,255,0.35)] mb-2">
             A
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">Aktivitus</h1>
-          <p className="text-sm text-[#86868B]">Coach Console</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-primary">Aktivitus</h1>
+          <p className="text-base text-secondary">Coach Console</p>
         </div>
 
         {/* Form card */}

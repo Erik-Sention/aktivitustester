@@ -72,6 +72,33 @@ export interface WingateData {
   minPower: number
 }
 
+export interface BikeSettings {
+  bikeType: string
+  pedalType: string
+  saddleVerticalMm: number | null
+  saddleHorizontalMm: number | null
+  handlebarVerticalMm: number | null
+  handlebarHorizontalMm: number | null
+}
+
+export interface SportSettings {
+  bike?: BikeSettings
+  // kajak?: KajakSettings  -- framtida
+}
+
+export interface CoachAssessment {
+  atEffektWatt: number | null
+  ltEffektWatt: number | null
+  granLagMedel: number | null     // "Gräns Låg/Medel"
+  nedreGrans: number | null       // "Nedre gräns"
+  estMaxPuls: number | null
+  hogstaUpnaddPuls: number | null
+  atPuls: number | null
+  ltPuls: number | null
+  granLagMedelPuls: number | null   // "Gräns Låg/Medel" bpm
+  nedreGransPuls: number | null     // "Nedre gräns" bpm
+}
+
 export interface RawDataPoint {
   min: number
   watt: number
@@ -95,6 +122,8 @@ export interface Test {
   inputParams: TestInputParams
   results: TestResults
   wingateData?: WingateData
+  settings?: SportSettings
+  coachAssessment?: CoachAssessment
   rawData: RawDataPoint[]
   notes: string
   createdAt: Timestamp

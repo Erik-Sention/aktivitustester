@@ -36,6 +36,10 @@ interface LactateChartProps {
   testType?: string;
   height?: number | string;
   vo2MaxX?: number | null;
+  /** Coach-assessed AT threshold (Watt) */
+  coachAtWatt?: number | null;
+  /** Coach-assessed LT threshold (Watt) */
+  coachLtWatt?: number | null;
 }
 
 const HR_ZONES = [
@@ -46,7 +50,7 @@ const HR_ZONES = [
   { name: "Z5", minPct: 0.90, maxPct: 1.00, fill: "#f43f5e" },
 ];
 
-export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Speed, lt2Speed, maxHr, testType, height = "100%", vo2MaxX }: LactateChartProps) {
+export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Speed, lt2Speed, maxHr, testType, height = "100%", vo2MaxX, coachAtWatt, coachLtWatt }: LactateChartProps) {
   const isLactate = testType === "LACTATE_THRESHOLD";
 
   // Running mode: stages have loadSpeedKmh but no loadWatts; plot only step-end rows (where lactate was measured)
@@ -97,7 +101,7 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
   return (
     <div className="space-y-2">
       {hasHr && maxHr && (
-        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 flex-wrap text-xs text-[#86868B]">
           {HR_ZONES.map((z) => (
             <span key={z.name} className="flex items-center gap-1">
               <span className="inline-block h-2 w-4 rounded-sm" style={{ background: z.fill, opacity: 0.7 }} />
@@ -129,8 +133,8 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
             type="number"
             domain={["dataMin", "dataMax"]}
             tickCount={data.length}
-            label={{ value: xLabel, position: "insideBottom", offset: -16, fontSize: 12 }}
-            tick={{ fontSize: 11 }}
+            label={{ value: xLabel, position: "insideBottom", offset: -16, fontSize: 14 }}
+            tick={{ fontSize: 13 }}
             height={56}
           />
 
@@ -138,8 +142,8 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
             <YAxis
               yAxisId="hr"
               orientation="left"
-              label={{ value: "Puls", angle: -90, position: "insideLeft", offset: 14, fontSize: 12 }}
-              tick={{ fontSize: 11 }}
+              label={{ value: "Puls", angle: -90, position: "insideLeft", offset: 14, fontSize: 14 }}
+              tick={{ fontSize: 13 }}
               width={52}
             />
           )}
@@ -148,8 +152,8 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
             <YAxis
               yAxisId="lac"
               orientation="right"
-              label={{ value: "Laktat", angle: 90, position: "insideRight", offset: 14, fontSize: 12 }}
-              tick={{ fontSize: 11 }}
+              label={{ value: "Laktat", angle: 90, position: "insideRight", offset: 14, fontSize: 14 }}
+              tick={{ fontSize: 13 }}
               width={48}
             />
           )}
@@ -160,14 +164,14 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
               orientation="right"
               domain={[5, 21]}
               ticks={[6, 9, 11, 13, 15, 17, 19]}
-              label={{ value: "RPE", angle: 90, position: "insideRight", offset: 14, fontSize: 12 }}
-              tick={{ fontSize: 10 }}
+              label={{ value: "RPE", angle: 90, position: "insideRight", offset: 14, fontSize: 14 }}
+              tick={{ fontSize: 13 }}
               width={40}
             />
           )}
 
           <Tooltip
-            contentStyle={{ fontSize: 12 }}
+            contentStyle={{ fontSize: 14 }}
             formatter={(value: number, name: string) => {
               if (name === "Puls") return [`${value} bpm`, "Puls"];
               if (name === "Laktat") return [`${value} mmol/L`, "Laktat"];
@@ -177,7 +181,7 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
             }}
             labelFormatter={(v) => useSpeed ? `${v} km/h` : `${v} ${bodyWeightKg ? "W/kg" : "W"}`}
           />
-          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 12, paddingTop: 20 }} />
+          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 14, paddingTop: 20 }} />
 
           {hasHr && (
             <Line
@@ -241,7 +245,7 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
               x={lt1X}
               stroke="#22c55e"
               strokeDasharray="5 4"
-              label={{ value: useSpeed ? `LT1 ${lt1X} km/h` : `LT1 ${lt1Watts}W`, fill: "#16a34a", fontSize: 11, position: "top" }}
+              label={{ value: useSpeed ? `LT1 ${lt1X} km/h` : `LT1 ${lt1Watts}W`, fill: "#16a34a", fontSize: 13, position: "top" }}
             />
           )}
 
@@ -251,7 +255,7 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
               x={lt2X}
               stroke="#a855f7"
               strokeDasharray="5 4"
-              label={{ value: useSpeed ? `LT2 ${lt2X} km/h` : `LT2 ${lt2Watts}W`, fill: "#9333ea", fontSize: 11, position: "top" }}
+              label={{ value: useSpeed ? `LT2 ${lt2X} km/h` : `LT2 ${lt2Watts}W`, fill: "#9333ea", fontSize: 13, position: "top" }}
             />
           )}
 
@@ -261,7 +265,29 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
               x={vo2MaxX}
               stroke="#8b5cf6"
               strokeWidth={2}
-              label={{ value: "VO₂max", fill: "#6d28d9", fontSize: 11, position: "insideTopRight" }}
+              label={{ value: "VO₂max", fill: "#6d28d9", fontSize: 13, position: "insideTopRight" }}
+            />
+          )}
+
+          {coachAtWatt != null && (
+            <ReferenceLine
+              yAxisId={hasHr ? "hr" : "lac"}
+              x={bodyWeightKg ? Math.round((coachAtWatt / bodyWeightKg) * 100) / 100 : coachAtWatt}
+              stroke="#f59e0b"
+              strokeDasharray="4 3"
+              strokeWidth={2}
+              label={{ value: `AT ${coachAtWatt}W`, fill: "#d97706", fontSize: 13, position: "top" }}
+            />
+          )}
+
+          {coachLtWatt != null && (
+            <ReferenceLine
+              yAxisId={hasHr ? "hr" : "lac"}
+              x={bodyWeightKg ? Math.round((coachLtWatt / bodyWeightKg) * 100) / 100 : coachLtWatt}
+              stroke="#ec4899"
+              strokeDasharray="4 3"
+              strokeWidth={2}
+              label={{ value: `LT ${coachLtWatt}W`, fill: "#db2777", fontSize: 13, position: "top" }}
             />
           )}
         </ComposedChart>

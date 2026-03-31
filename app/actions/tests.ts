@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
 import { createTest, updateTest, deleteTest } from "@/lib/tests"
-import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation } from "@/types"
-import { Timestamp } from "firebase/firestore"
+import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, SportSettings, CoachAssessment } from "@/types"
+import { Timestamp, doc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 async function requireSession() {
   const user = await getSessionUser()
@@ -29,6 +30,8 @@ export async function createTestAction(data: {
   notes?: string
   rawData: RawDataPoint[]
   vo2Max?: number
+  settings?: SportSettings
+  coachAssessment?: CoachAssessment
 }) {
   const user = await requireSession()
 
@@ -51,11 +54,13 @@ export async function createTestAction(data: {
     },
     rawData: data.rawData,
     notes: data.notes || '',
+    ...(data.settings ? { settings: data.settings } : {}),
+    ...(data.coachAssessment ? { coachAssessment: data.coachAssessment } : {}),
   })
 
-  // Allow caller to override vo2Max after auto-calculation
+  // Patch only vo2Max so auto-calculated maxHR / maxLactate are preserved
   if (data.vo2Max) {
-    await updateTest(id, { results: { vo2Max: data.vo2Max, atWatt: null, ltWatt: null, maxHR: null, maxLactate: null } } as any)
+    await updateDoc(doc(db, 'tests', id), { 'results.vo2Max': data.vo2Max })
   }
 
   revalidatePath("/dashboard/tests")
@@ -70,7 +75,18 @@ export async function updateTestAction(
     testDate: string
     notes?: string
     rawData: RawDataPoint[]
-    vo2Max?: number | null
+    sport?: SportType
+    testType?: TestType
+    protocol?: ProtocolType
+    testLocation?: ClinicLocation
+    testLeader?: string
+    startWatt?: number
+    stepSize?: number
+    testDuration?: number
+    bodyWeight?: number | null
+    heightCm?: number | null
+    coachAssessment?: CoachAssessment
+    settings?: SportSettings
   }
 ) {
   await requireSession()
@@ -79,6 +95,22 @@ export async function updateTestAction(
     testDate: Timestamp.fromDate(new Date(data.testDate)),
     notes: data.notes || '',
     rawData: data.rawData,
+    ...(data.sport ? { sport: data.sport } : {}),
+    ...(data.testType ? { testType: data.testType } : {}),
+    ...(data.protocol ? { protocol: data.protocol } : {}),
+    ...(data.testLocation ? { testLocation: data.testLocation } : {}),
+    ...(data.testLeader !== undefined ? { testLeader: data.testLeader } : {}),
+    ...(data.startWatt !== undefined || data.stepSize !== undefined || data.testDuration !== undefined || data.bodyWeight !== undefined || data.heightCm !== undefined ? {
+      inputParams: {
+        startWatt: data.startWatt ?? 0,
+        stepSize: data.stepSize ?? 0,
+        testDuration: data.testDuration ?? 0,
+        bodyWeight: data.bodyWeight ?? null,
+        heightCm: data.heightCm ?? null,
+      }
+    } : {}),
+    ...(data.coachAssessment ? { coachAssessment: data.coachAssessment } : {}),
+    ...(data.settings ? { settings: data.settings } : {}),
   })
 
   revalidatePath("/dashboard/tests")
@@ -93,4 +125,15 @@ export async function deleteTestAction(id: string, athleteId: string) {
   revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/athletes/${athleteId}`)
   redirect(`/dashboard/athletes/${athleteId}`)
+}
+
+export async function updateCoachAssessmentAction(
+  testId: string,
+  athleteId: string,
+  assessment: CoachAssessment
+) {
+  await requireSession()
+  await updateDoc(doc(db, 'tests', testId), { coachAssessment: assessment })
+  revalidatePath(`/dashboard/tests/${testId}`)
+  revalidatePath(`/dashboard/athletes/${athleteId}`)
 }

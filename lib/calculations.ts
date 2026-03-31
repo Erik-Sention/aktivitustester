@@ -41,3 +41,27 @@ export function interpolateLactateThreshold(
 
 export const LT1_MMOL = 2.0 // Aerobic Threshold
 export const LT2_MMOL = 4.0 // Lactate Threshold
+
+/**
+ * Kuipers formula for cycling ramp test:
+ * VO₂max (ml/kg/min) = (maxWatt × 10.8 / bodyWeightKg) + 7
+ *
+ * maxWatt = highest completed watt level where HR was recorded
+ */
+export function calculateVo2Max(maxWatt: number, bodyWeightKg: number): number {
+  return Math.round((maxWatt * 10.8) / bodyWeightKg + 7)
+}
+
+export const VO2MAX_ZONES = [
+  { label: "Hjärtrisk", colorBg: "bg-[#E8735A]", colorText: "text-white" },
+  { label: "Hälsorisk", colorBg: "bg-[#F4A88A]", colorText: "text-[#1D1D1F]" },
+  { label: "Låg risk",  colorBg: "bg-[#FAD4C0]", colorText: "text-[#1D1D1F]" },
+  { label: "Aktiv",     colorBg: "bg-[#B8E6B8]", colorText: "text-[#1D1D1F]" },
+  { label: "Atlet",     colorBg: "bg-[#6EC96E]", colorText: "text-white" },
+  { label: "Pro",       colorBg: "bg-[#3DB8B8]", colorText: "text-white" },
+  { label: "Elite",     colorBg: "bg-[#007AFF]", colorText: "text-white" },
+]
+
+// Lower bound of each zone, index matches VO2MAX_ZONES
+export const VO2MAX_BREAKPOINTS_WOMEN = [0, 16, 26, 36, 46, 56, 66]
+export const VO2MAX_BREAKPOINTS_MEN   = [0, 21, 31, 41, 51, 61, 76]

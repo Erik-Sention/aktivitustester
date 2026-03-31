@@ -1,18 +1,17 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
 import { createTestAction } from "@/app/actions/tests"
-import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from "@/lib/calculations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { LactateChart } from "@/components/tests/lactate-chart"
 import { fullName } from "@/lib/utils"
 import { Play, Pause, RotateCcw } from "lucide-react"
-import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation } from "@/types"
+import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
+import { LiveTestChart } from "@/components/tests/live-test-chart"
+import { calculateVo2Max } from "@/lib/calculations"
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -76,17 +75,66 @@ const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
   { value: "malmo", label: "Malmö" },
 ]
 
-// ── Sample data ───────────────────────────────────────────────────────
+// ── Row generation ─────────────────────────────────────────────────────
 
-const SAMPLE_ROWS: RawDataPoint[] = [
-  { min: 3,  watt: 100, hr: 118, lac: 0.8, borg: 9,  cadence: 90 },
-  { min: 6,  watt: 120, hr: 131, lac: 1.0, borg: 11, cadence: 90 },
-  { min: 9,  watt: 140, hr: 143, lac: 1.3, borg: 12, cadence: 90 },
-  { min: 12, watt: 160, hr: 155, lac: 1.7, borg: 13, cadence: 90 },
-  { min: 15, watt: 180, hr: 162, lac: 2.2, borg: 14, cadence: 89 },
-  { min: 18, watt: 200, hr: 170, lac: 3.1, borg: 16, cadence: 88 },
-  { min: 21, watt: 220, hr: 177, lac: 5.2, borg: 17, cadence: 87 },
-  { min: 24, watt: 240, hr: 183, lac: 8.4, borg: 19, cadence: 85 },
+function generateMinuteRows(startWatt: number, stepSize: number, testDuration: number, totalStages = 10): RawDataPoint[] {
+  const rows: RawDataPoint[] = []
+  // Min 0: initial measurement at first watt level
+  rows.push({ min: 0, watt: startWatt, hr: 0, lac: 0, borg: 0, cadence: 0 })
+  for (let stage = 0; stage < totalStages; stage++) {
+    const watt = startWatt + stage * stepSize
+    for (let m = 1; m <= testDuration; m++) {
+      rows.push({ min: stage * testDuration + m, watt, hr: 0, lac: 0, borg: 0, cadence: 0 })
+    }
+  }
+  return rows
+}
+
+// Min 0 and stage-end rows (every testDuration minutes) get Laktat
+function lacEnabled(row: RawDataPoint, testDuration: number): boolean {
+  return row.min === 0 || (row.min > 0 && row.min % testDuration === 0)
+}
+
+// Only stage-end rows (not min 0) get Borg + Kadans
+function borgEnabled(row: RawDataPoint, testDuration: number): boolean {
+  return row.min > 0 && row.min % testDuration === 0
+}
+
+// ── Seed data ─────────────────────────────────────────────────────────
+
+// VO2max ramp test — HR only (50W start, +20W/min)
+const VO2MAX_SEED_ROWS: RawDataPoint[] = [
+  { min: 0,  watt: 50,  hr: 75,  lac: 0, borg: 0, cadence: 0 },
+  { min: 1,  watt: 50,  hr: 87,  lac: 0, borg: 0, cadence: 0 },
+  { min: 2,  watt: 70,  hr: 98,  lac: 0, borg: 0, cadence: 0 },
+  { min: 3,  watt: 90,  hr: 108, lac: 0, borg: 0, cadence: 0 },
+  { min: 4,  watt: 110, hr: 118, lac: 0, borg: 0, cadence: 0 },
+  { min: 5,  watt: 130, hr: 128, lac: 0, borg: 0, cadence: 0 },
+  { min: 6,  watt: 150, hr: 139, lac: 0, borg: 0, cadence: 0 },
+  { min: 7,  watt: 170, hr: 150, lac: 0, borg: 0, cadence: 0 },
+  { min: 8,  watt: 190, hr: 160, lac: 0, borg: 0, cadence: 0 },
+  { min: 9,  watt: 210, hr: 168, lac: 0, borg: 0, cadence: 0 },
+  { min: 10, watt: 230, hr: 177, lac: 0, borg: 0, cadence: 0 },
+  { min: 11, watt: 250, hr: 184, lac: 0, borg: 0, cadence: 0 },
+]
+
+const SEED_ROWS: RawDataPoint[] = [
+  { min: 0,  watt: 0,   hr: 72,  lac: 0.7, borg: 0,  cadence: 0  },
+  { min: 1,  watt: 80,  hr: 81,  lac: 0,   borg: 0,  cadence: 0  },
+  { min: 2,  watt: 80,  hr: 83,  lac: 0,   borg: 0,  cadence: 0  },
+  { min: 3,  watt: 80,  hr: 89,  lac: 0.9, borg: 9,  cadence: 89 },
+  { min: 4,  watt: 110, hr: 92,  lac: 0,   borg: 0,  cadence: 0  },
+  { min: 5,  watt: 110, hr: 94,  lac: 0,   borg: 0,  cadence: 0  },
+  { min: 6,  watt: 110, hr: 100, lac: 1.8, borg: 11, cadence: 90 },
+  { min: 7,  watt: 140, hr: 103, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 8,  watt: 140, hr: 105, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 9,  watt: 140, hr: 111, lac: 3.2, borg: 12, cadence: 89 },
+  { min: 10, watt: 170, hr: 114, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 11, watt: 170, hr: 116, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 12, watt: 170, hr: 122, lac: 5.1, borg: 14, cadence: 89 },
+  { min: 13, watt: 200, hr: 125, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 14, watt: 200, hr: 127, lac: 0,   borg: 0,  cadence: 0  },
+  { min: 15, watt: 200, hr: 133, lac: 7.4, borg: 15, cadence: 90 },
 ]
 
 // ── Stage Timer ───────────────────────────────────────────────────────
@@ -116,7 +164,6 @@ function StageTimer({
     return () => { if (ref.current) clearInterval(ref.current) }
   }, [running])
 
-  // Auto-advance stage when interval expires
   useEffect(() => {
     if (running && elapsed > 0 && elapsed >= intervalSeconds * 60) {
       const next = Math.min(stage + 1, totalStages)
@@ -140,19 +187,19 @@ function StageTimer({
   return (
     <div className="bg-white rounded-2xl border border-[hsl(var(--border))] px-5 py-3 flex items-center gap-3 shadow-sm">
       <div className="flex-1 text-center">
-        <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest block leading-none mb-1.5">
+        <span className="text-sm font-bold text-secondary uppercase tracking-widest block leading-none mb-1.5">
           Stage {stage} / {totalStages}
         </span>
-        <span className={`text-3xl font-black tabular-nums tracking-tighter leading-none ${running ? "text-[#1D1D1F]" : "text-[#D1D1D6]"}`}>
+        <span className={`text-3xl font-black tabular-nums tracking-tighter leading-none ${running ? "text-primary" : "text-[#D1D1D6]"}`}>
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </span>
       </div>
       <button type="button" onClick={() => setRunning((r) => !r)}
-        className="p-2.5 rounded-xl hover:bg-[#F5F5F7] text-[#86868B] transition-colors">
+        className="p-2.5 rounded-xl hover:bg-[#F5F5F7] text-secondary transition-colors">
         {running ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
       </button>
       <button type="button" onClick={reset}
-        className="p-2 rounded-xl hover:bg-[#F5F5F7] text-[#86868B] transition-colors">
+        className="p-2 rounded-xl hover:bg-[#F5F5F7] text-secondary transition-colors">
         <RotateCcw className="h-4 w-4" />
       </button>
     </div>
@@ -161,12 +208,20 @@ function StageTimer({
 
 // ── Main component ────────────────────────────────────────────────────
 
-function emptyRow(stageNum: number, watt: number): RawDataPoint {
-  return { min: stageNum * 3, watt, hr: 0, lac: 0, borg: 0, cadence: 0 }
+const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
+  atEffektWatt: null,
+  ltEffektWatt: null,
+  granLagMedel: null,
+  nedreGrans: null,
+  estMaxPuls: null,
+  hogstaUpnaddPuls: null,
+  atPuls: null,
+  ltPuls: null,
+  granLagMedelPuls: null,
+  nedreGransPuls: null,
 }
 
-export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType, defaultTestLeader }: LiveRecordingViewProps) {
-  const router = useRouter()
+export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader }: LiveRecordingViewProps) {
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -188,6 +243,36 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
     heightCm: "",
   })
 
+  // ── Bike settings ─────────────────────────────────────────────────
+  const [showBikeSettings, setShowBikeSettings] = useState(false)
+  const [bikeSettings, setBikeSettings] = useState<Partial<BikeSettings>>({})
+
+  function updateBike(field: keyof BikeSettings, value: string) {
+    setBikeSettings((prev) => ({
+      ...prev,
+      [field]: value === "" ? null : (["saddleVerticalMm", "saddleHorizontalMm", "handlebarVerticalMm", "handlebarHorizontalMm"].includes(field)
+        ? (parseFloat(value) || null)
+        : value),
+    }))
+  }
+
+  // ── VO2max exhaustion inputs ──────────────────────────────────────
+  const [exhaustionLacStr, setExhaustionLacStr] = useState("")
+  const [exhaustionBorg, setExhaustionBorg] = useState("")
+  const [exhaustionTimeMins, setExhaustionTimeMins] = useState("")
+  const [exhaustionTimeSecs, setExhaustionTimeSecs] = useState("")
+  const [exhaustionWattStr, setExhaustionWattStr] = useState("")
+
+  // ── Coach assessment ──────────────────────────────────────────────
+  const [coachAssessment, setCoachAssessment] = useState<CoachAssessment>(EMPTY_COACH_ASSESSMENT)
+
+  function updateCoach(field: keyof CoachAssessment, value: string) {
+    setCoachAssessment((prev) => ({
+      ...prev,
+      [field]: value === "" ? null : (parseFloat(value) || null),
+    }))
+  }
+
   function update(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
   }
@@ -203,6 +288,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
       stepSize: String(defaults.stepSize),
       testDuration: String(defaults.testDuration),
     }))
+    if (sport !== "cykel") setShowBikeSettings(false)
   }
 
   function changeProtocol(protocol: ProtocolType) {
@@ -216,19 +302,42 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
     }))
   }
 
+  function changeTestType(testType: TestType) {
+    if (testType === "vo2max") {
+      const defaults = PROTOCOL_DEFAULTS["ramp_test"]
+      setForm((f) => ({
+        ...f,
+        testType,
+        protocol: "ramp_test",
+        startWatt: String(defaults.startWatt),
+        stepSize: String(defaults.stepSize),
+        testDuration: String(defaults.testDuration),
+      }))
+    } else {
+      setForm((f) => ({ ...f, testType }))
+    }
+  }
+
   // ── Raw data rows ─────────────────────────────────────────────────
   const [rows, setRows] = useState<RawDataPoint[]>([])
   const [activeRow, setActiveRow] = useState<number | null>(null)
-  const [timerStage, setTimerStage] = useState(1)
   const [lacStrings, setLacStrings] = useState<Record<number, string>>({})
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
+  function getEditableFields(row: RawDataPoint, dur: number): string[] {
+    if (lacEnabled(row, dur) && borgEnabled(row, dur)) return ["hr", "lac", "borg", "cadence"]
+    if (lacEnabled(row, dur)) return ["hr", "lac"]
+    return ["hr"]
+  }
+
   function focusNextInput(rowIdx: number, field: string) {
-    const fields = ["min", "watt", "hr", "borg", "lac", "cadence"]
-    const nextField = fields[fields.indexOf(field) + 1]
+    const dur = parseInt(form.testDuration) || 3
+    const editableFields = getEditableFields(rows[rowIdx], dur)
+    const nextField = editableFields[editableFields.indexOf(field) + 1]
     if (nextField) {
       inputRefs.current.get(`${rowIdx}-${nextField}`)?.focus()
     } else {
+      // Move to HR of next row
       inputRefs.current.get(`${rowIdx + 1}-hr`)?.focus()
     }
   }
@@ -244,10 +353,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
     const start = parseInt(form.startWatt) || 40
     const step = parseInt(form.stepSize) || 20
     const dur = parseInt(form.testDuration) || 3
-    const generated = Array.from({ length: 10 }, (_, i) =>
-      emptyRow(i + 1, start + i * step)
-    )
-    setRows(generated)
+    setRows(generateMinuteRows(start, step, dur, 10))
     setStep("recording")
   }
 
@@ -259,33 +365,35 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
     })
   }
 
-  function addRow() {
-    const last = rows[rows.length - 1]
+  function removeStage(stageEndMin: number) {
+    const stageStart = stageEndMin - dur + 1
+    setRows((prev) => {
+      const without = prev.filter((r) => r.min < stageStart || r.min > stageEndMin)
+      return without.map((r) => r.min > stageEndMin ? { ...r, min: r.min - dur } : r)
+    })
+    setLacStrings({})
+    setActiveRow(null)
+  }
+
+  function addStage() {
     const step = parseInt(form.stepSize) || 20
     const dur = parseInt(form.testDuration) || 3
-    const newWatt = last ? last.watt + step : parseInt(form.startWatt) || 40
-    const newMin = last ? last.min + dur : dur
-    setRows((prev) => [...prev, { min: newMin, watt: newWatt, hr: 0, lac: 0, borg: 0, cadence: 0 }])
+    const last = rows[rows.length - 1]
+    const nextWatt = (last?.watt ?? parseInt(form.startWatt) ?? 40) + step
+    const lastMin = last?.min ?? 0
+    const newRows = Array.from({ length: dur }, (_, i) => ({
+      min: lastMin + i + 1,
+      watt: nextWatt,
+      hr: 0,
+      lac: 0,
+      borg: 0,
+      cadence: 0,
+    }))
+    setRows((prev) => [...prev, ...newRows])
   }
 
-  function removeRow(index: number) {
-    setRows((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  // ── Live LT1/LT2 calculation ──────────────────────────────────────
-  const liveAtWatt = interpolateLactateThreshold(rows, LT1_MMOL)
-  const liveLtWatt = interpolateLactateThreshold(rows, LT2_MMOL)
-
-  // ── Chart data ────────────────────────────────────────────────────
-  const chartStages = rows.map((p, i) => ({
-    stageNumber: i + 1,
-    loadWatts: p.watt || null,
-    loadSpeedKmh: null,
-    heartRate: p.hr || null,
-    lactateMmol: p.lac || null,
-    vo2MlKgMin: null,
-    rpe: p.borg || null,
-  }))
+  // ── Chart data (all minute rows for staircase chart) ─────────────
+  const dur = parseInt(form.testDuration) || 3
 
   async function handleSave() {
     if (!form.athleteId) { setError("Välj en atlet"); return }
@@ -293,7 +401,49 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
     setError(null)
 
     try {
-      const validRows = rows.filter(p => p.hr > 0 || p.lac > 0 || p.watt > 0)
+      const isVo2 = form.testType === "vo2max"
+
+      // For VO2max: append exhaustion row with lactate + borg if entered
+      let finalRows = rows.filter(p => p.hr > 0 || p.lac > 0 || p.watt > 0)
+      if (isVo2) {
+        const exhaustionLac = parseFloat(exhaustionLacStr.replace(",", "."))
+        const exhaustionBorgNum = parseInt(exhaustionBorg) || 0
+        if (!isNaN(exhaustionLac) && exhaustionLac > 0) {
+          const lastRow = finalRows[finalRows.length - 1]
+          finalRows = [
+            ...finalRows,
+            {
+              min: (lastRow?.min ?? 0) + 1,
+              watt: lastRow?.watt ?? 0,
+              hr: lastRow?.hr ?? 0,
+              lac: exhaustionLac,
+              borg: exhaustionBorgNum,
+              cadence: 0,
+            },
+          ]
+        }
+      }
+
+      // Calculate VO2max from max watt + body weight
+      const bodyWeightNum = parseFloat(form.bodyWeight)
+      let vo2Max: number | undefined
+      if (isVo2 && bodyWeightNum > 0) {
+        const overrideWatt = parseFloat(exhaustionWattStr)
+        const derivedWatt = Math.max(...finalRows.filter(r => r.hr > 0).map(r => r.watt), 0)
+        const maxWatt = overrideWatt > 0 ? overrideWatt : derivedWatt
+        if (maxWatt > 0) vo2Max = calculateVo2Max(maxWatt, bodyWeightNum)
+      }
+
+      // Prepend exhaustion time to notes for VO2max tests
+      let notesValue = form.notes
+      if (isVo2 && (exhaustionTimeMins || exhaustionTimeSecs)) {
+        const mm = exhaustionTimeMins.padStart(2, "0")
+        const ss = (exhaustionTimeSecs || "0").padStart(2, "0")
+        const tidLine = `Utmattning tid: ${mm}:${ss}`
+        notesValue = notesValue ? `${tidLine}\n${notesValue}` : tidLine
+      }
+
+      const hasCoachData = Object.values(coachAssessment).some(v => v !== null)
       await createTestAction({
         athleteId: form.athleteId,
         sport: form.sport,
@@ -305,13 +455,17 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
         startWatt: parseInt(form.startWatt) || 0,
         stepSize: parseInt(form.stepSize) || 0,
         testDuration: parseInt(form.testDuration) || 0,
-        bodyWeight: parseFloat(form.bodyWeight) || undefined,
+        bodyWeight: bodyWeightNum || undefined,
         heightCm: parseFloat(form.heightCm) || undefined,
-        notes: form.notes,
-        rawData: validRows,
+        notes: notesValue,
+        rawData: finalRows,
+        vo2Max,
+        settings: showBikeSettings && Object.keys(bikeSettings).length > 0
+          ? { bike: bikeSettings as BikeSettings }
+          : undefined,
+        coachAssessment: !isVo2 && hasCoachData ? coachAssessment : undefined,
       })
     } catch (e: unknown) {
-      // Next.js redirect() throws a special error — let it propagate
       if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e
       setError("Något gick fel. Försök igen.")
       setSaving(false)
@@ -328,13 +482,13 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
       <div className="max-w-2xl space-y-5">
         <div>
           <h1 className="text-2xl font-bold">Nytt test</h1>
-          <p className="text-muted-foreground text-sm">Fyll i uppgifterna nedan innan du startar.</p>
+          <p className="text-secondary text-base">Fyll i uppgifterna nedan innan du startar.</p>
         </div>
 
         <Card>
           <CardContent className="pt-5 space-y-4">
 
-            {/* Atlet — read-only if navigated from athlete page */}
+            {/* Atlet */}
             <div className="space-y-1">
               <Label>Atlet</Label>
               {lockedAthlete ? (
@@ -360,7 +514,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
                     key={s}
                     type="button"
                     onClick={() => changeSport(s)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    className={`px-4 py-2 rounded-full text-base font-medium border transition-colors ${
                       form.sport === s
                         ? "bg-[#007AFF] text-white border-[#007AFF]"
                         : "bg-white text-[#86868B] border-[hsl(var(--border))] hover:border-[#86868B]"
@@ -372,11 +526,89 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
               </div>
             </div>
 
-            {/* Val 2 + Val 3 — same row */}
+            {/* Cykelinställningar (only when sport = cykel) */}
+            {form.sport === "cykel" && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowBikeSettings((v) => !v)}
+                  className="text-sm text-[#007AFF] font-medium hover:text-[#0066d6]"
+                >
+                  {showBikeSettings ? "Dölj cykelinställningar" : "+ Lägg till cykelinställningar"}
+                </button>
+                {showBikeSettings && (
+                  <div className="mt-3 grid grid-cols-2 gap-3 border border-[hsl(var(--border))] rounded-xl p-4">
+                    <div className="col-span-2 text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-1">
+                      Cykelinställningar
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="bikeType">Cykeltyp</Label>
+                      <Input
+                        id="bikeType"
+                        value={bikeSettings.bikeType ?? ""}
+                        onChange={(e) => updateBike("bikeType", e.target.value)}
+                        placeholder="t.ex. Landsvägscykel"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pedalType">Pedaltyp</Label>
+                      <Input
+                        id="pedalType"
+                        value={bikeSettings.pedalType ?? ""}
+                        onChange={(e) => updateBike("pedalType", e.target.value)}
+                        placeholder="t.ex. SPD, Look"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="saddleV">Sadel vertikal (mm)</Label>
+                      <Input
+                        id="saddleV"
+                        type="number"
+                        value={bikeSettings.saddleVerticalMm ?? ""}
+                        onChange={(e) => updateBike("saddleVerticalMm", e.target.value)}
+                        placeholder="t.ex. 720"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="saddleH">Sadel horisontell (mm)</Label>
+                      <Input
+                        id="saddleH"
+                        type="number"
+                        value={bikeSettings.saddleHorizontalMm ?? ""}
+                        onChange={(e) => updateBike("saddleHorizontalMm", e.target.value)}
+                        placeholder="t.ex. 0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="handlebarV">Styre vertikal (mm)</Label>
+                      <Input
+                        id="handlebarV"
+                        type="number"
+                        value={bikeSettings.handlebarVerticalMm ?? ""}
+                        onChange={(e) => updateBike("handlebarVerticalMm", e.target.value)}
+                        placeholder="t.ex. 650"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="handlebarH">Styre horisontell (mm)</Label>
+                      <Input
+                        id="handlebarH"
+                        type="number"
+                        value={bikeSettings.handlebarHorizontalMm ?? ""}
+                        onChange={(e) => updateBike("handlebarHorizontalMm", e.target.value)}
+                        placeholder="t.ex. 450"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Val 2 + Val 3 */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="testType">Val 2 — Testtyp</Label>
-                <Select id="testType" value={form.testType} onChange={(e) => update("testType", e.target.value as TestType)}>
+                <Select id="testType" value={form.testType} onChange={(e) => changeTestType(e.target.value as TestType)}>
                   {(Object.keys(TESTTYPE_LABELS) as TestType[]).map((t) => (
                     <option key={t} value={t}>{TESTTYPE_LABELS[t]}</option>
                   ))}
@@ -392,7 +624,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
               </div>
             </div>
 
-            {/* Watt presets (standard) or manual inputs (ramp) */}
+            {/* Watt presets or manual */}
             {form.protocol === "standard_3min" ? (
               <div className="space-y-1.5">
                 <Label>Start & steg</Label>
@@ -407,7 +639,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
                         className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
                           active
                             ? "bg-[#007AFF] text-white border-[#007AFF]"
-                            : "bg-white text-[#86868B] border-[hsl(var(--border))] hover:border-[#86868B]"
+                            : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
                         }`}
                       >
                         {p.label}
@@ -433,10 +665,10 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
               </div>
             )}
 
-            {/* Dagsaktuell mätning + Plats & Testledare — two columns */}
+            {/* Vikt + Längd */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="bodyWeight">Vikt (kg) <span className="text-[#86868B] font-normal">– idag</span></Label>
+                <Label htmlFor="bodyWeight">Vikt (kg) <span className="text-secondary font-normal">– idag</span></Label>
                 <Input id="bodyWeight" type="number" step="0.1" value={form.bodyWeight} onChange={(e) => update("bodyWeight", e.target.value)} placeholder="t.ex. 72,5" />
               </div>
               <div className="space-y-1">
@@ -445,6 +677,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
               </div>
             </div>
 
+            {/* Plats + Testledare */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="testLocation">Plats</Label>
@@ -461,6 +694,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
               </div>
             </div>
 
+            {/* Datum + Anteckningar */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="testDate">Datum</Label>
@@ -483,6 +717,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
 
   // ── Recording screen ──────────────────────────────────────────────
   const selectedAthlete = athletes.find((a) => a.id === form.athleteId)
+  const stageCount = rows.filter((r) => borgEnabled(r, dur)).length
 
   return (
     <div className="space-y-5">
@@ -491,7 +726,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
           <h1 className="text-2xl font-bold">
             {SPORT_LABELS[form.sport]} — {TESTTYPE_LABELS[form.testType]}
           </h1>
-          <p className="text-sm text-[#86868B] mt-0.5">
+          <p className="text-base text-secondary mt-0.5">
             {selectedAthlete && <span>{fullName(selectedAthlete.firstName, selectedAthlete.lastName)} · </span>}
             {PROTOCOL_OPTIONS[form.sport].find((p) => p.value === form.protocol)?.label}
             {" · "}{form.startWatt}W +{form.stepSize}W/{form.testDuration}min
@@ -500,8 +735,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
         <div className="flex items-center gap-3 shrink-0">
           <StageTimer
             intervalSeconds={parseInt(form.testDuration) || 3}
-            totalStages={rows.length || 1}
-            onStageChange={(s) => setTimerStage(s)}
+            totalStages={stageCount || 1}
+            onStageChange={() => {}}
           />
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Sparar…" : "Spara test"}
@@ -514,172 +749,379 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestType,
         </div>
       </div>
 
-      {/* LT1 / LT2 — always visible, discrete until calculated */}
-      <div className="flex gap-3">
-        <div className="flex-1 rounded-xl border border-[hsl(var(--border))] bg-white px-4 py-2.5 text-sm text-center">
-          <span className="text-[9px] font-bold uppercase tracking-widest block leading-none mb-1 text-[#86868B]">Laktattröskel 1 (LT1) — 2.0 mmol</span>
-          <span className={`text-lg font-black leading-none ${liveAtWatt ? "text-[#1D1D1F]" : "text-[#D1D1D6]"}`}>
-            {liveAtWatt ? `${liveAtWatt} W` : "—"}
-          </span>
-        </div>
-        <div className="flex-1 rounded-xl border border-[hsl(var(--border))] bg-white px-4 py-2.5 text-sm text-center">
-          <span className="text-[9px] font-bold uppercase tracking-widest block leading-none mb-1 text-[#86868B]">Laktattröskel 2 (LT2) — 4.0 mmol</span>
-          <span className={`text-lg font-black leading-none ${liveLtWatt ? "text-[#1D1D1F]" : "text-[#D1D1D6]"}`}>
-            {liveLtWatt ? `${liveLtWatt} W` : "—"}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
-        {/* Data table */}
-        <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
+      <div className="grid gap-8 lg:grid-cols-[1fr_2fr] items-stretch h-[calc(100vh-180px)]">
+        {/* Left column: Data table */}
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
           <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3 flex items-center justify-between">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#86868B]">Stegindata</p>
+            <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>
             <button
               type="button"
-              onClick={() => setRows(SAMPLE_ROWS.map(r => ({ ...r })))}
-              className="text-[10px] text-[#007AFF] hover:text-[#0066d6] font-medium"
+              onClick={() => {
+                if (form.testType === "vo2max") {
+                  setForm((f) => ({ ...f, startWatt: "50", stepSize: "20", testDuration: "1" }))
+                  setRows(VO2MAX_SEED_ROWS)
+                  setExhaustionLacStr("13.2")
+                  setExhaustionBorg("20")
+                  setExhaustionTimeMins("11")
+                  setExhaustionTimeSecs("32")
+                  setExhaustionWattStr("250")
+                } else {
+                  setForm((f) => ({ ...f, startWatt: "80", stepSize: "30", testDuration: "3" }))
+                  setRows(SEED_ROWS)
+                  setLacStrings({})
+                }
+              }}
+              className="text-sm text-[#007AFF] hover:text-[#0066d6] font-medium"
             >
               Fyll i exempeldata
             </button>
           </div>
-          <div className="overflow-y-auto max-h-[520px]">
-            <table className="w-full text-sm">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <table className="w-full text-base table-fixed">
               <thead>
-                <tr className="text-[10px] font-black uppercase tracking-[0.1em] text-[#86868B] border-b border-[hsl(var(--border))]/60">
-                  <th className="px-3 py-2 text-left">Min</th>
-                  <th className="px-3 py-2 text-right">Watt</th>
-                  <th className="px-3 py-2 text-right">Puls</th>
-                  <th className="px-3 py-2 text-right">Borg</th>
-                  <th className="px-3 py-2 text-right">Laktat</th>
-                  <th className="px-3 py-2 text-right">Kadans</th>
-                  <th className="px-3 py-2"></th>
+                <tr className="text-sm font-black uppercase tracking-wider text-[#1D1D1F] border-b border-[hsl(var(--border))]/60">
+                  <th className="px-3 py-3 text-left w-14">Min</th>
+                  <th className="px-3 py-3 text-right w-16">W</th>
+                  <th className="px-3 py-3 text-right w-20">Puls</th>
+                  {form.testType !== "vo2max" && <>
+                    <th className="px-3 py-3 text-right w-20">Laktat</th>
+                    <th className="px-3 py-3 text-right w-16">Borg</th>
+                    <th className="px-3 py-3 text-right w-20">Kad.</th>
+                  </>}
+                  <th className="px-1 py-3 w-8"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[hsl(var(--border))]/30">
-                {rows.map((row, i) => (
-                  <tr key={i} className={`transition-colors ${activeRow === i ? "row-active" : timerStage - 1 === i ? "row-current" : "hover:bg-[#F5F5F7]/50"}`}>
-                    <td className="px-3 py-1.5">
-                      <div className="flex items-center gap-1">
+                {rows.map((row, i) => {
+                  const lacOk = lacEnabled(row, dur)
+                  const borgOk = borgEnabled(row, dur)
+                  const isVo2 = form.testType === "vo2max"
+                  return (
+                    <tr
+                      key={i}
+                      className={`transition-colors ${!isVo2 && lacOk ? "bg-[#007AFF]/[0.03]" : ""} ${activeRow === i ? "ring-1 ring-inset ring-[#007AFF]/20" : ""}`}
+                    >
+                      {/* Min */}
+                      <td className="px-3 py-2">
+                        <span className="tabular-nums text-[#515154] font-semibold">{row.min}</span>
+                      </td>
+                      {/* Watt — locked */}
+                      <td className="px-3 py-2 text-right text-[#515154] tabular-nums font-semibold">{row.watt || "—"}</td>
+                      {/* HR */}
+                      <td className="px-3 py-2 text-right">
                         <input
-                          ref={makeRef(i, "min")}
+                          ref={makeRef(i, "hr")}
                           type="number"
-                          value={row.min || ""}
-                          onChange={(e) => updateRow(i, "min", e.target.value)}
+                          value={row.hr || ""}
+                          onChange={(e) => updateRow(i, "hr", e.target.value)}
                           onFocus={() => setActiveRow(i)}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "min") } }}
-                          className="table-input w-12 text-center"
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "hr") } }}
+                          className="table-input-lg w-16"
                         />
-                        {timerStage - 1 === i && (
-                          <span className="text-[9px] font-black bg-[#007AFF]/10 text-[#007AFF] rounded px-1 py-0.5 leading-none">
-                            S{timerStage}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        ref={makeRef(i, "watt")}
-                        type="number"
-                        value={row.watt || ""}
-                        onChange={(e) => updateRow(i, "watt", e.target.value)}
-                        onFocus={() => setActiveRow(i)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "watt") } }}
-                        className="table-input w-16 text-right"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        ref={makeRef(i, "hr")}
-                        type="number"
-                        value={row.hr || ""}
-                        onChange={(e) => updateRow(i, "hr", e.target.value)}
-                        onFocus={() => setActiveRow(i)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "hr") } }}
-                        className="table-input w-14 text-right"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        ref={makeRef(i, "borg")}
-                        type="number"
-                        value={row.borg || ""}
-                        onChange={(e) => updateRow(i, "borg", e.target.value)}
-                        onFocus={() => setActiveRow(i)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "borg") } }}
-                        className="w-12 text-xs border border-slate-200 rounded px-1.5 py-1 text-right focus:outline-none focus:border-blue-400"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        ref={makeRef(i, "lac")}
-                        type="text"
-                        inputMode="decimal"
-                        value={lacStrings[i] ?? (row.lac > 0 ? String(row.lac) : "")}
-                        onChange={(e) => {
-                          const raw = e.target.value
-                          setLacStrings((prev) => ({ ...prev, [i]: raw }))
-                          const num = parseFloat(raw.replace(",", "."))
-                          if (!isNaN(num)) updateRow(i, "lac", String(num))
-                        }}
-                        onBlur={() => setLacStrings((prev) => { const n = { ...prev }; delete n[i]; return n })}
-                        onFocus={() => setActiveRow(i)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "lac") } }}
-                        className="table-input w-16 text-right font-bold"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <input
-                        ref={makeRef(i, "cadence")}
-                        type="number"
-                        value={row.cadence || ""}
-                        onChange={(e) => updateRow(i, "cadence", e.target.value)}
-                        onFocus={() => setActiveRow(i)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "cadence") } }}
-                        className="table-input w-14 text-right"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(i)}
-                        className="text-[#D1D1D6] hover:text-[hsl(var(--destructive))] text-xs transition-colors"
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      {/* Laktat / Borg / Kadans — hidden for VO2max */}
+                      {!isVo2 && <>
+                        <td className="px-3 py-2 text-right">
+                          {lacOk ? (
+                            <input
+                              ref={makeRef(i, "lac")}
+                              type="text"
+                              inputMode="decimal"
+                              value={lacStrings[i] ?? (row.lac > 0 ? String(row.lac) : "")}
+                              onChange={(e) => {
+                                const raw = e.target.value
+                                setLacStrings((prev) => ({ ...prev, [i]: raw }))
+                                const num = parseFloat(raw.replace(",", "."))
+                                if (!isNaN(num)) updateRow(i, "lac", String(num))
+                              }}
+                              onBlur={() => setLacStrings((prev) => { const n = { ...prev }; delete n[i]; return n })}
+                              onFocus={() => setActiveRow(i)}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "lac") } }}
+                              className="table-input-lg w-16 font-bold"
+                            />
+                          ) : (
+                            <span className="text-[#D1D1D6] font-semibold">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {borgOk ? (
+                            <input
+                              ref={makeRef(i, "borg")}
+                              type="number"
+                              value={row.borg || ""}
+                              onChange={(e) => updateRow(i, "borg", e.target.value)}
+                              onFocus={() => setActiveRow(i)}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "borg") } }}
+                              className="table-input-lg w-14"
+                            />
+                          ) : (
+                            <span className="text-[#D1D1D6] font-semibold">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {borgOk ? (
+                            <input
+                              ref={makeRef(i, "cadence")}
+                              type="number"
+                              value={row.cadence || ""}
+                              onChange={(e) => updateRow(i, "cadence", e.target.value)}
+                              onFocus={() => setActiveRow(i)}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "cadence") } }}
+                              className="table-input-lg w-16"
+                            />
+                          ) : (
+                            <span className="text-[#D1D1D6] font-semibold">—</span>
+                          )}
+                        </td>
+                      </>}
+                      {/* Delete row (stage-end for regular; any row for VO2max) */}
+                      <td className="px-1 py-2 text-center">
+                        {(isVo2 ? i > 0 : borgOk) ? (
+                          <button
+                            type="button"
+                            onClick={() => isVo2 ? setRows((prev) => prev.filter((_, idx) => idx !== i)) : removeStage(row.min)}
+                            title="Ta bort rad"
+                            className="text-[#D1D1D6] hover:text-red-400 transition-colors leading-none"
+                          >
+                            ✕
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-[hsl(var(--border))]/40">
+
+          <div className="px-5 py-4 border-t border-[hsl(var(--border))]/40">
             <button
               type="button"
-              onClick={addRow}
-              className="text-xs text-[#007AFF] hover:text-[#0066d6] font-medium"
+              onClick={addStage}
+              className="text-sm text-[#007AFF] hover:text-[#0066d6] font-medium"
             >
-              + Lägg till steg
+              + Lägg till {form.testType === "vo2max" ? "rad" : "steg"}
             </button>
           </div>
         </div>
 
-        {/* Chart */}
-        <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[#86868B] mb-4">Kurva (live)</p>
-          {chartStages.filter(s => s.lactateMmol != null && s.loadWatts != null).length > 1 ? (
-            <LactateChart
-              stages={chartStages}
-              lt1Watts={liveAtWatt}
-              lt2Watts={liveLtWatt}
-              maxHr={rows.reduce<number | null>((max, r) => r.hr > 0 ? Math.max(max ?? 0, r.hr) : max, null)}
-              testType={form.testType}
-              height={460}
+        {/* Right column: Chart + Coach Assessment */}
+        <div className="flex flex-col gap-6 h-full">
+          {/* Chart */}
+          <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
+            <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Kurva (live)</p>
+            <LiveTestChart
+              rows={rows}
+              dur={dur}
             />
-          ) : (
-            <div className="flex items-center justify-center h-40 text-[#D1D1D6] text-sm">
-              Fyll i laktatvärden för att se kurvan
+          </div>
+
+          {/* VO2max exhaustion panel — replaces coach assessment */}
+          {form.testType === "vo2max" ? (
+            <div className="flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto space-y-5">
+              {/* Utmattning */}
+              <div>
+                <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-3">Utmattning</p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Label className="w-36 text-sm text-[#515154] shrink-0">Tid (mm:ss)</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        value={exhaustionTimeMins}
+                        onChange={(e) => setExhaustionTimeMins(e.target.value)}
+                        placeholder="mm"
+                        className="h-10 text-base w-16 text-center"
+                      />
+                      <span className="text-[#515154] font-bold">:</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={exhaustionTimeSecs}
+                        onChange={(e) => setExhaustionTimeSecs(e.target.value)}
+                        placeholder="ss"
+                        className="h-10 text-base w-16 text-center"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-36 text-sm text-[#515154] shrink-0">Effekt (W)</Label>
+                    <Input
+                      type="number"
+                      value={exhaustionWattStr}
+                      onChange={(e) => setExhaustionWattStr(e.target.value)}
+                      placeholder={String(Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0) || "—")}
+                      className="h-10 text-base"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Totalvärde */}
+              <div>
+                <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-3">Totalvärde</p>
+                <div className="space-y-3">
+                  {/* Syreupptag — live calculated */}
+                  {(() => {
+                    const bw = parseFloat(form.bodyWeight)
+                    const overrideW = parseFloat(exhaustionWattStr)
+                    const derivedW = Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0)
+                    const maxW = overrideW > 0 ? overrideW : derivedW
+                    const vo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
+                    const absVo2 = vo2 != null && bw > 0 ? Math.round(vo2 * bw) : null
+                    return (
+                      <div className="flex items-center gap-3">
+                        <Label className="w-36 text-sm text-[#515154] shrink-0">Syreupptag</Label>
+                        <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] flex-1">
+                          {absVo2 != null
+                            ? <span className="font-bold text-[#007AFF]">{absVo2} <span className="text-sm font-normal text-[#515154]">ml O₂/min</span></span>
+                            : <span className="text-[#515154] text-sm">Fyll i vikt och watt</span>
+                          }
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="flex items-center gap-3">
+                    <Label className="w-36 text-sm text-[#515154] shrink-0">Maxlaktat (mmol/L)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={exhaustionLacStr}
+                      onChange={(e) => setExhaustionLacStr(e.target.value)}
+                      placeholder="t.ex. 10,2"
+                      className="h-10 text-base"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-36 text-sm text-[#515154] shrink-0">Borg vid utmattning</Label>
+                    <Input
+                      type="number"
+                      value={exhaustionBorg}
+                      onChange={(e) => setExhaustionBorg(e.target.value)}
+                      placeholder="6–20"
+                      className="h-10 text-base"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live VO2max preview */}
+              {(() => {
+                const bw = parseFloat(form.bodyWeight)
+                const overrideW = parseFloat(exhaustionWattStr)
+                const derivedW = Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0)
+                const maxW = overrideW > 0 ? overrideW : derivedW
+                const vo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
+                if (!vo2) return null
+                return (
+                  <div className="rounded-xl bg-[#007AFF] p-4 text-white text-center">
+                    <p className="text-xs font-black uppercase tracking-widest text-white/80 mb-1">VO₂ max (beräknad)</p>
+                    <p className="text-4xl font-black tracking-tighter">{vo2} <span className="text-base font-normal text-white/80">ml/kg/min</span></p>
+                  </div>
+                )
+              })()}
             </div>
+          ) : (
+          <div className="flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto">
+        <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">
+          Bedömning (Coach)
+        </p>
+        <div className="grid grid-cols-2 gap-6">
+          {/* Effekt */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">Effekt</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">AT Effekt (W)</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.atEffektWatt ?? ""}
+                  onChange={(e) => updateCoach("atEffektWatt", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">LT Effekt (W)</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.ltEffektWatt ?? ""}
+                  onChange={(e) => updateCoach("ltEffektWatt", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (W)</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.granLagMedel ?? ""}
+                  onChange={(e) => updateCoach("granLagMedel", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (W)</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.nedreGrans ?? ""}
+                  onChange={(e) => updateCoach("nedreGrans", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+            </div>
+          </div>
+          {/* Puls */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">Puls</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Est. maxpuls</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.estMaxPuls ?? ""}
+                  onChange={(e) => updateCoach("estMaxPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Högsta uppnådda</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.hogstaUpnaddPuls ?? ""}
+                  onChange={(e) => updateCoach("hogstaUpnaddPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">AT-puls</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.atPuls ?? ""}
+                  onChange={(e) => updateCoach("atPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">LT-puls</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.ltPuls ?? ""}
+                  onChange={(e) => updateCoach("ltPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
           )}
         </div>
       </div>
