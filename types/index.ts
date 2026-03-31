@@ -108,6 +108,32 @@ export interface RawDataPoint {
   cadence: number
 }
 
+export interface TestStage {
+  id: string
+  testId: string
+  stageNumber: number
+  loadWatts: number | null
+  loadSpeedKmh: number | null
+  heartRate: number | null
+  lactateMmol: number | null
+  vo2MlKgMin: number | null
+  rpe: number | null
+  borgCentral: number | null
+  borgLocal: number | null
+  cadenceRpm: number | null
+  durationSeconds: number | null
+  vo2Absolute: number | null
+  fatGh: number | null
+  choGh: number | null
+  veO2: number | null
+  veCo2: number | null
+  respiratoryFreq: number | null
+  paO2: number | null
+  paCo2: number | null
+  baseExcess: number | null
+  energyExpenditure: number | null
+}
+
 export interface Test {
   id: string
   athleteId: string
