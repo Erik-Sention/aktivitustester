@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { StageTable } from "@/components/tests/stage-table";
+import type { TestStage } from "@/types";
 import { fullName } from "@/lib/utils";
 
 interface Client {
@@ -25,29 +26,7 @@ interface TestFormProps {
   defaultTestType?: string;
 }
 
-type StageRow = {
-  stageNumber: number;
-  loadWatts: number | null;
-  loadSpeedKmh: number | null;
-  heartRate: number | null;
-  lactateMmol: number | null;
-  vo2MlKgMin: number | null;
-  rpe: number | null;
-  borgCentral: number | null;
-  borgLocal: number | null;
-  cadenceRpm: number | null;
-  durationSeconds: number | null;
-  vo2Absolute: number | null;
-  fatGh: number | null;
-  choGh: number | null;
-  veO2: number | null;
-  veCo2: number | null;
-  respiratoryFreq: number | null;
-  paO2: number | null;
-  paCo2: number | null;
-  baseExcess: number | null;
-  energyExpenditure: number | null;
-};
+type StageRow = Omit<TestStage, "id" | "testId">;
 
 function interpolateWattsAtLactate(stages: StageRow[], targetMmol: number): number | null {
   const valid = stages
@@ -68,14 +47,14 @@ function interpolateWattsAtLactate(stages: StageRow[], targetMmol: number): numb
 }
 
 const SAMPLE_STAGES: StageRow[] = [
-  { stageNumber: 1, loadWatts: 100, loadSpeedKmh: null, heartRate: 118, lactateMmol: 0.8, vo2MlKgMin: null, rpe: 9,  cadenceRpm: 90, durationSeconds: 4 },
-  { stageNumber: 2, loadWatts: 125, loadSpeedKmh: null, heartRate: 131, lactateMmol: 1.0, vo2MlKgMin: null, rpe: 11, cadenceRpm: 90, durationSeconds: 4 },
-  { stageNumber: 3, loadWatts: 150, loadSpeedKmh: null, heartRate: 143, lactateMmol: 1.3, vo2MlKgMin: null, rpe: 12, cadenceRpm: 90, durationSeconds: 4 },
-  { stageNumber: 4, loadWatts: 175, loadSpeedKmh: null, heartRate: 155, lactateMmol: 1.7, vo2MlKgMin: null, rpe: 13, cadenceRpm: 90, durationSeconds: 4 },
-  { stageNumber: 5, loadWatts: 200, loadSpeedKmh: null, heartRate: 162, lactateMmol: 2.2, vo2MlKgMin: null, rpe: 14, cadenceRpm: 89, durationSeconds: 4 },
-  { stageNumber: 6, loadWatts: 225, loadSpeedKmh: null, heartRate: 170, lactateMmol: 3.1, vo2MlKgMin: null, rpe: 16, cadenceRpm: 88, durationSeconds: 4 },
-  { stageNumber: 7, loadWatts: 250, loadSpeedKmh: null, heartRate: 177, lactateMmol: 5.2, vo2MlKgMin: null, rpe: 18, cadenceRpm: 87, durationSeconds: 4 },
-  { stageNumber: 8, loadWatts: 275, loadSpeedKmh: null, heartRate: 183, lactateMmol: 8.4, vo2MlKgMin: null, rpe: 19, cadenceRpm: 85, durationSeconds: 4 },
+  { stageNumber: 1, loadWatts: 100, loadSpeedKmh: null, heartRate: 118, lactateMmol: 0.8, vo2MlKgMin: null, rpe: 9,  cadenceRpm: 90, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 2, loadWatts: 125, loadSpeedKmh: null, heartRate: 131, lactateMmol: 1.0, vo2MlKgMin: null, rpe: 11, cadenceRpm: 90, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 3, loadWatts: 150, loadSpeedKmh: null, heartRate: 143, lactateMmol: 1.3, vo2MlKgMin: null, rpe: 12, cadenceRpm: 90, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 4, loadWatts: 175, loadSpeedKmh: null, heartRate: 155, lactateMmol: 1.7, vo2MlKgMin: null, rpe: 13, cadenceRpm: 90, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 5, loadWatts: 200, loadSpeedKmh: null, heartRate: 162, lactateMmol: 2.2, vo2MlKgMin: null, rpe: 14, cadenceRpm: 89, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 6, loadWatts: 225, loadSpeedKmh: null, heartRate: 170, lactateMmol: 3.1, vo2MlKgMin: null, rpe: 16, cadenceRpm: 88, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 7, loadWatts: 250, loadSpeedKmh: null, heartRate: 177, lactateMmol: 5.2, vo2MlKgMin: null, rpe: 18, cadenceRpm: 87, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
+  { stageNumber: 8, loadWatts: 275, loadSpeedKmh: null, heartRate: 183, lactateMmol: 8.4, vo2MlKgMin: null, rpe: 19, cadenceRpm: 85, durationSeconds: 4, borgCentral: null, borgLocal: null, vo2Absolute: null, fatGh: null, choGh: null, veO2: null, veCo2: null, respiratoryFreq: null, paO2: null, paCo2: null, baseExcess: null, energyExpenditure: null },
 ];
 
 const TERMINATION_REASONS = [
@@ -219,6 +198,7 @@ export function TestForm({ clients, defaultClientId, defaultTestType }: TestForm
       lt2Watts: "",
       maxHr: "183",
       maxWatts: "275",
+      cardioRespFitness: "",
     });
     setForm((f) => ({ ...f, protocol: "Ramp 25W/4min", testType: "LACTATE_THRESHOLD" }));
   }
