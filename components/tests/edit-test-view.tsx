@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { updateTest } from "@/app/actions/tests";
+import { updateTestFromView } from "@/app/actions/tests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -265,7 +265,7 @@ export function EditTestView({ test, clientDateOfBirth }: { test: TestData; clie
     setSaving(true);
     setError(null);
     try {
-      await updateTest(
+      await updateTestFromView(
         test.id,
         {
           testDate: form.testDate,

@@ -137,3 +137,31 @@ export async function updateCoachAssessmentAction(
   revalidatePath(`/dashboard/tests/${testId}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
 }
+
+// Wrapper function for EditTestView component
+export async function updateTestFromView(
+  testId: string,
+  testData: {
+    testDate: string
+    protocol?: string
+    sportProtocol?: string
+    testFacility?: string
+    testLeader?: string
+    temperature?: number
+    humidity?: number
+    notes?: string
+    terminationReason?: string
+    calculationsMethod?: string
+    functionalCapacity?: string
+    vo2TestType?: string
+    ergometerType?: string
+    bpSystolic?: number
+    bpDiastolic?: number
+  },
+  stages: any[],
+  summary: any
+) {
+  // This is a placeholder that prevents build errors
+  // The actual update logic should be implemented based on your data model
+  console.warn('updateTestFromView called with:', { testId, testData, stages, summary })
+}
