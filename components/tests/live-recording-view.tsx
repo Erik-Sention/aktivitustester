@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { createTestAction } from "@/app/actions/tests"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -222,6 +223,7 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
 }
 
 export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader }: LiveRecordingViewProps) {
+  const router = useRouter()
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -262,6 +264,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [exhaustionTimeMins, setExhaustionTimeMins] = useState("")
   const [exhaustionTimeSecs, setExhaustionTimeSecs] = useState("")
   const [exhaustionWattStr, setExhaustionWattStr] = useState("")
+  const [manualVo2MaxStr, setManualVo2MaxStr] = useState("")      // ml/kg/min
+  const [manualAbsVo2Str, setManualAbsVo2Str] = useState("")      // ml O₂/min (Syreupptag)
 
   // ── Coach assessment ──────────────────────────────────────────────
   const [coachAssessment, setCoachAssessment] = useState<CoachAssessment>(EMPTY_COACH_ASSESSMENT)
@@ -303,6 +307,12 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   }
 
   function changeTestType(testType: TestType) {
+    if (testType === "wingate") {
+      const params = new URLSearchParams({ type: "wingate" })
+      if (form.athleteId) params.set("athlete", form.athleteId)
+      router.push(`/dashboard/tests/new?${params.toString()}`)
+      return
+    }
     if (testType === "vo2max") {
       const defaults = PROTOCOL_DEFAULTS["ramp_test"]
       setForm((f) => ({
@@ -424,14 +434,24 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         }
       }
 
-      // Calculate VO2max from max watt + body weight
-      const bodyWeightNum = parseFloat(form.bodyWeight)
+      // Calculate VO2max — manual override takes priority over formula
       let vo2Max: number | undefined
-      if (isVo2 && bodyWeightNum > 0) {
-        const overrideWatt = parseFloat(exhaustionWattStr)
-        const derivedWatt = Math.max(...finalRows.filter(r => r.hr > 0).map(r => r.watt), 0)
-        const maxWatt = overrideWatt > 0 ? overrideWatt : derivedWatt
-        if (maxWatt > 0) vo2Max = calculateVo2Max(maxWatt, bodyWeightNum)
+      if (isVo2) {
+        const bodyWeightNum = parseFloat(form.bodyWeight)
+        const manualRel = parseFloat(manualVo2MaxStr)
+        if (manualRel > 0) {
+          vo2Max = manualRel
+        } else {
+          const manualAbs = parseFloat(manualAbsVo2Str)
+          if (manualAbs > 0 && bodyWeightNum > 0) {
+            vo2Max = Math.round(manualAbs / bodyWeightNum)
+          } else if (bodyWeightNum > 0) {
+            const overrideWatt = parseFloat(exhaustionWattStr)
+            const derivedWatt = Math.max(...finalRows.filter(r => r.hr > 0).map(r => r.watt), 0)
+            const maxWatt = overrideWatt > 0 ? overrideWatt : derivedWatt
+            if (maxWatt > 0) vo2Max = calculateVo2Max(maxWatt, bodyWeightNum)
+          }
+        }
       }
 
       // Prepend exhaustion time to notes for VO2max tests
@@ -455,7 +475,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         startWatt: parseInt(form.startWatt) || 0,
         stepSize: parseInt(form.stepSize) || 0,
         testDuration: parseInt(form.testDuration) || 0,
-        bodyWeight: bodyWeightNum || undefined,
+        bodyWeight: parseFloat(form.bodyWeight) || undefined,
         heightCm: parseFloat(form.heightCm) || undefined,
         notes: notesValue,
         rawData: finalRows,
@@ -961,9 +981,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               {/* Totalvärde */}
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-3">Totalvärde</p>
-                <div className="space-y-3">
-                  {/* Syreupptag — live calculated */}
-                  {(() => {
+                {(() => {
                     const bw = parseFloat(form.bodyWeight)
                     const overrideW = parseFloat(exhaustionWattStr)
                     const derivedW = Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0)
@@ -971,56 +989,55 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     const vo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
                     const absVo2 = vo2 != null && bw > 0 ? Math.round(vo2 * bw) : null
                     return (
-                      <div className="flex items-center gap-3">
-                        <Label className="w-36 text-sm text-[#515154] shrink-0">Syreupptag</Label>
-                        <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] flex-1">
-                          {absVo2 != null
-                            ? <span className="font-bold text-[#007AFF]">{absVo2} <span className="text-sm font-normal text-[#515154]">ml O₂/min</span></span>
-                            : <span className="text-[#515154] text-sm">Fyll i vikt och watt</span>
-                          }
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">VO₂ max (ml/kg/min)</Label>
+                          <Input
+                            type="number"
+                            value={manualVo2MaxStr}
+                            onChange={(e) => setManualVo2MaxStr(e.target.value)}
+                            placeholder={vo2 != null ? String(vo2) : "—"}
+                            className="h-10 text-base"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">Syreupptag</Label>
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              type="number"
+                              value={manualAbsVo2Str}
+                              onChange={(e) => setManualAbsVo2Str(e.target.value)}
+                              placeholder={absVo2 != null ? String(absVo2) : "—"}
+                              className="h-10 text-base"
+                            />
+                            <span className="text-sm text-[#515154] shrink-0">ml O₂/min</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">Maxlaktat (mmol/L)</Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={exhaustionLacStr}
+                            onChange={(e) => setExhaustionLacStr(e.target.value)}
+                            placeholder="t.ex. 10,2"
+                            className="h-10 text-base"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">Borg vid utmattning</Label>
+                          <Input
+                            type="number"
+                            value={exhaustionBorg}
+                            onChange={(e) => setExhaustionBorg(e.target.value)}
+                            placeholder="6–20"
+                            className="h-10 text-base"
+                          />
                         </div>
                       </div>
                     )
                   })()}
-                  <div className="flex items-center gap-3">
-                    <Label className="w-36 text-sm text-[#515154] shrink-0">Maxlaktat (mmol/L)</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={exhaustionLacStr}
-                      onChange={(e) => setExhaustionLacStr(e.target.value)}
-                      placeholder="t.ex. 10,2"
-                      className="h-10 text-base"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Label className="w-36 text-sm text-[#515154] shrink-0">Borg vid utmattning</Label>
-                    <Input
-                      type="number"
-                      value={exhaustionBorg}
-                      onChange={(e) => setExhaustionBorg(e.target.value)}
-                      placeholder="6–20"
-                      className="h-10 text-base"
-                    />
-                  </div>
-                </div>
               </div>
-
-              {/* Live VO2max preview */}
-              {(() => {
-                const bw = parseFloat(form.bodyWeight)
-                const overrideW = parseFloat(exhaustionWattStr)
-                const derivedW = Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0)
-                const maxW = overrideW > 0 ? overrideW : derivedW
-                const vo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
-                if (!vo2) return null
-                return (
-                  <div className="rounded-xl bg-[#007AFF] p-4 text-white text-center">
-                    <p className="text-xs font-black uppercase tracking-widest text-white/80 mb-1">VO₂ max (beräknad)</p>
-                    <p className="text-4xl font-black tracking-tighter">{vo2} <span className="text-base font-normal text-white/80">ml/kg/min</span></p>
-                  </div>
-                )
-              })()}
             </div>
           ) : (
           <div className="flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto">

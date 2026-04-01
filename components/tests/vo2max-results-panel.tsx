@@ -105,38 +105,77 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
         </div>
       </div>
 
-      {/* Classification bar */}
+      {/* Classification bar — ruler design */}
       {vo2 != null && (
         <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
-          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">
+          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-5">
             Konditionsklass {gender === "K" ? "— Kvinna" : gender === "M" ? "— Man" : ""}
           </p>
-          <div className="flex rounded-xl overflow-hidden">
-            {VO2MAX_ZONES.map((zone, i) => {
-              const isActive = i === activeZone
-              return (
-                <div
-                  key={zone.label}
-                  className={`flex-1 ${zone.colorBg} flex flex-col items-center justify-center py-3 px-1 transition-all ${
-                    isActive ? "ring-2 ring-inset ring-[#1D1D1F]/30 scale-y-110 relative z-10" : "opacity-70"
-                  }`}
-                >
-                  <span className={`text-xs font-black tabular-nums ${zone.colorText}`}>
-                    {breakpoints[i] > 0 ? breakpoints[i] : "<" + breakpoints[1]}
-                  </span>
-                  <span className={`text-[10px] font-semibold uppercase leading-tight text-center mt-0.5 ${zone.colorText}`}>
-                    {zone.label}
-                  </span>
+          {(() => {
+            const maxDisplay = breakpoints[breakpoints.length - 1] + 14
+            const clampedVo2 = Math.min(Math.max(vo2, 0), maxDisplay)
+            const markerPct = (clampedVo2 / maxDisplay) * 100
+            return (
+              <div className="px-1">
+                {/* Marker + caret */}
+                <div className="relative h-9 mb-0.5 overflow-visible">
+                  <div
+                    className="absolute flex flex-col items-center"
+                    style={{ left: `${markerPct}%`, transform: "translateX(-50%)" }}
+                  >
+                    <span className="text-xs font-black text-[#1D1D1F] tabular-nums whitespace-nowrap">
+                      {vo2} ml/kg/min
+                    </span>
+                    <span className="text-[10px] text-[#515154] whitespace-nowrap">
+                      {activeZone >= 0 ? VO2MAX_ZONES[activeZone].label : ""}
+                    </span>
+                    <div className="mt-0.5 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#1D1D1F]" />
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-          {activeZone >= 0 && (
-            <p className="mt-3 text-base text-[#515154] text-center">
-              <span className="font-bold text-[#1D1D1F]">{vo2} ml/kg/min</span>
-              {" "}— {VO2MAX_ZONES[activeZone].label}
-            </p>
-          )}
+
+                {/* Colored bar */}
+                <div className="flex h-6 rounded-xl overflow-hidden gap-px bg-[#E5E5EA]">
+                  {VO2MAX_ZONES.map((zone, i) => {
+                    const start = breakpoints[i]
+                    const end = i + 1 < breakpoints.length ? breakpoints[i + 1] : maxDisplay
+                    const widthPct = ((end - start) / maxDisplay) * 100
+                    const isActive = i === activeZone
+                    return (
+                      <div
+                        key={zone.label}
+                        className={`${zone.colorBg} transition-all ${isActive ? "opacity-100" : "opacity-35"}`}
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    )
+                  })}
+                </div>
+
+                {/* Zone labels */}
+                <div className="flex mt-1.5">
+                  {VO2MAX_ZONES.map((zone, i) => {
+                    const start = breakpoints[i]
+                    const end = i + 1 < breakpoints.length ? breakpoints[i + 1] : maxDisplay
+                    const widthPct = ((end - start) / maxDisplay) * 100
+                    const isActive = i === activeZone
+                    return (
+                      <div
+                        key={zone.label}
+                        className="flex flex-col items-center overflow-hidden"
+                        style={{ width: `${widthPct}%` }}
+                      >
+                        <span className={`text-[9px] uppercase leading-tight text-center w-full px-0.5 truncate ${isActive ? "font-black text-[#1D1D1F]" : "font-medium text-[#86868B]"}`}>
+                          {zone.label}
+                        </span>
+                        <span className={`text-[9px] tabular-nums ${isActive ? "text-[#515154]" : "text-[#86868B]/50"}`}>
+                          {start > 0 ? start : "—"}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 

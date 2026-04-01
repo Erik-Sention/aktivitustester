@@ -8,6 +8,7 @@ import { LiveTestChart } from "@/components/tests/live-test-chart"
 import { DeleteTestButton } from "@/components/tests/delete-test-button"
 import { ReportDownloadButton } from "@/components/tests/report-download-button"
 import { Vo2MaxResultsPanel } from "@/components/tests/vo2max-results-panel"
+import { WingateResultsPanel } from "@/components/tests/wingate-results-panel"
 import { Pencil } from "lucide-react"
 
 function testTypeLabel(type: string) {
@@ -72,11 +73,17 @@ export default async function TestDetailPage({
           </h1>
           <p className="text-base text-[#1D1D1F]">
             {testDateStr}
-            {test.inputParams.startWatt > 0 && (
+            {test.testType !== "wingate" && test.inputParams.startWatt > 0 && (
               <span className="ml-3 text-[#86868B]">·</span>
             )}
-            {test.inputParams.startWatt > 0 && (
+            {test.testType !== "wingate" && test.inputParams.startWatt > 0 && (
               <span className="ml-3">{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
+            )}
+            {test.testType === "wingate" && (test as any).wingateInputParams?.startCadenceRpm && (
+              <>
+                <span className="ml-3 text-[#86868B]">·</span>
+                <span className="ml-3">Startkadens {(test as any).wingateInputParams.startCadenceRpm} rpm</span>
+              </>
             )}
           </p>
         </div>
@@ -105,8 +112,13 @@ export default async function TestDetailPage({
             <Vo2MaxResultsPanel test={serializedTest as any} gender={athlete?.gender ?? ""} />
           )}
 
-          {/* Coach assessment — threshold / wingate tests only */}
-          {test.testType !== "vo2max" && <div className="rounded-2xl bg-[#007AFF] p-6 text-white shadow-xl shadow-[#007AFF]/20">
+          {/* Wingate results panel */}
+          {test.testType === "wingate" && (
+            <WingateResultsPanel test={serializedTest as any} />
+          )}
+
+          {/* Coach assessment — threshold tests only */}
+          {test.testType !== "vo2max" && test.testType !== "wingate" && <div className="rounded-2xl bg-[#007AFF] p-6 text-white shadow-xl shadow-[#007AFF]/20">
             <span className="text-sm font-black uppercase tracking-[0.15em] text-white">Coachbedömning</span>
 
             {/* Two-column: Effekt (left) / Tröskelpuls (right) */}
@@ -221,7 +233,8 @@ export default async function TestDetailPage({
         {/* Left column — 70% (DOM second → mobile last) */}
         <div className="lg:col-span-8 lg:order-1 space-y-6">
 
-          {/* Chart hero */}
+          {/* Chart hero — hidden for Wingate (no rawData) */}
+          {test.testType !== "wingate" && (
           <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
             <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Prestandagraf</p>
             <LiveTestChart
@@ -230,9 +243,10 @@ export default async function TestDetailPage({
               height={480}
             />
           </div>
+          )}
 
           {/* Minute data table */}
-          {test.rawData.length > 0 && (
+          {test.testType !== "wingate" && test.rawData.length > 0 && (
             <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
               <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3">
                 <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>

@@ -72,6 +72,14 @@ export interface WingateData {
   minPower: number
 }
 
+export interface WingateInputParams {
+  saddleVerticalMm: number | null
+  saddleHorizontalMm: number | null
+  startCadenceRpm: number | null
+  bodyWeightPercent: number
+  bodyWeight: number | null
+}
+
 export interface BikeSettings {
   bikeType: string
   pedalType: string
@@ -148,6 +156,7 @@ export interface Test {
   inputParams: TestInputParams
   results: TestResults
   wingateData?: WingateData
+  wingateInputParams?: WingateInputParams
   settings?: SportSettings
   coachAssessment?: CoachAssessment
   rawData: RawDataPoint[]

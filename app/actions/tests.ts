@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
 import { createTest as createTestDb, updateTest as updateTestDb, deleteTest as deleteTestDb } from "@/lib/tests"
-import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, SportSettings, CoachAssessment } from "@/types"
+import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, SportSettings, CoachAssessment, WingateData, WingateInputParams } from "@/types"
 import { Timestamp, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -116,6 +116,42 @@ export async function updateTestAction(
   revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/tests/${id}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
+  redirect(`/dashboard/tests/${id}`)
+}
+
+export async function createWingateTestAction(data: {
+  athleteId: string
+  testLocation: ClinicLocation
+  testLeader: string
+  testDate: string
+  notes?: string
+  wingateData: WingateData
+  wingateInputParams: WingateInputParams
+}) {
+  const user = await requireSession()
+
+  const id = await createTestDb({
+    athleteId: data.athleteId,
+    coachId: user.uid,
+    clinicId: user.clinicId,
+    testDate: Timestamp.fromDate(new Date(data.testDate)),
+    sport: "cykel",
+    testType: "wingate",
+    protocol: "standard_3min",
+    testLocation: data.testLocation,
+    testLeader: data.testLeader,
+    inputParams: { startWatt: 0, stepSize: 0, testDuration: 0, bodyWeight: data.wingateInputParams.bodyWeight, heightCm: null },
+    rawData: [],
+    notes: data.notes || '',
+  })
+
+  await updateDoc(doc(db, 'tests', id), {
+    wingateData: data.wingateData,
+    wingateInputParams: data.wingateInputParams,
+  })
+
+  revalidatePath("/dashboard/tests")
+  revalidatePath(`/dashboard/athletes/${data.athleteId}`)
   redirect(`/dashboard/tests/${id}`)
 }
 
