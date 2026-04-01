@@ -5,7 +5,9 @@ const SESSION_COOKIE = 'session'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 14 // 14 days
 
 function secret() {
-  return process.env.SESSION_SECRET ?? 'dev-secret-change-in-production'
+  const s = process.env.SESSION_SECRET
+  if (!s) throw new Error('SESSION_SECRET environment variable is not set')
+  return s
 }
 
 function sign(payload: object): string {

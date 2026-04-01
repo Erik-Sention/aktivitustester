@@ -1,5 +1,5 @@
-"use client";
-
+import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function StoryPage() {
+export default async function StoryPage() {
+  const user = await getSessionUser()
+  if (!user || user.role !== 'ADMIN') redirect('/login')
+
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-8">
       <div className="max-w-3xl mx-auto">

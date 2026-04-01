@@ -5,8 +5,8 @@ import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
 import { createTest as createTestDb, updateTest as updateTestDb, deleteTest as deleteTestDb } from "@/lib/tests"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, SportSettings, CoachAssessment, WingateData, WingateInputParams } from "@/types"
-import { Timestamp, doc, updateDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { Timestamp } from "firebase-admin/firestore"
+import { adminDb } from "@/lib/firebase-admin"
 
 async function requireSession() {
   const user = await getSessionUser()
@@ -60,7 +60,7 @@ export async function createTestAction(data: {
 
   // Patch only vo2Max so auto-calculated maxHR / maxLactate are preserved
   if (data.vo2Max) {
-    await updateDoc(doc(db, 'tests', id), { 'results.vo2Max': data.vo2Max })
+    await adminDb.collection('tests').doc(id).update({ 'results.vo2Max': data.vo2Max })
   }
 
   revalidatePath("/dashboard/tests")
@@ -145,7 +145,7 @@ export async function createWingateTestAction(data: {
     notes: data.notes || '',
   })
 
-  await updateDoc(doc(db, 'tests', id), {
+  await adminDb.collection('tests').doc(id).update({
     wingateData: data.wingateData,
     wingateInputParams: data.wingateInputParams,
   })
@@ -169,7 +169,7 @@ export async function updateCoachAssessmentAction(
   assessment: CoachAssessment
 ) {
   await requireSession()
-  await updateDoc(doc(db, 'tests', testId), { coachAssessment: assessment })
+  await adminDb.collection('tests').doc(testId).update({ coachAssessment: assessment })
   revalidatePath(`/dashboard/tests/${testId}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
 }

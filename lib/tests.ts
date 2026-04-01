@@ -1,9 +1,5 @@
-// Uses Firebase client SDK (works in Node.js server context too)
-import {
-  collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp,
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { adminDb } from '@/lib/firebase-admin'
+import { FieldValue } from 'firebase-admin/firestore'
 import { Test, TestInput, TestResults, RawDataPoint } from '@/types'
 import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from '@/lib/calculations'
 
@@ -20,26 +16,26 @@ function calculateResults(rawData: RawDataPoint[]): TestResults {
 }
 
 export async function getTests(athleteId?: string): Promise<Test[]> {
-  const col = collection(db, COL)
+  const col = adminDb.collection(COL)
   const q = athleteId
-    ? query(col, where('athleteId', '==', athleteId), orderBy('testDate', 'desc'))
-    : query(col, orderBy('testDate', 'desc'))
-  const snap = await getDocs(q)
+    ? col.where('athleteId', '==', athleteId).orderBy('testDate', 'desc')
+    : col.orderBy('testDate', 'desc')
+  const snap = await q.get()
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Test))
 }
 
 export async function getTest(id: string): Promise<Test | null> {
-  const snap = await getDoc(doc(db, COL, id))
-  if (!snap.exists()) return null
+  const snap = await adminDb.collection(COL).doc(id).get()
+  if (!snap.exists) return null
   return { id: snap.id, ...snap.data() } as Test
 }
 
 export async function createTest(input: TestInput): Promise<string> {
   const results = calculateResults(input.rawData)
-  const ref = await addDoc(collection(db, COL), {
+  const ref = await adminDb.collection(COL).add({
     ...input,
     results,
-    createdAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   })
   return ref.id
 }
@@ -47,9 +43,9 @@ export async function createTest(input: TestInput): Promise<string> {
 export async function updateTest(id: string, input: Partial<TestInput>): Promise<void> {
   const update: Record<string, unknown> = { ...input }
   if (input.rawData) update.results = calculateResults(input.rawData)
-  await updateDoc(doc(db, COL, id), update)
+  await adminDb.collection(COL).doc(id).update(update)
 }
 
 export async function deleteTest(id: string): Promise<void> {
-  await deleteDoc(doc(db, COL, id))
+  await adminDb.collection(COL).doc(id).delete()
 }

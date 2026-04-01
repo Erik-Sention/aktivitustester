@@ -1,8 +1,20 @@
 import { initializeApp, getApps, cert, applicationDefault, App } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { writeFileSync } from 'fs'
+
+function ensureADCCredentials() {
+  const json = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  if (json && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    const path = '/tmp/gcp-adc.json'
+    writeFileSync(path, json)
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = path
+  }
+}
 
 function getAdminApp(): App {
   if (getApps().length > 0) return getApps()[0]
+
+  ensureADCCredentials()
 
   // Use service account key if configured, otherwise use Application Default Credentials
   // (run: gcloud auth application-default login)

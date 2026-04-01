@@ -5,7 +5,9 @@ import { SessionUser } from '@/types'
 const SESSION_COOKIE = 'session'
 
 function secret() {
-  return process.env.SESSION_SECRET ?? 'dev-secret-change-in-production'
+  const s = process.env.SESSION_SECRET
+  if (!s) throw new Error('SESSION_SECRET environment variable is not set')
+  return s
 }
 
 function verifyToken(token: string): Record<string, unknown> | null {
