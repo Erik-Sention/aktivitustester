@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
 import { createAthlete, updateAthlete, deleteAthlete } from "@/lib/athletes"
-import { Timestamp } from "firebase/firestore"
+import { Timestamp } from "firebase-admin/firestore"
 
 async function requireSession() {
   const user = await getSessionUser()

@@ -52,6 +52,9 @@ const TESTTYPE_LABELS: Record<TestType, string> = {
   wingate: "Wingate",
 }
 
+const SPORT_OPTIONS = Object.keys(SPORT_LABELS) as SportType[]
+const TESTTYPE_OPTIONS = Object.keys(TESTTYPE_LABELS) as TestType[]
+
 const PROTOCOL_OPTIONS: Record<SportType, { value: ProtocolType; label: string }[]> = {
   cykel: [
     { value: "standard_3min", label: "Standard 3 min-steg" },
@@ -529,7 +532,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             <div className="space-y-1.5">
               <Label>Val 1 — Gren</Label>
               <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(SPORT_LABELS) as SportType[]).map((s) => (
+                {SPORT_OPTIONS.map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -629,7 +632,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               <div className="space-y-1">
                 <Label htmlFor="testType">Val 2 — Testtyp</Label>
                 <Select id="testType" value={form.testType} onChange={(e) => changeTestType(e.target.value as TestType)}>
-                  {(Object.keys(TESTTYPE_LABELS) as TestType[]).map((t) => (
+                  {TESTTYPE_OPTIONS.map((t) => (
                     <option key={t} value={t}>{TESTTYPE_LABELS[t]}</option>
                   ))}
                 </Select>

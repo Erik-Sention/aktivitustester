@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ComposedChart,
   Line,
@@ -53,10 +54,12 @@ const HR_ZONES = [
 export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Speed, lt2Speed, maxHr, testType, height = "100%", vo2MaxX, coachAtWatt, coachLtWatt }: LactateChartProps) {
   const isLactate = testType === "LACTATE_THRESHOLD";
 
-  // Running mode: stages have loadSpeedKmh but no loadWatts; plot only step-end rows (where lactate was measured)
-  const useSpeed = stages.some((s) => s.loadSpeedKmh != null) && stages.every((s) => s.loadWatts == null);
+  const useSpeed = useMemo(
+    () => stages.some((s) => s.loadSpeedKmh != null) && stages.every((s) => s.loadWatts == null),
+    [stages]
+  );
 
-  const data = useSpeed
+  const data = useMemo(() => useSpeed
     ? stages
         .filter((s) => s.loadSpeedKmh != null && s.lactateMmol != null)
         .map((s) => ({
@@ -77,7 +80,9 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
             vo2: s.vo2MlKgMin ?? undefined,
             rpe: s.rpe ?? undefined,
           };
-        });
+        }),
+    [stages, bodyWeightKg, useSpeed]
+  );
 
   if (data.length < 2) return null;
 
@@ -88,12 +93,14 @@ export function LactateChart({ stages, bodyWeightKg, lt1Watts, lt2Watts, lt1Spee
 
   const xLabel = useSpeed ? "Speed (km/h)" : (bodyWeightKg ? "Belastning (Watt/kg)" : "Belastning (Watt)");
 
-  const lt1X = useSpeed
-    ? (lt1Speed ?? null)
-    : (lt1Watts != null ? (bodyWeightKg ? Math.round((lt1Watts / bodyWeightKg) * 100) / 100 : lt1Watts) : null);
-  const lt2X = useSpeed
-    ? (lt2Speed ?? null)
-    : (lt2Watts != null ? (bodyWeightKg ? Math.round((lt2Watts / bodyWeightKg) * 100) / 100 : lt2Watts) : null);
+  const { lt1X, lt2X } = useMemo(() => ({
+    lt1X: useSpeed
+      ? (lt1Speed ?? null)
+      : (lt1Watts != null ? (bodyWeightKg ? Math.round((lt1Watts / bodyWeightKg) * 100) / 100 : lt1Watts) : null),
+    lt2X: useSpeed
+      ? (lt2Speed ?? null)
+      : (lt2Watts != null ? (bodyWeightKg ? Math.round((lt2Watts / bodyWeightKg) * 100) / 100 : lt2Watts) : null),
+  }), [useSpeed, lt1Speed, lt2Speed, lt1Watts, lt2Watts, bodyWeightKg]);
 
   // Right margin: 48 for lactate axis, +44 more if RPE axis is also shown
   const rightMargin = (hasLactate || hasVo2) && hasRpe ? 92 : hasRpe ? 44 : 48;
