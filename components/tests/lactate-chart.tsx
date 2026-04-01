@@ -19,7 +19,7 @@ interface Stage {
   loadSpeedKmh?: number | null;
   heartRate: number | null;
   lactateMmol: number | null;
-  vo2MlKgMin: number | null;
+  vo2MlKgMin?: number | null;
   rpe?: number | null;
 }
 
