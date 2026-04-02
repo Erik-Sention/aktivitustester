@@ -13,7 +13,7 @@ export interface SerializedFullTest {
 }
 
 interface CompareViewProps {
-  tests: [SerializedFullTest, SerializedFullTest]
+  tests: SerializedFullTest[]
 }
 
 function testTypeLabel(type: string) {
@@ -37,52 +37,48 @@ function stat(value: number | null, unit: string) {
 }
 
 export function CompareView({ tests }: CompareViewProps) {
-  const [a, b] = tests
+  const datasets = tests.map((t) => ({
+    data: t.rawData.filter((p) => p.watt > 0).map((p) => ({ watt: p.watt, hr: p.hr || null, lac: p.lac || null })),
+    label: t.testDateStr,
+    lt1: t.results.atWatt,
+    lt2: t.results.ltWatt,
+  }))
 
-  const dataA = a.rawData.filter((p) => p.watt > 0).map((p) => ({ watt: p.watt, hr: p.hr || null, lac: p.lac || null }))
-  const dataB = b.rawData.filter((p) => p.watt > 0).map((p) => ({ watt: p.watt, hr: p.hr || null, lac: p.lac || null }))
+  const cols = `auto repeat(${tests.length}, 1fr)`
+
+  const rows = [
+    { label: "LT1 (Aerob tröskel)", values: tests.map((t) => stat(t.results.atWatt, "W")) },
+    { label: "LT2 (Anaerob tröskel)", values: tests.map((t) => stat(t.results.ltWatt, "W")) },
+    { label: "Max puls", values: tests.map((t) => stat(t.results.maxHR, "bpm")) },
+    { label: "Max laktat", values: tests.map((t) => stat(t.results.maxLactate, "mmol/L")) },
+    { label: "VO₂ max", values: tests.map((t) => stat(t.results.vo2Max, "ml/kg/min")) },
+  ]
 
   return (
     <div className="space-y-6">
       {/* Chart */}
       <div className="bg-white rounded-3xl shadow-apple p-6">
-        <CompareChart
-          dataA={dataA}
-          dataB={dataB}
-          labelA={a.testDateStr}
-          labelB={b.testDateStr}
-          lt1A={a.results.atWatt}
-          lt2A={a.results.ltWatt}
-          lt1B={b.results.atWatt}
-          lt2B={b.results.ltWatt}
-        />
+        <CompareChart datasets={datasets} />
       </div>
 
-      {/* Side-by-side results table */}
+      {/* Results table */}
       <div className="bg-white rounded-3xl shadow-apple overflow-hidden">
-        <div className="grid grid-cols-3 border-b border-black/[0.06]">
+        <div className="grid border-b border-black/[0.06]" style={{ gridTemplateColumns: cols }}>
           <div className="px-5 py-3 text-sm font-black uppercase tracking-wider text-[#515154]">Mätvärde</div>
-          <div className="px-5 py-3 text-sm font-semibold text-[#1D1D1F] border-l border-black/[0.06]">
-            {testTypeLabel(a.testType)} — {sportLabel(a.sport)}
-            <span className="block text-xs font-normal text-[#515154]">{a.testDateStr}</span>
-          </div>
-          <div className="px-5 py-3 text-sm font-semibold text-[#1D1D1F] border-l border-black/[0.06]">
-            {testTypeLabel(b.testType)} — {sportLabel(b.sport)}
-            <span className="block text-xs font-normal text-[#515154]">{b.testDateStr}</span>
-          </div>
+          {tests.map((t) => (
+            <div key={t.id} className="px-5 py-3 text-sm font-semibold text-[#1D1D1F] border-l border-black/[0.06]">
+              {testTypeLabel(t.testType)} — {sportLabel(t.sport)}
+              <span className="block text-xs font-normal text-[#515154]">{t.testDateStr}</span>
+            </div>
+          ))}
         </div>
 
-        {[
-          { label: "LT1 (Aerob tröskel)", a: stat(a.results.atWatt, "W"), b: stat(b.results.atWatt, "W") },
-          { label: "LT2 (Anaerob tröskel)", a: stat(a.results.ltWatt, "W"), b: stat(b.results.ltWatt, "W") },
-          { label: "Max puls", a: stat(a.results.maxHR, "bpm"), b: stat(b.results.maxHR, "bpm") },
-          { label: "Max laktat", a: stat(a.results.maxLactate, "mmol/L"), b: stat(b.results.maxLactate, "mmol/L") },
-          { label: "VO₂ max", a: stat(a.results.vo2Max, "ml/kg/min"), b: stat(b.results.vo2Max, "ml/kg/min") },
-        ].map((row, i) => (
-          <div key={i} className="grid grid-cols-3 border-b border-black/[0.04] last:border-0">
+        {rows.map((row, i) => (
+          <div key={i} className="grid border-b border-black/[0.04] last:border-0" style={{ gridTemplateColumns: cols }}>
             <div className="px-5 py-3 text-sm text-[#515154]">{row.label}</div>
-            <div className="px-5 py-3 text-sm font-medium text-[#1D1D1F] border-l border-black/[0.06]">{row.a}</div>
-            <div className="px-5 py-3 text-sm font-medium text-[#1D1D1F] border-l border-black/[0.06]">{row.b}</div>
+            {row.values.map((v, j) => (
+              <div key={j} className="px-5 py-3 text-sm font-medium text-[#1D1D1F] border-l border-black/[0.06]">{v}</div>
+            ))}
           </div>
         ))}
       </div>

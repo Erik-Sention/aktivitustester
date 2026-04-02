@@ -96,6 +96,8 @@ export function CoachAssessmentPanel({ testId, athleteId, initial }: CoachAssess
             {field("Högsta uppnådda puls", "hogstaUpnaddPuls")}
             {field("AT-puls", "atPuls")}
             {field("LT-puls", "ltPuls")}
+            {field("Gräns Låg/Medel (bpm)", "granLagMedelPuls")}
+            {field("Nedre gräns (bpm)", "nedreGransPuls")}
           </div>
         </div>
       </div>

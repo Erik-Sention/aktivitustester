@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase'
-import { collection, doc, query, where, orderBy, getDocs, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore'
 import { Test, TestInput, TestResults, RawDataPoint } from '@/types'
 import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from '@/lib/calculations'
 

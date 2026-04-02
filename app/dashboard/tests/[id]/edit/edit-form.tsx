@@ -248,6 +248,8 @@ export function EditTestForm({
               {coachField("Högsta uppnådda puls", "hogstaUpnaddPuls")}
               {coachField("AT-puls", "atPuls")}
               {coachField("LT-puls", "ltPuls")}
+              {coachField("Gräns Låg/Medel (bpm)", "granLagMedelPuls")}
+              {coachField("Nedre gräns (bpm)", "nedreGransPuls")}
             </div>
           </div>
         </div>

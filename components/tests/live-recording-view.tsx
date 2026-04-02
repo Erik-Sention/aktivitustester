@@ -1138,6 +1138,26 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   placeholder="—"
                 />
               </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.granLagMedelPuls ?? ""}
+                  onChange={(e) => updateCoach("granLagMedelPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.nedreGransPuls ?? ""}
+                  onChange={(e) => updateCoach("nedreGransPuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
             </div>
           </div>
         </div>

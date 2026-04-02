@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase'
-import { collection, doc, query, where, orderBy, getDocs, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore'
 import { Athlete, AthleteInput } from '@/types'
 
 const COL = 'athletes'

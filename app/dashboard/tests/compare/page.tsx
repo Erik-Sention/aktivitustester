@@ -16,11 +16,12 @@ export default async function CompareTestsPage({
 
   if (idList.length < 2) notFound()
 
-  const [testA, testB] = await Promise.all([getTest(idList[0]), getTest(idList[1])])
+  const fetched = await Promise.all(idList.map((id) => getTest(id)))
+  const tests = fetched.filter(Boolean) as NonNullable<(typeof fetched)[number]>[]
 
-  if (!testA || !testB) notFound()
+  if (tests.length < 2) notFound()
 
-  function serialize(t: NonNullable<typeof testA>): SerializedFullTest {
+  function serialize(t: NonNullable<(typeof fetched)[number]>): SerializedFullTest {
     return {
       id: t.id,
       testType: t.testType,
@@ -46,14 +47,14 @@ export default async function CompareTestsPage({
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
-        <Link href={`/dashboard/athletes/${testA.athleteId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+        <Link href={`/dashboard/athletes/${tests[0].athleteId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           <ArrowLeft className="h-4 w-4" />
           Tillbaka
         </Link>
         <h1 className="text-xl font-bold text-[#1D1D1F]">Jämförelse</h1>
       </div>
 
-      <CompareView tests={[serialize(testA), serialize(testB)]} />
+      <CompareView tests={tests.map(serialize)} />
     </div>
   )
 }
