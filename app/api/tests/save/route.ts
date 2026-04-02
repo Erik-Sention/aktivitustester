@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin'
+import { db } from '@/lib/firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from '@/lib/calculations'
 import { RawDataPoint, TestInput } from '@/types'
-import { FieldValue } from 'firebase-admin/firestore'
 import { getSessionUser } from '@/lib/session'
 
 export async function POST(request: NextRequest) {
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
       maxHR: maxHR || null,
       maxLactate: maxLactate || null,
     },
-    createdAt: FieldValue.serverTimestamp(),
+    createdAt: serverTimestamp(),
   }
 
-  const ref = await adminDb.collection('tests').add(testDoc)
+  const ref = await addDoc(collection(db, 'tests'), testDoc)
   return NextResponse.json({ id: ref.id })
 }

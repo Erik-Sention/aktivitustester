@@ -1,36 +1,36 @@
-import { adminDb } from '@/lib/firebase-admin'
-import { FieldValue } from 'firebase-admin/firestore'
+import { db } from '@/lib/firebase'
+import { collection, doc, query, where, orderBy, getDocs, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { Athlete, AthleteInput } from '@/types'
 
 const COL = 'athletes'
 
 export async function getAthletes(clinicId?: string): Promise<Athlete[]> {
-  const col = adminDb.collection(COL)
+  const col = collection(db, COL)
   const q = clinicId
-    ? col.where('clinicId', '==', clinicId).orderBy('createdAt', 'desc')
-    : col.orderBy('createdAt', 'desc')
-  const snap = await q.get()
+    ? query(col, where('clinicId', '==', clinicId), orderBy('createdAt', 'desc'))
+    : query(col, orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Athlete))
 }
 
 export async function getAthlete(id: string): Promise<Athlete | null> {
-  const snap = await adminDb.collection(COL).doc(id).get()
-  if (!snap.exists) return null
+  const snap = await getDoc(doc(db, COL, id))
+  if (!snap.exists()) return null
   return { id: snap.id, ...snap.data() } as Athlete
 }
 
 export async function createAthlete(input: AthleteInput): Promise<string> {
-  const ref = await adminDb.collection(COL).add({
+  const ref = await addDoc(collection(db, COL), {
     ...input,
-    createdAt: FieldValue.serverTimestamp(),
+    createdAt: serverTimestamp(),
   })
   return ref.id
 }
 
 export async function updateAthlete(id: string, input: Partial<AthleteInput>): Promise<void> {
-  await adminDb.collection(COL).doc(id).update(input as Record<string, unknown>)
+  await updateDoc(doc(db, COL, id), input as Record<string, unknown>)
 }
 
 export async function deleteAthlete(id: string): Promise<void> {
-  await adminDb.collection(COL).doc(id).delete()
+  await deleteDoc(doc(db, COL, id))
 }
