@@ -24,6 +24,9 @@ export async function createTestAction(data: {
   testDate: string
   startWatt?: number
   stepSize?: number
+  startSpeed?: number
+  speedIncrement?: number
+  incline?: number
   testDuration?: number
   bodyWeight?: number
   heightCm?: number
@@ -46,8 +49,11 @@ export async function createTestAction(data: {
     testLocation: data.testLocation,
     testLeader: data.testLeader,
     inputParams: {
-      startWatt: data.startWatt ?? 0,
-      stepSize: data.stepSize ?? 0,
+      ...(data.startWatt !== undefined ? { startWatt: data.startWatt } : {}),
+      ...(data.stepSize !== undefined ? { stepSize: data.stepSize } : {}),
+      ...(data.startSpeed !== undefined ? { startSpeed: data.startSpeed } : {}),
+      ...(data.speedIncrement !== undefined ? { speedIncrement: data.speedIncrement } : {}),
+      ...(data.incline !== undefined ? { incline: data.incline } : {}),
       testDuration: data.testDuration ?? 0,
       bodyWeight: data.bodyWeight ?? null,
       heightCm: data.heightCm ?? null,
@@ -63,7 +69,6 @@ export async function createTestAction(data: {
     await updateDoc(doc(db, 'tests', id), { 'results.vo2Max': data.vo2Max })
   }
 
-  revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/athletes/${data.athleteId}`)
   redirect(`/dashboard/tests/${id}`)
 }
@@ -82,6 +87,9 @@ export async function updateTestAction(
     testLeader?: string
     startWatt?: number
     stepSize?: number
+    startSpeed?: number
+    speedIncrement?: number
+    incline?: number
     testDuration?: number
     bodyWeight?: number | null
     heightCm?: number | null
@@ -90,6 +98,11 @@ export async function updateTestAction(
   }
 ) {
   await requireSession()
+
+  const hasInputParams = [
+    data.startWatt, data.stepSize, data.startSpeed, data.speedIncrement,
+    data.incline, data.testDuration, data.bodyWeight, data.heightCm,
+  ].some((v) => v !== undefined)
 
   await updateTestDb(id, {
     testDate: Timestamp.fromDate(new Date(data.testDate)),
@@ -100,10 +113,13 @@ export async function updateTestAction(
     ...(data.protocol ? { protocol: data.protocol } : {}),
     ...(data.testLocation ? { testLocation: data.testLocation } : {}),
     ...(data.testLeader !== undefined ? { testLeader: data.testLeader } : {}),
-    ...(data.startWatt !== undefined || data.stepSize !== undefined || data.testDuration !== undefined || data.bodyWeight !== undefined || data.heightCm !== undefined ? {
+    ...(hasInputParams ? {
       inputParams: {
-        startWatt: data.startWatt ?? 0,
-        stepSize: data.stepSize ?? 0,
+        ...(data.startWatt !== undefined ? { startWatt: data.startWatt } : {}),
+        ...(data.stepSize !== undefined ? { stepSize: data.stepSize } : {}),
+        ...(data.startSpeed !== undefined ? { startSpeed: data.startSpeed } : {}),
+        ...(data.speedIncrement !== undefined ? { speedIncrement: data.speedIncrement } : {}),
+        ...(data.incline !== undefined ? { incline: data.incline } : {}),
         testDuration: data.testDuration ?? 0,
         bodyWeight: data.bodyWeight ?? null,
         heightCm: data.heightCm ?? null,
@@ -113,7 +129,6 @@ export async function updateTestAction(
     ...(data.settings ? { settings: data.settings } : {}),
   })
 
-  revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/tests/${id}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
   redirect(`/dashboard/tests/${id}`)
@@ -150,7 +165,6 @@ export async function createWingateTestAction(data: {
     wingateInputParams: data.wingateInputParams,
   })
 
-  revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/athletes/${data.athleteId}`)
   redirect(`/dashboard/tests/${id}`)
 }
@@ -158,7 +172,6 @@ export async function createWingateTestAction(data: {
 export async function deleteTestAction(id: string, athleteId: string) {
   await requireSession()
   await deleteTestDb(id)
-  revalidatePath("/dashboard/tests")
   revalidatePath(`/dashboard/athletes/${athleteId}`)
   redirect(`/dashboard/athletes/${athleteId}`)
 }

@@ -42,9 +42,26 @@ const SPORT_LABELS: Record<SportType, string> = {
 
 const WATT_PRESETS = [
   { label: "40W / +20W", startWatt: 40, stepSize: 20 },
-  { label: "60W / +20W", startWatt: 60, stepSize: 20 },
-  { label: "80W / +30W", startWatt: 80, stepSize: 30 },
+  { label: "60W / +30W", startWatt: 60, stepSize: 30 },
+  { label: "80W / +40W", startWatt: 80, stepSize: 40 },
 ]
+
+// Sporttyper som använder fart/lutning istället för watt
+function isSpeedBased(sport: SportType): boolean {
+  return sport === "lopning" || sport === "skidor_band"
+}
+
+// Steglängd (min) per sport/testtyp
+const SPORT_STEP_DURATION: Partial<Record<SportType, number>> = {
+  lopning: 4,
+  skidor_band: 4,
+}
+
+// Steg-presets för VO2 max på löpband
+const SPEED_VO2_STEP_SIZES = [0.5, 1, 1.5, 2]
+
+// Steg-presets för VO2 max på wattbaserade sporter
+const WATT_VO2_STEP_SIZES = [10, 15, 20]
 
 const TESTTYPE_LABELS: Record<TestType, string> = {
   troskeltest: "Tröskeltest",
@@ -60,10 +77,10 @@ const PROTOCOL_OPTIONS: Record<SportType, { value: ProtocolType; label: string }
     { value: "standard_3min", label: "Standard 3 min-steg" },
     { value: "ramp_test", label: "Ramp-test" },
   ],
-  skidor_band: [{ value: "standard_3min", label: "Standard 3 min-steg" }],
-  skierg: [{ value: "standard_3min", label: "Standard 3 min-steg" }],
-  lopning: [{ value: "standard_3min", label: "Standard 3 min-steg" }],
-  kajak: [{ value: "standard_3min", label: "Standard 3 min-steg" }],
+  skidor_band: [{ value: "standard_3min", label: "Standard 4 min-steg" }, { value: "ramp_test", label: "Ramp-test" }],
+  skierg: [{ value: "standard_3min", label: "Standard 3 min-steg" }, { value: "ramp_test", label: "Ramp-test" }],
+  lopning: [{ value: "standard_3min", label: "Standard 4 min-steg" }, { value: "ramp_test", label: "Ramp-test" }],
+  kajak: [{ value: "standard_3min", label: "Standard 3 min-steg" }, { value: "ramp_test", label: "Ramp-test" }],
 }
 
 const PROTOCOL_DEFAULTS: Record<ProtocolType, { startWatt: number; stepSize: number; testDuration: number }> = {
@@ -83,12 +100,23 @@ const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
 
 function generateMinuteRows(startWatt: number, stepSize: number, testDuration: number, totalStages = 10): RawDataPoint[] {
   const rows: RawDataPoint[] = []
-  // Min 0: initial measurement at first watt level
   rows.push({ min: 0, watt: startWatt, hr: 0, lac: 0, borg: 0, cadence: 0 })
   for (let stage = 0; stage < totalStages; stage++) {
     const watt = startWatt + stage * stepSize
     for (let m = 1; m <= testDuration; m++) {
       rows.push({ min: stage * testDuration + m, watt, hr: 0, lac: 0, borg: 0, cadence: 0 })
+    }
+  }
+  return rows
+}
+
+function generateSpeedRows(startSpeed: number, speedIncrement: number, testDuration: number, totalStages = 10): RawDataPoint[] {
+  const rows: RawDataPoint[] = []
+  rows.push({ min: 0, watt: 0, speed: startSpeed, hr: 0, lac: 0, borg: 0, cadence: 0 })
+  for (let stage = 0; stage < totalStages; stage++) {
+    const speed = Math.round((startSpeed + stage * speedIncrement) * 10) / 10
+    for (let m = 1; m <= testDuration; m++) {
+      rows.push({ min: stage * testDuration + m, watt: 0, speed, hr: 0, lac: 0, borg: 0, cadence: 0 })
     }
   }
   return rows
@@ -246,6 +274,10 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     testDuration: "3",
     bodyWeight: "",
     heightCm: "",
+    // Fartbaserade parametrar (löpning, skidor)
+    startSpeed: "8",
+    speedIncrement: "1",
+    incline: "2",
   })
 
   // ── Bike settings ─────────────────────────────────────────────────
@@ -285,15 +317,23 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   }
 
   function changeSport(sport: SportType) {
+    const nextTestType = sport !== "cykel" && form.testType === "wingate" ? "troskeltest" : form.testType
     const firstProtocol = PROTOCOL_OPTIONS[sport][0].value
-    const defaults = PROTOCOL_DEFAULTS[firstProtocol]
+    const defaults = nextTestType === "vo2max"
+      ? PROTOCOL_DEFAULTS["ramp_test"]
+      : PROTOCOL_DEFAULTS[firstProtocol]
+    const protocol = nextTestType === "vo2max" ? "ramp_test" : firstProtocol
+    const duration = nextTestType === "vo2max"
+      ? defaults.testDuration
+      : (SPORT_STEP_DURATION[sport] ?? defaults.testDuration)
     setForm((f) => ({
       ...f,
       sport,
-      protocol: firstProtocol,
+      testType: nextTestType,
+      protocol,
       startWatt: String(defaults.startWatt),
       stepSize: String(defaults.stepSize),
-      testDuration: String(defaults.testDuration),
+      testDuration: String(duration),
     }))
     if (sport !== "cykel") setShowBikeSettings(false)
   }
@@ -325,6 +365,17 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         startWatt: String(defaults.startWatt),
         stepSize: String(defaults.stepSize),
         testDuration: String(defaults.testDuration),
+      }))
+    } else if (testType === "troskeltest") {
+      const defaults = PROTOCOL_DEFAULTS["standard_3min"]
+      const duration = SPORT_STEP_DURATION[form.sport] ?? defaults.testDuration
+      setForm((f) => ({
+        ...f,
+        testType,
+        protocol: "standard_3min",
+        startWatt: String(defaults.startWatt),
+        stepSize: String(defaults.stepSize),
+        testDuration: String(duration),
       }))
     } else {
       setForm((f) => ({ ...f, testType }))
@@ -363,10 +414,16 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   }
 
   function startRecording() {
-    const start = parseInt(form.startWatt) || 40
-    const step = parseInt(form.stepSize) || 20
     const dur = parseInt(form.testDuration) || 3
-    setRows(generateMinuteRows(start, step, dur, 10))
+    if (isSpeedBased(form.sport)) {
+      const start = parseFloat(form.startSpeed) || 8
+      const inc = parseFloat(form.speedIncrement) || 1
+      setRows(generateSpeedRows(start, inc, dur, 10))
+    } else {
+      const start = parseInt(form.startWatt) || 40
+      const step = parseInt(form.stepSize) || 20
+      setRows(generateMinuteRows(start, step, dur, 10))
+    }
     setStep("recording")
   }
 
@@ -389,20 +446,24 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   }
 
   function addStage() {
-    const step = parseInt(form.stepSize) || 20
     const dur = parseInt(form.testDuration) || 3
     const last = rows[rows.length - 1]
-    const nextWatt = (last?.watt ?? parseInt(form.startWatt) ?? 40) + step
     const lastMin = last?.min ?? 0
-    const newRows = Array.from({ length: dur }, (_, i) => ({
-      min: lastMin + i + 1,
-      watt: nextWatt,
-      hr: 0,
-      lac: 0,
-      borg: 0,
-      cadence: 0,
-    }))
-    setRows((prev) => [...prev, ...newRows])
+    if (isSpeedBased(form.sport)) {
+      const inc = parseFloat(form.speedIncrement) || 1
+      const nextSpeed = Math.round(((last?.speed ?? parseFloat(form.startSpeed) ?? 8) + inc) * 10) / 10
+      const newRows = Array.from({ length: dur }, (_, i) => ({
+        min: lastMin + i + 1, watt: 0, speed: nextSpeed, hr: 0, lac: 0, borg: 0, cadence: 0,
+      }))
+      setRows((prev) => [...prev, ...newRows])
+    } else {
+      const step = parseInt(form.stepSize) || 20
+      const nextWatt = (last?.watt ?? parseInt(form.startWatt) ?? 40) + step
+      const newRows = Array.from({ length: dur }, (_, i) => ({
+        min: lastMin + i + 1, watt: nextWatt, hr: 0, lac: 0, borg: 0, cadence: 0,
+      }))
+      setRows((prev) => [...prev, ...newRows])
+    }
   }
 
   // ── Chart data (all minute rows for staircase chart) ─────────────
@@ -475,8 +536,14 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         testLocation: (form.testLocation || "stockholm") as ClinicLocation,
         testLeader: form.testLeader,
         testDate: form.testDate,
-        startWatt: parseInt(form.startWatt) || 0,
-        stepSize: parseInt(form.stepSize) || 0,
+        ...(isSpeedBased(form.sport) ? {
+          startSpeed: parseFloat(form.startSpeed) || 0,
+          speedIncrement: parseFloat(form.speedIncrement) || 0,
+          incline: parseFloat(form.incline) || 0,
+        } : {
+          startWatt: parseInt(form.startWatt) || 0,
+          stepSize: parseInt(form.stepSize) || 0,
+        }),
         testDuration: parseInt(form.testDuration) || 0,
         bodyWeight: parseFloat(form.bodyWeight) || undefined,
         heightCm: parseFloat(form.heightCm) || undefined,
@@ -632,7 +699,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               <div className="space-y-1">
                 <Label htmlFor="testType">Val 2 — Testtyp</Label>
                 <Select id="testType" value={form.testType} onChange={(e) => changeTestType(e.target.value as TestType)}>
-                  {TESTTYPE_OPTIONS.map((t) => (
+                  {TESTTYPE_OPTIONS.filter((t) => t !== "wingate" || form.sport === "cykel").map((t) => (
                     <option key={t} value={t}>{TESTTYPE_LABELS[t]}</option>
                   ))}
                 </Select>
@@ -647,8 +714,116 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               </div>
             </div>
 
-            {/* Watt presets or manual */}
-            {form.protocol === "standard_3min" ? (
+            {/* Protokollparametrar */}
+            {isSpeedBased(form.sport) ? (
+              <div className="space-y-3">
+                {form.testType === "vo2max" ? (
+                  /* VO2 max löpband: fri startfart + steg-presets */
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="startSpeed">Startfart (km/h)</Label>
+                        <Input id="startSpeed" type="text" inputMode="decimal" value={form.startSpeed} onChange={(e) => update("startSpeed", e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="incline">Lutning (%)</Label>
+                        <Input id="incline" type="text" inputMode="decimal" value={form.incline} onChange={(e) => update("incline", e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Ökning per steg (km/h)</Label>
+                      <div className="flex gap-2">
+                        {SPEED_VO2_STEP_SIZES.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => update("speedIncrement", String(s))}
+                            className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                              form.speedIncrement === String(s)
+                                ? "bg-[#007AFF] text-white border-[#007AFF]"
+                                : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
+                            }`}
+                          >
+                            +{s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Tröskeltest löpband: preset-knappar för startfart, ökning och lutning */
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Startfart (km/h)</Label>
+                        <div className="flex gap-2">
+                          {[6, 8, 10, 12].map((s) => (
+                            <button key={s} type="button" onClick={() => update("startSpeed", String(s))}
+                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startSpeed === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Ökning/steg (km/h)</Label>
+                        <div className="flex gap-2">
+                          {[0.5, 1, 1.5, 2].map((s) => (
+                            <button key={s} type="button" onClick={() => update("speedIncrement", String(s))}
+                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.speedIncrement === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                              +{s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Lutning (%)</Label>
+                      <div className="flex gap-2">
+                        {[0, 1, 2, 3, 5].map((s) => (
+                          <button key={s} type="button" onClick={() => update("incline", String(s))}
+                            className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.incline === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                            {s}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : form.testType === "vo2max" ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="startWatt">Start (W)</Label>
+                    <Input id="startWatt" type="number" value={form.startWatt} onChange={(e) => update("startWatt", e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="testDuration">Min/steg</Label>
+                    <Input id="testDuration" type="number" value={form.testDuration} onChange={(e) => update("testDuration", e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Steg (W)</Label>
+                  <div className="flex gap-2">
+                    {WATT_VO2_STEP_SIZES.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => update("stepSize", String(s))}
+                        className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                          form.stepSize === String(s)
+                            ? "bg-[#007AFF] text-white border-[#007AFF]"
+                            : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
+                        }`}
+                      >
+                        +{s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : form.protocol === "standard_3min" ? (
               <div className="space-y-1.5">
                 <Label>Start & steg</Label>
                 <div className="flex gap-2">
@@ -752,7 +927,9 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <p className="text-base text-secondary mt-0.5">
             {selectedAthlete && <span>{fullName(selectedAthlete.firstName, selectedAthlete.lastName)} · </span>}
             {PROTOCOL_OPTIONS[form.sport].find((p) => p.value === form.protocol)?.label}
-            {" · "}{form.startWatt}W +{form.stepSize}W/{form.testDuration}min
+            {" · "}{isSpeedBased(form.sport)
+              ? `${form.startSpeed} km/h +${form.speedIncrement}/${form.testDuration}min · ${form.incline}% lutning`
+              : `${form.startWatt}W +${form.stepSize}W/${form.testDuration}min`}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -804,7 +981,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               <thead>
                 <tr className="text-sm font-black uppercase tracking-wider text-[#1D1D1F] border-b border-[hsl(var(--border))]/60">
                   <th className="px-3 py-3 text-left w-14">Min</th>
-                  <th className="px-3 py-3 text-right w-16">W</th>
+                  <th className="px-3 py-3 text-right w-16">{isSpeedBased(form.sport) ? "km/h" : "W"}</th>
                   <th className="px-3 py-3 text-right w-20">Puls</th>
                   {form.testType !== "vo2max" && <>
                     <th className="px-3 py-3 text-right w-20">Laktat</th>
@@ -828,8 +1005,10 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                       <td className="px-3 py-2">
                         <span className="tabular-nums text-[#515154] font-semibold">{row.min}</span>
                       </td>
-                      {/* Watt — locked */}
-                      <td className="px-3 py-2 text-right text-[#515154] tabular-nums font-semibold">{row.watt || "—"}</td>
+                      {/* Watt / Fart — locked */}
+                      <td className="px-3 py-2 text-right text-[#515154] tabular-nums font-semibold">
+                        {isSpeedBased(form.sport) ? (row.speed ?? "—") : (row.watt || "—")}
+                      </td>
                       {/* HR */}
                       <td className="px-3 py-2 text-right">
                         <input

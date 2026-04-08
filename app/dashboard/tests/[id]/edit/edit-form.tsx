@@ -76,8 +76,11 @@ export function EditTestForm({
   const [protocol, setProtocol] = useState<ProtocolType>(initialProtocol)
   const [location, setLocation] = useState<ClinicLocation | "">(initialLocation)
   const [leader, setLeader] = useState(initialLeader)
-  const [startWatt, setStartWatt] = useState(String(inputParams.startWatt || ""))
-  const [stepSize, setStepSize] = useState(String(inputParams.stepSize || ""))
+  const [startWatt, setStartWatt] = useState(String(inputParams.startWatt ?? ""))
+  const [stepSize, setStepSize] = useState(String(inputParams.stepSize ?? ""))
+  const [startSpeed, setStartSpeed] = useState(String(inputParams.startSpeed ?? ""))
+  const [speedIncrement, setSpeedIncrement] = useState(String(inputParams.speedIncrement ?? ""))
+  const [incline, setIncline] = useState(String(inputParams.incline ?? ""))
   const [testDuration, setTestDuration] = useState(String(inputParams.testDuration || ""))
   const [bodyWeight, setBodyWeight] = useState(String(inputParams.bodyWeight ?? ""))
   const [heightCm, setHeightCm] = useState(String(inputParams.heightCm ?? ""))
@@ -106,18 +109,25 @@ export function EditTestForm({
     setSaving(true)
     setError(null)
     try {
+      const speedBased = sport === "lopning" || sport === "skidor_band"
       const hasCoach = Object.values(coach).some((v) => v !== null)
       await updateTestAction(testId, athleteId, {
         testDate: date,
         notes: noteText,
-        rawData: rows.filter((r) => r.hr > 0 || r.lac > 0 || r.watt > 0),
+        rawData: rows.filter((r) => r.hr > 0 || r.lac > 0 || r.watt > 0 || (r.speed ?? 0) > 0),
         sport,
         testType,
         protocol,
         testLocation: (location || "stockholm") as ClinicLocation,
         testLeader: leader,
-        startWatt: parseInt(startWatt) || 0,
-        stepSize: parseInt(stepSize) || 0,
+        ...(speedBased ? {
+          startSpeed: parseFloat(startSpeed) || 0,
+          speedIncrement: parseFloat(speedIncrement) || 0,
+          incline: parseFloat(incline) || 0,
+        } : {
+          startWatt: parseInt(startWatt) || 0,
+          stepSize: parseInt(stepSize) || 0,
+        }),
         testDuration: parseInt(testDuration) || 0,
         bodyWeight: parseFloat(bodyWeight) || null,
         heightCm: parseFloat(heightCm) || null,
@@ -205,14 +215,29 @@ export function EditTestForm({
       <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Protokoll</p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-          <div className="space-y-1">
-            <Label htmlFor="startWatt">Start (W)</Label>
-            <Input id="startWatt" type="number" value={startWatt} onChange={(e) => setStartWatt(e.target.value)} placeholder="40" />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="stepSize">Steg (W)</Label>
-            <Input id="stepSize" type="number" value={stepSize} onChange={(e) => setStepSize(e.target.value)} placeholder="20" />
-          </div>
+          {sport === "lopning" || sport === "skidor_band" ? (<>
+            <div className="space-y-1">
+              <Label htmlFor="startSpeed">Startfart (km/h)</Label>
+              <Input id="startSpeed" type="text" inputMode="decimal" value={startSpeed} onChange={(e) => setStartSpeed(e.target.value)} placeholder="8" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="speedIncrement">Ökning (km/h)</Label>
+              <Input id="speedIncrement" type="text" inputMode="decimal" value={speedIncrement} onChange={(e) => setSpeedIncrement(e.target.value)} placeholder="1" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="incline">Lutning (%)</Label>
+              <Input id="incline" type="text" inputMode="decimal" value={incline} onChange={(e) => setIncline(e.target.value)} placeholder="0" />
+            </div>
+          </>) : (<>
+            <div className="space-y-1">
+              <Label htmlFor="startWatt">Start (W)</Label>
+              <Input id="startWatt" type="number" value={startWatt} onChange={(e) => setStartWatt(e.target.value)} placeholder="40" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="stepSize">Steg (W)</Label>
+              <Input id="stepSize" type="number" value={stepSize} onChange={(e) => setStepSize(e.target.value)} placeholder="20" />
+            </div>
+          </>)}
           <div className="space-y-1">
             <Label htmlFor="testDuration">Tid/steg (min)</Label>
             <Input id="testDuration" type="number" value={testDuration} onChange={(e) => setTestDuration(e.target.value)} placeholder="3" />

@@ -10,6 +10,16 @@
 # testing
 /coverage
 
+# Playwright
+tests/e2e/.auth/
+playwright-report/
+test-results/
+
+# Playwright test suite (dev-only, not needed for Vercel)
+playwright.config.ts
+tests/
+.env.test.local.example
+
 # next.js
 /.next/
 /out/

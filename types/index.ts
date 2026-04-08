@@ -51,9 +51,15 @@ export type AthleteInput = Omit<Athlete, 'id' | 'createdAt'>
 // --- Test ---
 
 export interface TestInputParams {
-  startWatt: number
-  stepSize: number
-  testDuration: number // minutes per step
+  // Watt-baserat (cykel, kajak, skierg)
+  startWatt?: number
+  stepSize?: number
+  // Fartbaserat (löpning, skidor)
+  startSpeed?: number      // km/h
+  speedIncrement?: number  // km/h per steg
+  incline?: number         // % lutning
+  // Gemensamt
+  testDuration: number     // minuter per steg
   bodyWeight: number | null
   heightCm: number | null
 }
@@ -110,6 +116,7 @@ export interface CoachAssessment {
 export interface RawDataPoint {
   min: number
   watt: number
+  speed?: number  // km/h — används för löpning/skidor
   hr: number
   lac: number
   borg: number
