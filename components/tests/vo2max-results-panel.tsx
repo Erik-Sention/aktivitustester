@@ -52,13 +52,13 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
               <div className="flex justify-between text-base">
                 <dt className="text-[#515154]">Starteffekt</dt>
                 <dd className="font-semibold text-[#1D1D1F]">
-                  {test.inputParams.startWatt > 0 ? `${test.inputParams.startWatt} W` : "Ej angivet"}
+                  {(test.inputParams.startWatt ?? 0) > 0 ? `${test.inputParams.startWatt} W` : "Ej angivet"}
                 </dd>
               </div>
               <div className="flex justify-between text-base">
                 <dt className="text-[#515154]">Effektökning</dt>
                 <dd className="font-semibold text-[#1D1D1F]">
-                  {test.inputParams.stepSize > 0 ? `${test.inputParams.stepSize} W/min` : "Ej angivet"}
+                  {(test.inputParams.stepSize ?? 0) > 0 ? `${test.inputParams.stepSize} W/min` : "Ej angivet"}
                 </dd>
               </div>
             </dl>

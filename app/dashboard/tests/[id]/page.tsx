@@ -73,10 +73,10 @@ export default async function TestDetailPage({
           </h1>
           <p className="text-base text-[#1D1D1F]">
             {testDateStr}
-            {test.testType !== "wingate" && test.inputParams.startWatt > 0 && (
+            {test.testType !== "wingate" && (test.inputParams.startWatt ?? 0) > 0 && (
               <span className="ml-3 text-[#86868B]">·</span>
             )}
-            {test.testType !== "wingate" && test.inputParams.startWatt > 0 && (
+            {test.testType !== "wingate" && (test.inputParams.startWatt ?? 0) > 0 && (
               <span className="ml-3">{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
             )}
             {test.testType === "wingate" && (test as any).wingateInputParams?.startCadenceRpm && (

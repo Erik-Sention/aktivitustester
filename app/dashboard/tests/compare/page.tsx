@@ -28,8 +28,8 @@ export default async function CompareTestsPage({
       sport: t.sport,
       testDateStr: new Date(t.testDate.seconds * 1000).toLocaleDateString("sv-SE"),
       inputParams: {
-        startWatt: t.inputParams.startWatt,
-        stepSize: t.inputParams.stepSize,
+        startWatt: t.inputParams.startWatt ?? 0,
+        stepSize: t.inputParams.stepSize ?? 0,
         testDuration: t.inputParams.testDuration,
         bodyWeight: t.inputParams.bodyWeight,
       },

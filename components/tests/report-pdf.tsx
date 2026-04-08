@@ -558,7 +558,7 @@ export function AktivitusReport({
         stats:  [
           {
             label: 'Protokoll',
-            value: ip.startWatt > 0
+            value: (ip.startWatt ?? 0) > 0
               ? `${ip.startWatt}W +${ip.stepSize}W/${ip.testDuration}min`
               : '-',
           },
