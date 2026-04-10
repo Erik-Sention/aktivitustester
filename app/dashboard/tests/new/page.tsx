@@ -2,7 +2,6 @@ import { getAthletes } from "@/lib/athletes"
 import { getSessionUser } from "@/lib/session"
 import { redirect } from "next/navigation"
 import { LiveRecordingView } from "@/components/tests/live-recording-view"
-import { WingateRecordingView } from "@/components/tests/wingate-recording-view"
 
 export default async function NewTestPage({
   searchParams,
@@ -21,16 +20,6 @@ export default async function NewTestPage({
     lastName: a.lastName,
     currentWeight: a.currentWeight,
   }))
-
-  if (defaultType === "wingate") {
-    return (
-      <WingateRecordingView
-        athletes={athleteList}
-        defaultAthleteId={athleteId}
-        defaultTestLeader={user.email}
-      />
-    )
-  }
 
   return (
     <LiveRecordingView

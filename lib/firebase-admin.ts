@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert, applicationDefault, App } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 import { writeFileSync } from 'fs'
 
 function ensureADCCredentials() {
@@ -37,3 +38,4 @@ function getAdminApp(): App {
 const adminApp = getAdminApp()
 
 export const adminDb = getFirestore(adminApp)
+export const adminStorage = getStorage(adminApp)

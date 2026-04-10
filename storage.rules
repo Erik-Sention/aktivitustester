@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // All uploads go through the Next.js server via Admin SDK.
+      // No direct browser access needed.
+      allow read, write: if true;
+    }
+  }
+}

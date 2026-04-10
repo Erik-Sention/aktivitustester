@@ -33,7 +33,7 @@ const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
 
 const WINGATE_DURATION = 30 // seconds
 
-function WingateTimer() {
+export function WingateTimer() {
   const [elapsed, setElapsed] = useState(0)
   const [running, setRunning] = useState(false)
   const ref = useRef<ReturnType<typeof setInterval> | null>(null)

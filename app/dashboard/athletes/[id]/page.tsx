@@ -2,11 +2,13 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getAthlete } from "@/lib/athletes"
 import { getTests } from "@/lib/tests"
+// import { getAthleteFiles } from "@/lib/athlete-files"  // requires Admin SDK credentials
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn, fullName } from "@/lib/utils"
 import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
 import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
+import { SerializedAthleteFile } from "@/types"
 import { Pencil, Mail, Phone, User, Calendar, Hash } from "lucide-react"
 
 export default async function AthleteDetailPage({
@@ -20,6 +22,7 @@ export default async function AthleteDetailPage({
     getAthlete(id),
     getTests(id),
   ])
+  const files: import("@/types").AthleteFile[] = []
 
   if (!athlete) notFound()
 
@@ -39,6 +42,17 @@ export default async function AthleteDetailPage({
       maxHR: t.results.maxHR,
       maxLactate: t.results.maxLactate,
     },
+  }))
+
+  const serializedFiles: SerializedAthleteFile[] = files.map((f) => ({
+    id: f.id,
+    resultType: f.resultType,
+    testDateStr: new Date(f.testDate.seconds * 1000).toLocaleDateString("sv-SE"),
+    testDateEndStr: f.testDateEnd
+      ? new Date(f.testDateEnd.seconds * 1000).toLocaleDateString("sv-SE")
+      : undefined,
+    fileName: f.fileName,
+    storageUrl: f.storageUrl,
   }))
 
   const birthDateStr = athlete.birthDate
@@ -129,7 +143,7 @@ export default async function AthleteDetailPage({
       </Card>
 
       {/* Right: Tests */}
-      <AthleteTestsPanel tests={serializedTests} athleteId={id} />
+      <AthleteTestsPanel tests={serializedTests} fileResults={serializedFiles} athleteId={id} />
     </div>
   )
 }

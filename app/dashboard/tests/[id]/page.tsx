@@ -9,6 +9,7 @@ import { DeleteTestButton } from "@/components/tests/delete-test-button"
 import { ReportDownloadButton } from "@/components/tests/report-download-button"
 import { Vo2MaxResultsPanel } from "@/components/tests/vo2max-results-panel"
 import { WingateResultsPanel } from "@/components/tests/wingate-results-panel"
+import { WingatePowerChart } from "@/components/tests/wingate-power-chart"
 import { Pencil } from "lucide-react"
 
 function testTypeLabel(type: string) {
@@ -89,7 +90,7 @@ export default async function TestDetailPage({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0" data-pdf-hide>
-          <ReportDownloadButton test={serializedTest} athleteName={athleteName} />
+          <ReportDownloadButton test={serializedTest} athleteName={athleteName} gender={athlete?.gender ?? ""} />
           <Link
             href={`/dashboard/tests/${id}/edit`}
             className={cn(buttonVariants({ variant: "outline", size: "default" }), "gap-2")}
@@ -232,6 +233,52 @@ export default async function TestDetailPage({
 
         {/* Left column — 70% (DOM second → mobile last) */}
         <div className="lg:col-span-8 lg:order-1 space-y-6">
+
+          {/* Wingate left column */}
+          {test.testType === "wingate" && test.wingateData && (() => {
+            const wd = test.wingateData!
+            const wp = test.wingateInputParams
+            const fi = ((wd.peakPower - wd.minPower) / wd.peakPower) * 100
+            const fiLabel = fi < 40 ? "Låg trötthet" : fi < 55 ? "Normal trötthet" : "Hög trötthet"
+            const fiColor = fi < 40 ? "text-[#34C759]" : fi < 55 ? "text-[#FF9500]" : "text-[hsl(var(--destructive))]"
+            const brakeKg = wp?.bodyWeight && wp?.bodyWeightPercent
+              ? ((wp.bodyWeightPercent / 100) * wp.bodyWeight).toFixed(1)
+              : null
+
+            return (
+              <>
+                {/* Power bar chart */}
+                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Effektkurva</p>
+                  <WingatePowerChart wingateData={wd} bodyWeight={wp?.bodyWeight} />
+                </div>
+
+                {/* Interpretation card */}
+                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm space-y-4">
+                  <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Tolkning</p>
+
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[#515154]">Fatigue Index</span>
+                    <span className={`text-xl font-black tabular-nums ${fiColor}`}>
+                      {fi.toFixed(1)} % <span className={`text-sm font-semibold ${fiColor}`}>— {fiLabel}</span>
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-[#515154] leading-relaxed">
+                    Fatigue Index visar hur mycket effekten sjunker under testet — lägre värde betyder att atleten
+                    håller sin toppeffekt längre utan att tröttna.
+                  </p>
+
+                  {brakeKg && (
+                    <div className="flex items-baseline justify-between border-t border-[hsl(var(--border))]/60 pt-3">
+                      <span className="text-[#515154]">Bromsbelastning</span>
+                      <span className="font-semibold text-[#1D1D1F]">{brakeKg} kg</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )
+          })()}
 
           {/* Chart hero — hidden for Wingate (no rawData) */}
           {test.testType !== "wingate" && (

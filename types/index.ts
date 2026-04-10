@@ -173,6 +173,30 @@ export interface Test {
 
 export type TestInput = Omit<Test, 'id' | 'results' | 'createdAt'>
 
+// --- AthleteFile ---
+
+export interface AthleteFile {
+  id: string
+  athleteId: string
+  clinicId: string
+  coachId: string
+  resultType: string       // e.g. "Glukosanalys"
+  testDate: Timestamp
+  testDateEnd?: Timestamp  // optional end date for ranges
+  fileName: string
+  storageUrl: string
+  createdAt: Timestamp
+}
+
+export interface SerializedAthleteFile {
+  id: string
+  resultType: string
+  testDateStr: string
+  testDateEndStr?: string
+  fileName: string
+  storageUrl: string
+}
+
 // --- Auth session (returned to client components) ---
 
 export interface SessionUser {

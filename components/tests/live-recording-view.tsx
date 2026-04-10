@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { createTestAction } from "@/app/actions/tests"
+import { createTestAction, createWingateTestAction } from "@/app/actions/tests"
+import { WingateTimer } from "@/components/tests/wingate-recording-view"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -254,7 +254,6 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
 }
 
 export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader }: LiveRecordingViewProps) {
-  const router = useRouter()
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -301,6 +300,42 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [exhaustionWattStr, setExhaustionWattStr] = useState("")
   const [manualVo2MaxStr, setManualVo2MaxStr] = useState("")      // ml/kg/min
   const [manualAbsVo2Str, setManualAbsVo2Str] = useState("")      // ml O₂/min (Syreupptag)
+
+  // ── Wingate-specific state ────────────────────────────────────────
+  const [wingateResults, setWingateResults] = useState({ peakPower: "", meanPower: "", minPower: "" })
+  const [wingateParams, setWingateParams] = useState({
+    saddleVerticalMm: "", saddleHorizontalMm: "", startCadenceRpm: "", bodyWeightPercent: "10",
+  })
+
+  async function handleWingateSave() {
+    const peak = parseFloat(wingateResults.peakPower)
+    const mean = parseFloat(wingateResults.meanPower)
+    const min = parseFloat(wingateResults.minPower)
+    if (!peak || !mean || !min) { setError("Fyll i Peak, Medel och Min-effekt"); return }
+    setSaving(true)
+    setError(null)
+    try {
+      await createWingateTestAction({
+        athleteId: form.athleteId,
+        testLocation: (form.testLocation || "stockholm") as ClinicLocation,
+        testLeader: form.testLeader,
+        testDate: form.testDate,
+        notes: form.notes,
+        wingateData: { peakPower: peak, meanPower: mean, minPower: min },
+        wingateInputParams: {
+          saddleVerticalMm: parseInt(wingateParams.saddleVerticalMm) || null,
+          saddleHorizontalMm: parseInt(wingateParams.saddleHorizontalMm) || null,
+          startCadenceRpm: parseInt(wingateParams.startCadenceRpm) || null,
+          bodyWeightPercent: parseFloat(wingateParams.bodyWeightPercent) || 10,
+          bodyWeight: parseFloat(form.bodyWeight) || null,
+        },
+      })
+    } catch (e: unknown) {
+      if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e
+      setError("Något gick fel. Försök igen.")
+      setSaving(false)
+    }
+  }
 
   // ── Coach assessment ──────────────────────────────────────────────
   const [coachAssessment, setCoachAssessment] = useState<CoachAssessment>(EMPTY_COACH_ASSESSMENT)
@@ -351,9 +386,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
   function changeTestType(testType: TestType) {
     if (testType === "wingate") {
-      const params = new URLSearchParams({ type: "wingate" })
-      if (form.athleteId) params.set("athlete", form.athleteId)
-      router.push(`/dashboard/tests/new?${params.toString()}`)
+      setForm((f) => ({ ...f, testType: "wingate" }))
       return
     }
     if (testType === "vo2max") {
@@ -704,18 +737,50 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   ))}
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="protocol">Val 3 — Protokoll</Label>
-                <Select id="protocol" value={form.protocol} onChange={(e) => changeProtocol(e.target.value as ProtocolType)}>
-                  {PROTOCOL_OPTIONS[form.sport].map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </Select>
-              </div>
+              {form.testType !== "wingate" && (
+                <div className="space-y-1">
+                  <Label htmlFor="protocol">Val 3 — Protokoll</Label>
+                  <Select id="protocol" value={form.protocol} onChange={(e) => changeProtocol(e.target.value as ProtocolType)}>
+                    {PROTOCOL_OPTIONS[form.sport].map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </Select>
+                </div>
+              )}
             </div>
 
+            {/* Wingate-inställningar */}
+            {form.testType === "wingate" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="wingatesSaddleV">Sadel vertikal (mm)</Label>
+                  <Input id="wingatesSaddleV" type="text" inputMode="numeric" placeholder="t.ex. 720"
+                    value={wingateParams.saddleVerticalMm}
+                    onChange={(e) => setWingateParams((p) => ({ ...p, saddleVerticalMm: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="wingatesSaddleH">Sadel horisontell (mm)</Label>
+                  <Input id="wingatesSaddleH" type="text" inputMode="numeric" placeholder="t.ex. 3"
+                    value={wingateParams.saddleHorizontalMm}
+                    onChange={(e) => setWingateParams((p) => ({ ...p, saddleHorizontalMm: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="wingatesCadence">Startkadens (rpm)</Label>
+                  <Input id="wingatesCadence" type="text" inputMode="numeric" placeholder="t.ex. 110"
+                    value={wingateParams.startCadenceRpm}
+                    onChange={(e) => setWingateParams((p) => ({ ...p, startCadenceRpm: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="wingatesBwPct">% kroppsvikt</Label>
+                  <Input id="wingatesBwPct" type="text" inputMode="decimal"
+                    value={wingateParams.bodyWeightPercent}
+                    onChange={(e) => setWingateParams((p) => ({ ...p, bodyWeightPercent: e.target.value }))} />
+                </div>
+              </div>
+            )}
+
             {/* Protokollparametrar */}
-            {isSpeedBased(form.sport) ? (
+            {form.testType === "wingate" ? null : isSpeedBased(form.sport) ? (
               <div className="space-y-3">
                 {form.testType === "vo2max" ? (
                   /* VO2 max löpband: fri startfart + steg-presets */
@@ -909,6 +974,67 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             </Button>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  // ── Wingate recording screen ──────────────────────────────────────
+  if (step === "recording" && form.testType === "wingate") {
+    const wingateAthlete = athletes.find((a) => a.id === form.athleteId)
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Wingate — Cykel</h1>
+            <p className="text-base text-[#515154] mt-0.5">
+              {wingateAthlete ? `${wingateAthlete.firstName} ${wingateAthlete.lastName}` : ""}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setStep("setup")}>Tillbaka</Button>
+            <Button onClick={handleWingateSave} disabled={saving}>
+              {saving ? "Sparar…" : "Spara test"}
+            </Button>
+          </div>
+        </div>
+
+        <WingateTimer />
+
+        <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-5">
+          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Effektresultat (W)</p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="wgPeak">Peak</Label>
+              <Input id="wgPeak" type="text" inputMode="numeric" placeholder="W"
+                value={wingateResults.peakPower}
+                onChange={(e) => setWingateResults((r) => ({ ...r, peakPower: e.target.value }))}
+                className="text-center text-lg font-bold" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgMean">Medel</Label>
+              <Input id="wgMean" type="text" inputMode="numeric" placeholder="W"
+                value={wingateResults.meanPower}
+                onChange={(e) => setWingateResults((r) => ({ ...r, meanPower: e.target.value }))}
+                className="text-center text-lg font-bold" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgMin">Min</Label>
+              <Input id="wgMin" type="text" inputMode="numeric" placeholder="W"
+                value={wingateResults.minPower}
+                onChange={(e) => setWingateResults((r) => ({ ...r, minPower: e.target.value }))}
+                className="text-center text-lg font-bold" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm">
+          <Label htmlFor="wgNotes">Anteckningar</Label>
+          <textarea id="wgNotes" value={form.notes} onChange={(e) => update("notes", e.target.value)}
+            rows={3} placeholder="Fritext…"
+            className="mt-1 w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] px-3 py-2 text-base text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none" />
+        </div>
+
+        {error && <p className="text-sm text-[hsl(var(--destructive))] text-center">{error}</p>}
       </div>
     )
   }
