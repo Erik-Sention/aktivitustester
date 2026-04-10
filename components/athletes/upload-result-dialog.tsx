@@ -1,7 +1,6 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { storage, db } from "@/lib/firebase"
@@ -15,10 +14,10 @@ const RESULT_TYPES = ["Glukosanalys", "Blodprov", "EKG", "Kroppsammansättning",
 interface UploadResultDialogProps {
   athleteId: string
   onClose: () => void
+  onUploaded?: () => void
 }
 
-export function UploadResultDialog({ athleteId, onClose }: UploadResultDialogProps) {
-  const router = useRouter()
+export function UploadResultDialog({ athleteId, onClose, onUploaded }: UploadResultDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
@@ -70,7 +69,7 @@ export function UploadResultDialog({ athleteId, onClose }: UploadResultDialogPro
       }
       if (testDateEnd) doc.testDateEnd = new Date(testDateEnd)
       await addDoc(collection(db, "athlete_files"), doc)
-      router.refresh()
+      onUploaded?.()
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Något gick fel")
@@ -81,7 +80,7 @@ export function UploadResultDialog({ athleteId, onClose }: UploadResultDialogPro
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose() }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-5">

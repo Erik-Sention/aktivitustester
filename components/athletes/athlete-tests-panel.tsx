@@ -59,31 +59,30 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [showUpload, setShowUpload] = useState(false)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
 
-  useEffect(() => {
-    async function fetchFiles() {
-      const q = query(
-        collection(db, "athlete_files"),
-        where("athleteId", "==", athleteId),
-        orderBy("testDate", "desc")
-      )
-      const snap = await getDocs(q)
-      const files: SerializedAthleteFile[] = snap.docs.map((doc) => {
-        const d = doc.data()
-        const testDate = d.testDate?.toDate ? d.testDate.toDate() : new Date(d.testDate)
-        const testDateEnd = d.testDateEnd?.toDate ? d.testDateEnd.toDate() : d.testDateEnd ? new Date(d.testDateEnd) : undefined
-        return {
-          id: doc.id,
-          resultType: d.resultType,
-          testDateStr: testDate.toLocaleDateString("sv-SE"),
-          testDateEndStr: testDateEnd?.toLocaleDateString("sv-SE"),
-          fileName: d.fileName,
-          storageUrl: d.storageUrl,
-        }
-      })
-      setFileResults(files)
-    }
-    fetchFiles()
-  }, [athleteId])
+  async function fetchFiles() {
+    const q = query(
+      collection(db, "athlete_files"),
+      where("athleteId", "==", athleteId),
+      orderBy("testDate", "desc")
+    )
+    const snap = await getDocs(q)
+    const files: SerializedAthleteFile[] = snap.docs.map((doc) => {
+      const d = doc.data()
+      const testDate = d.testDate?.toDate ? d.testDate.toDate() : new Date(d.testDate)
+      const testDateEnd = d.testDateEnd?.toDate ? d.testDateEnd.toDate() : d.testDateEnd ? new Date(d.testDateEnd) : undefined
+      return {
+        id: doc.id,
+        resultType: d.resultType,
+        testDateStr: testDate.toLocaleDateString("sv-SE"),
+        testDateEndStr: testDateEnd?.toLocaleDateString("sv-SE"),
+        fileName: d.fileName,
+        storageUrl: d.storageUrl,
+      }
+    })
+    setFileResults(files)
+  }
+
+  useEffect(() => { fetchFiles() }, [athleteId])
 
   function toggle(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -228,7 +227,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       )}
 
       {showUpload && (
-        <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} />
+        <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} />
       )}
     </div>
   )
