@@ -29,9 +29,16 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded }: UploadRes
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const ACCEPTED_TYPES = [
+    "application/pdf",
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ]
+
   function handleFile(f: File) {
-    if (f.type !== "application/pdf") {
-      setError("Endast PDF-filer stöds.")
+    if (!ACCEPTED_TYPES.includes(f.type)) {
+      setError("Filtypen stöds inte. Tillåtna format: PDF, JPEG, PNG, GIF, WEBP, XLS, XLSX.")
       return
     }
     setError(null)
@@ -55,7 +62,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded }: UploadRes
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const filePath = `athletes/${athleteId}/${timestamp}-${safeName}`
       const storageRef = ref(storage, filePath)
-      await uploadBytes(storageRef, file, { contentType: "application/pdf" })
+      await uploadBytes(storageRef, file, { contentType: file.type })
       const url = await getDownloadURL(storageRef)
       const doc: Record<string, unknown> = {
         athleteId,
@@ -168,14 +175,14 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded }: UploadRes
                   <>
                     <Upload className="h-7 w-7 text-[#86868B]" />
                     <span className="text-sm text-[#515154]">Dra och släpp eller <span className="text-[#007AFF]">välj fil</span></span>
-                    <span className="text-xs text-[#86868B]">Endast PDF</span>
+                    <span className="text-xs text-[#86868B]">PDF, JPEG, PNG, XLS, XLSX</span>
                   </>
                 )}
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/jpeg,image/png,image/gif,image/webp,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
               />

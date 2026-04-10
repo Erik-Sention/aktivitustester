@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore"
+import { collection, query, where, orderBy, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { Plus, GitCompareArrows, FileText, Upload } from "lucide-react"
+import { Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil, Check, X as XIcon } from "lucide-react"
 import Link from "next/link"
 import { SerializedAthleteFile } from "@/types"
 import { UploadResultDialog } from "./upload-result-dialog"
@@ -58,6 +58,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
+  const [editingFileId, setEditingFileId] = useState<string | null>(null)
+  const [editingResultType, setEditingResultType] = useState("")
 
   async function fetchFiles() {
     const q = query(
@@ -194,13 +196,26 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             // File result
             const f = item.data
             const dateLabel = f.testDateEndStr ? `${f.testDateStr} – ${f.testDateEndStr}` : f.testDateStr
+            const isEditing = editingFileId === f.id
+
+            async function handleDeleteFile(e: React.MouseEvent) {
+              e.preventDefault()
+              if (!confirm(`Ta bort "${f.fileName}"?`)) return
+              await deleteDoc(doc(db, "athlete_files", f.id))
+              setFileResults((prev) => prev.filter((x) => x.id !== f.id))
+            }
+
+            async function handleSaveEdit(e: React.MouseEvent) {
+              e.preventDefault()
+              await updateDoc(doc(db, "athlete_files", f.id), { resultType: editingResultType })
+              setFileResults((prev) => prev.map((x) => x.id === f.id ? { ...x, resultType: editingResultType } : x))
+              setEditingFileId(null)
+            }
+
             return (
-              <a
+              <div
                 key={`file-${f.id}`}
-                href={f.storageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white rounded-2xl border border-[hsl(var(--border))] hover:bg-[#F5F5F7]/50 shadow-sm transition-colors cursor-pointer flex items-center gap-3 px-4 py-4 no-underline"
+                className="bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4"
               >
                 {/* File icon */}
                 <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[#515154]">
@@ -208,19 +223,40 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <a href={f.storageUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 no-underline hover:opacity-70 transition-opacity">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-[#1D1D1F]">{f.resultType}</span>
-                    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                      Dokument
-                    </span>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        value={editingResultType}
+                        onChange={(e) => setEditingResultType(e.target.value)}
+                        onClick={(e) => e.preventDefault()}
+                        className="text-sm font-semibold border border-[#007AFF] rounded px-1.5 py-0.5 outline-none"
+                      />
+                    ) : (
+                      <span className="font-semibold text-[#1D1D1F]">{f.resultType}</span>
+                    )}
+                    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Dokument</span>
                   </div>
                   <p className="text-sm text-[#515154] mt-0.5 truncate">{f.fileName}</p>
-                </div>
+                </a>
 
                 {/* Date */}
                 <span className="flex-shrink-0 text-sm text-[#515154]">{dateLabel}</span>
-              </a>
+
+                {/* Actions */}
+                {isEditing ? (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={handleSaveEdit} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors"><Check className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.preventDefault(); setEditingFileId(null) }} className="p-1.5 rounded-lg hover:bg-gray-100 text-[#515154] transition-colors"><XIcon className="w-4 h-4" /></button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={(e) => { e.preventDefault(); setEditingFileId(f.id); setEditingResultType(f.resultType) }} className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={handleDeleteFile} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
