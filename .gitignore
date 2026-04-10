@@ -17,7 +17,7 @@ test-results/
 
 # Playwright test suite (dev-only, not needed for Vercel)
 playwright.config.ts
-tests/
+/tests/
 .env.test.local.example
 
 # next.js
