@@ -58,6 +58,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
+  const [filesLoading, setFilesLoading] = useState(true)
   const [editingFileId, setEditingFileId] = useState<string | null>(null)
   const [editingResultType, setEditingResultType] = useState("")
   const [previewFile, setPreviewFile] = useState<SerializedAthleteFile | null>(null)
@@ -83,6 +84,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       }
     })
     setFileResults(files)
+    setFilesLoading(false)
   }
 
   useEffect(() => { fetchFiles() }, [athleteId])
@@ -135,7 +137,20 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {filesLoading ? (
+        <div className="space-y-2">
+          {[...Array(tests.length + 1)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm px-4 py-4 flex items-center gap-3 animate-pulse">
+              <div className="w-5 h-5 rounded bg-[#E5E5EA] flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-[#E5E5EA] rounded w-1/3" />
+                <div className="h-3 bg-[#F5F5F7] rounded w-1/2" />
+              </div>
+              <div className="h-3 bg-[#E5E5EA] rounded w-20 flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <p className="text-[#515154] text-base">Inga tester registrerade ännu.</p>
       ) : (
         <div className="space-y-2">
