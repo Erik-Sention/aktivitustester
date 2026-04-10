@@ -66,11 +66,11 @@ export default async function AthleteDetailPage({
         <CardContent className="p-6 space-y-5">
           {/* Name + gender */}
           <div>
-            <h1 className="text-xl font-bold text-[#1D1D1F]">
+            <h1 className="text-xl font-bold text-primary">
               {fullName(athlete.firstName, athlete.lastName)}
             </h1>
             {athlete.gender && (
-              <p className="text-sm text-[#515154] mt-0.5">
+              <p className="text-sm text-secondary mt-0.5">
                 {athlete.gender === "M" ? "Man" : "Kvinna"}
               </p>
             )}
@@ -80,46 +80,46 @@ export default async function AthleteDetailPage({
           <div className="space-y-3">
             {birthDateStr && (
               <div className="flex items-start gap-2.5">
-                <Calendar className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <Calendar className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Född</p>
-                  <p className="text-sm text-[#1D1D1F]">{birthDateStr}</p>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Född</p>
+                  <p className="text-sm text-primary">{birthDateStr}</p>
                 </div>
               </div>
             )}
             {athlete.personnummer && (
               <div className="flex items-start gap-2.5">
-                <Hash className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <Hash className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Personnummer</p>
-                  <p className="text-sm text-[#1D1D1F]">{athlete.personnummer}</p>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Personnummer</p>
+                  <p className="text-sm text-primary">{athlete.personnummer}</p>
                 </div>
               </div>
             )}
             {athlete.email && (
               <div className="flex items-start gap-2.5">
-                <Mail className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <Mail className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">E-post</p>
-                  <p className="text-sm text-[#1D1D1F] break-all">{athlete.email}</p>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">E-post</p>
+                  <p className="text-sm text-primary break-all">{athlete.email}</p>
                 </div>
               </div>
             )}
             {athlete.phone && (
               <div className="flex items-start gap-2.5">
-                <Phone className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <Phone className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Telefon</p>
-                  <p className="text-sm text-[#1D1D1F]">{athlete.phone}</p>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Telefon</p>
+                  <p className="text-sm text-primary">{athlete.phone}</p>
                 </div>
               </div>
             )}
             {athlete.mainCoach && (
               <div className="flex items-start gap-2.5">
-                <User className="h-4 w-4 text-[#515154] mt-0.5 flex-shrink-0" />
+                <User className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide">Huvudcoach</p>
-                  <p className="text-sm text-[#1D1D1F]">{athlete.mainCoach}</p>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Huvudcoach</p>
+                  <p className="text-sm text-primary">{athlete.mainCoach}</p>
                 </div>
               </div>
             )}

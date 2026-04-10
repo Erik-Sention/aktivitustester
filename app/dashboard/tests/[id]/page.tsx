@@ -61,18 +61,18 @@ export default async function TestDetailPage({
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-0.5">
-          <nav className="flex items-center gap-1.5 text-sm font-semibold text-[#515154]" data-pdf-hide>
+          <nav className="flex items-center gap-1.5 text-sm font-semibold text-secondary" data-pdf-hide>
             <Link href="/dashboard/athletes" className="hover:text-[#007AFF] transition-colors">Atleter</Link>
             <span>/</span>
-            <Link href={`/dashboard/athletes/${test.athleteId}`} className="hover:text-[#007AFF] transition-colors text-[#1D1D1F]">
+            <Link href={`/dashboard/athletes/${test.athleteId}`} className="hover:text-[#007AFF] transition-colors text-primary">
               {athleteName}
             </Link>
           </nav>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
             {testTypeLabel(test.testType)}
-            <span className="ml-2 text-lg font-normal text-[#1D1D1F]/60">— {sportLabel(test.sport)} — {athleteName}</span>
+            <span className="ml-2 text-lg font-normal text-primary/60">— {sportLabel(test.sport)} — {athleteName}</span>
           </h1>
-          <p className="text-base text-[#1D1D1F]">
+          <p className="text-base text-primary">
             {testDateStr}
             {test.testType !== "wingate" && (test.inputParams.startWatt ?? 0) > 0 && (
               <span className="ml-3 text-[#86868B]">·</span>
@@ -209,24 +209,24 @@ export default async function TestDetailPage({
 
           {/* Bike settings */}
           {test.settings?.bike && (
-            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-sm">
-              <p className="mb-3 text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Cykelinställningar</p>
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple">
+              <p className="mb-3 text-sm font-black uppercase tracking-widest text-primary">Cykelinställningar</p>
               <dl className="space-y-2 text-base">
-                {test.settings.bike.bikeType && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Cykeltyp</dt><dd className="font-semibold">{test.settings.bike.bikeType}</dd></div>}
-                {test.settings.bike.pedalType && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Pedaltyp</dt><dd className="font-semibold">{test.settings.bike.pedalType}</dd></div>}
-                {test.settings.bike.saddleVerticalMm != null && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Sadel vertikal</dt><dd className="font-semibold">{test.settings.bike.saddleVerticalMm} mm</dd></div>}
-                {test.settings.bike.saddleHorizontalMm != null && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Sadel horisontell</dt><dd className="font-semibold">{test.settings.bike.saddleHorizontalMm} mm</dd></div>}
-                {test.settings.bike.handlebarVerticalMm != null && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Styre vertikal</dt><dd className="font-semibold">{test.settings.bike.handlebarVerticalMm} mm</dd></div>}
-                {test.settings.bike.handlebarHorizontalMm != null && <div className="flex justify-between"><dt className="text-[#1D1D1F]">Styre horisontell</dt><dd className="font-semibold">{test.settings.bike.handlebarHorizontalMm} mm</dd></div>}
+                {test.settings.bike.bikeType && <div className="flex justify-between"><dt className="text-primary">Cykeltyp</dt><dd className="font-semibold">{test.settings.bike.bikeType}</dd></div>}
+                {test.settings.bike.pedalType && <div className="flex justify-between"><dt className="text-primary">Pedaltyp</dt><dd className="font-semibold">{test.settings.bike.pedalType}</dd></div>}
+                {test.settings.bike.saddleVerticalMm != null && <div className="flex justify-between"><dt className="text-primary">Sadel vertikal</dt><dd className="font-semibold">{test.settings.bike.saddleVerticalMm} mm</dd></div>}
+                {test.settings.bike.saddleHorizontalMm != null && <div className="flex justify-between"><dt className="text-primary">Sadel horisontell</dt><dd className="font-semibold">{test.settings.bike.saddleHorizontalMm} mm</dd></div>}
+                {test.settings.bike.handlebarVerticalMm != null && <div className="flex justify-between"><dt className="text-primary">Styre vertikal</dt><dd className="font-semibold">{test.settings.bike.handlebarVerticalMm} mm</dd></div>}
+                {test.settings.bike.handlebarHorizontalMm != null && <div className="flex justify-between"><dt className="text-primary">Styre horisontell</dt><dd className="font-semibold">{test.settings.bike.handlebarHorizontalMm} mm</dd></div>}
               </dl>
             </div>
           )}
 
           {/* Notes */}
           {test.notes && (
-            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-sm overflow-hidden">
-              <p className="mb-2 text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Anteckningar</p>
-              <p className="text-base leading-relaxed text-[#1D1D1F] italic whitespace-pre-wrap break-all">{test.notes}</p>
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple overflow-hidden">
+              <p className="mb-2 text-sm font-black uppercase tracking-widest text-primary">Anteckningar</p>
+              <p className="text-base leading-relaxed text-primary italic whitespace-pre-wrap break-all">{test.notes}</p>
             </div>
           )}
         </div>
@@ -248,31 +248,31 @@ export default async function TestDetailPage({
             return (
               <>
                 {/* Power bar chart */}
-                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
-                  <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Effektkurva</p>
+                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-apple">
+                  <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">Effektkurva</p>
                   <WingatePowerChart wingateData={wd} bodyWeight={wp?.bodyWeight} />
                 </div>
 
                 {/* Interpretation card */}
-                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm space-y-4">
-                  <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Tolkning</p>
+                <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-apple space-y-4">
+                  <p className="text-sm font-black uppercase tracking-widest text-primary">Tolkning</p>
 
                   <div className="flex items-baseline justify-between">
-                    <span className="text-[#515154]">Fatigue Index</span>
+                    <span className="text-secondary">Fatigue Index</span>
                     <span className={`text-xl font-black tabular-nums ${fiColor}`}>
                       {fi.toFixed(1)} % <span className={`text-sm font-semibold ${fiColor}`}>— {fiLabel}</span>
                     </span>
                   </div>
 
-                  <p className="text-sm text-[#515154] leading-relaxed">
+                  <p className="text-sm text-secondary leading-relaxed">
                     Fatigue Index visar hur mycket effekten sjunker under testet — lägre värde betyder att atleten
                     håller sin toppeffekt längre utan att tröttna.
                   </p>
 
                   {brakeKg && (
                     <div className="flex items-baseline justify-between border-t border-[hsl(var(--border))]/60 pt-3">
-                      <span className="text-[#515154]">Bromsbelastning</span>
-                      <span className="font-semibold text-[#1D1D1F]">{brakeKg} kg</span>
+                      <span className="text-secondary">Bromsbelastning</span>
+                      <span className="font-semibold text-primary">{brakeKg} kg</span>
                     </div>
                   )}
                 </div>
@@ -282,8 +282,8 @@ export default async function TestDetailPage({
 
           {/* Chart hero — hidden for Wingate (no rawData) */}
           {test.testType !== "wingate" && (
-          <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
-            <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Prestandagraf</p>
+          <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-apple">
+            <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">Prestandagraf</p>
             <LiveTestChart
               rows={test.rawData}
               dur={testDuration}
@@ -294,14 +294,14 @@ export default async function TestDetailPage({
 
           {/* Minute data table */}
           {test.testType !== "wingate" && test.rawData.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-apple">
               <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3">
-                <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>
+                <p className="text-sm font-black uppercase tracking-widest text-primary">Minutdata</p>
               </div>
               <div className="overflow-y-auto max-h-[480px]">
                 <table className="w-full text-base table-fixed">
                   <thead>
-                    <tr className="text-sm font-black uppercase tracking-wider text-[#1D1D1F] border-b border-[hsl(var(--border))]/60">
+                    <tr className="text-sm font-black uppercase tracking-wider text-primary border-b border-[hsl(var(--border))]/60">
                       <th className="px-4 py-3 text-left">Min</th>
                       <th className="px-4 py-3 text-right">W</th>
                       <th className="px-4 py-3 text-right">Puls</th>
@@ -313,14 +313,14 @@ export default async function TestDetailPage({
                   <tbody className="divide-y divide-[hsl(var(--border))]/30">
                     {test.rawData.map((p, i) => (
                       <tr key={i} className={`transition-colors ${isLacRow(p.min) && p.lac > 0 ? "bg-[#007AFF]/[0.04] hover:bg-[#007AFF]/[0.08]" : "hover:bg-[#F5F5F7]/50"}`}>
-                        <td className="px-4 py-3 text-[#1D1D1F] tabular-nums">{p.min}</td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-[#1D1D1F]">{p.watt || "—"}</td>
-                        <td className="px-4 py-3 text-right font-mono text-[#1D1D1F]">{p.hr || "—"}</td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold ${p.lac >= 4 ? "text-[hsl(var(--destructive))]" : p.lac >= 2 ? "text-[hsl(var(--warning))]" : "text-[#1D1D1F]"}`}>
+                        <td className="px-4 py-3 text-primary tabular-nums">{p.min}</td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-primary">{p.watt || "—"}</td>
+                        <td className="px-4 py-3 text-right font-mono text-primary">{p.hr || "—"}</td>
+                        <td className={`px-4 py-3 text-right font-mono font-bold ${p.lac >= 4 ? "text-[hsl(var(--destructive))]" : p.lac >= 2 ? "text-[hsl(var(--warning))]" : "text-primary"}`}>
                           {p.lac || "—"}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[#1D1D1F]">{p.borg || "—"}</td>
-                        <td className="px-4 py-3 text-right font-mono text-[#1D1D1F]">{p.cadence || "—"}</td>
+                        <td className="px-4 py-3 text-right font-mono text-primary">{p.borg || "—"}</td>
+                        <td className="px-4 py-3 text-right font-mono text-primary">{p.cadence || "—"}</td>
                       </tr>
                     ))}
                   </tbody>

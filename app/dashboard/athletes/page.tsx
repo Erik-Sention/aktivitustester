@@ -16,7 +16,7 @@ export default async function AthletesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Atleter</h1>
+        <h1 className="text-2xl font-bold text-primary">Atleter</h1>
         <Link href="/dashboard/athletes/new" className={cn(buttonVariants())}>
           <UserPlus className="h-4 w-4" />
           Ny atlet
@@ -24,9 +24,13 @@ export default async function AthletesPage() {
       </div>
 
       {athletes.length === 0 ? (
-        <p className="text-[#515154] text-base mt-8 text-center">
-          Inga atleter ännu. Lägg till din första atlet för att komma igång.
-        </p>
+        <div className="rounded-3xl border border-black/[0.05] bg-white shadow-apple p-12 text-center mt-8">
+          <p className="text-lg font-semibold text-primary mb-1">Inga atleter än</p>
+          <p className="text-base text-secondary mb-6">Lägg till din första atlet för att komma igång.</p>
+          <Link href="/dashboard/athletes/new" className={cn(buttonVariants())}>
+            <UserPlus className="h-4 w-4" /> Ny atlet
+          </Link>
+        </div>
       ) : (
         <AthletesTable athletes={athletes.map((a): SerializedAthlete => ({
           id: a.id,

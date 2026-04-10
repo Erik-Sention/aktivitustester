@@ -38,7 +38,7 @@ export default async function StoryPage() {
   // if (!user || user.role !== 'ADMIN') redirect('/login')
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold text-primary mb-1">Component Story</h1>
         <p className="text-sm text-primary mb-2">Alla UI-komponenter och design tokens på ett ställe.</p>
@@ -56,7 +56,7 @@ export default async function StoryPage() {
 
         {/* TYPOGRAPHY */}
         <Section title="Typografi">
-          <div className="bg-white rounded-3xl p-8 border border-black/[0.05] shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-8 border border-black/[0.05] shadow-apple space-y-6">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">Playfair Display — rubriker</p>
               <h1 className="text-5xl font-bold text-primary">H1 Aktivitus</h1>
@@ -79,7 +79,7 @@ export default async function StoryPage() {
         <Section title="Design Tokens — Färger">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {tokens.map((t) => (
-              <div key={t.name} className="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-sm border border-black/[0.05]">
+              <div key={t.name} className="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-apple border border-black/[0.05]">
                 <div
                   className="w-10 h-10 rounded-xl shrink-0 border border-black/[0.08]"
                   style={{ background: t.value }}
@@ -95,7 +95,7 @@ export default async function StoryPage() {
 
         {/* BUTTON */}
         <Section title="Button — Varianter">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-6">
             {(["default", "destructive", "outline", "secondary", "ghost", "link"] as const).map((variant) => (
               <div key={variant}>
                 <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">{variant}</p>
@@ -130,7 +130,7 @@ export default async function StoryPage() {
 
         {/* INPUT */}
         <Section title="Input">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-4 max-w-sm">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-4 max-w-sm">
             <div>
               <Label htmlFor="input-normal">Normal</Label>
               <Input id="input-normal" defaultValue="Erik Hansson" />
@@ -148,7 +148,7 @@ export default async function StoryPage() {
 
         {/* LABEL */}
         <Section title="Label">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-2 max-w-sm">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-2 max-w-sm">
             <Label>Ensam label</Label>
             <div>
               <Label htmlFor="label-pair">Kopplad till input</Label>
@@ -159,7 +159,7 @@ export default async function StoryPage() {
 
         {/* SELECT */}
         <Section title="Select">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-4 max-w-sm">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-4 max-w-sm">
             <div>
               <Label htmlFor="select-normal">Normal</Label>
               <Select id="select-normal" defaultValue="cykel">
@@ -179,7 +179,7 @@ export default async function StoryPage() {
 
         {/* TEXTAREA */}
         <Section title="Textarea">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-4 max-w-sm">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-4 max-w-sm">
             <div>
               <Label htmlFor="textarea-normal">Normal</Label>
               <Textarea id="textarea-normal" placeholder="Skriv anteckningar här..." />
@@ -193,19 +193,19 @@ export default async function StoryPage() {
 
         {/* FILTER PILLS */}
         <Section title="Filter Pills">
-          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-sm space-y-4">
-            <p className="text-sm text-[#515154]">
+          <div className="bg-white rounded-3xl p-6 border border-black/[0.05] shadow-apple space-y-4">
+            <p className="text-sm text-secondary">
               Används för att filtrera listor. Använd <code className="text-xs bg-[#F5F5F7] px-1.5 py-0.5 rounded">buttonVariants(&#123; variant: &quot;default&quot;, size: &quot;sm&quot; &#125;)</code> för aktiv och <code className="text-xs bg-[#F5F5F7] px-1.5 py-0.5 rounded">variant: &quot;outline&quot;</code> för inaktiv.
             </p>
             <div>
-              <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide mb-2">Aktiv</p>
+              <p className="text-xs font-semibold text-secondary uppercase tracking-wide mb-2">Aktiv</p>
               <div className="flex flex-wrap gap-2">
                 <button className={cn(buttonVariants({ variant: "default", size: "sm" }))}>Alla</button>
                 <button className={cn(buttonVariants({ variant: "default", size: "sm" }))}>Tröskeltest</button>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-[#515154] uppercase tracking-wide mb-2">Inaktiv</p>
+              <p className="text-xs font-semibold text-secondary uppercase tracking-wide mb-2">Inaktiv</p>
               <div className="flex flex-wrap gap-2">
                 <button className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>VO₂ max</button>
                 <button className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Wingate</button>

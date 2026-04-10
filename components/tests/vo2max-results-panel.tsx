@@ -33,13 +33,13 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
 
       {/* Protocol summary */}
       <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
-        <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">VO₂MAX</p>
+        <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">VO₂MAX</p>
 
         {/* Big value */}
         {vo2 != null && (
           <div className="mb-5 flex items-end gap-2">
-            <span className="text-[56px] font-black leading-none tracking-tighter text-[#007AFF]">{vo2}</span>
-            <span className="text-base text-[#515154] mb-2">ml/kg/min</span>
+            <span className="text-[56px] font-black leading-none tracking-tighter text-interactive">{vo2}</span>
+            <span className="text-base text-secondary mb-2">ml/kg/min</span>
           </div>
         )}
 
@@ -47,17 +47,17 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
 
           {/* Protokoll */}
           <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-[#515154] mb-2">Protokoll</p>
+            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Protokoll</p>
             <dl className="space-y-1.5">
               <div className="flex justify-between text-base">
-                <dt className="text-[#515154]">Starteffekt</dt>
-                <dd className="font-semibold text-[#1D1D1F]">
+                <dt className="text-secondary">Starteffekt</dt>
+                <dd className="font-semibold text-primary">
                   {(test.inputParams.startWatt ?? 0) > 0 ? `${test.inputParams.startWatt} W` : "Ej angivet"}
                 </dd>
               </div>
               <div className="flex justify-between text-base">
-                <dt className="text-[#515154]">Effektökning</dt>
-                <dd className="font-semibold text-[#1D1D1F]">
+                <dt className="text-secondary">Effektökning</dt>
+                <dd className="font-semibold text-primary">
                   {(test.inputParams.stepSize ?? 0) > 0 ? `${test.inputParams.stepSize} W/min` : "Ej angivet"}
                 </dd>
               </div>
@@ -66,18 +66,18 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
 
           {/* Utmattning */}
           <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-[#515154] mb-2">Utmattning</p>
+            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Utmattning</p>
             <dl className="space-y-1.5">
               <div className="flex justify-between text-base">
-                <dt className="text-[#515154]">Max effekt</dt>
-                <dd className="font-semibold text-[#1D1D1F]">
+                <dt className="text-secondary">Max effekt</dt>
+                <dd className="font-semibold text-primary">
                   {maxWatt != null && maxWatt > 0 ? `${maxWatt} W` : "Ej angivet"}
                 </dd>
               </div>
               {maxLactate != null && maxLactate > 0 && (
                 <div className="flex justify-between text-base">
-                  <dt className="text-[#515154]">Maxlaktat</dt>
-                  <dd className="font-bold text-[#1D1D1F]">{maxLactate.toFixed(2)} mmol/L</dd>
+                  <dt className="text-secondary">Maxlaktat</dt>
+                  <dd className="font-bold text-primary">{maxLactate.toFixed(2)} mmol/L</dd>
                 </div>
               )}
             </dl>
@@ -85,18 +85,18 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
 
           {/* Resultat */}
           <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-[#515154] mb-2">Resultat</p>
+            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Resultat</p>
             <dl className="space-y-1.5">
               {vo2 != null && bodyWeight != null && bodyWeight > 0 && (
                 <div className="flex justify-between text-base">
-                  <dt className="text-[#515154]">Syreupptag (abs.)</dt>
-                  <dd className="font-semibold text-[#1D1D1F]">{Math.round(vo2 * bodyWeight)} ml/min</dd>
+                  <dt className="text-secondary">Syreupptag (abs.)</dt>
+                  <dd className="font-semibold text-primary">{Math.round(vo2 * bodyWeight)} ml/min</dd>
                 </div>
               )}
               {maxHR != null && maxHR > 0 && (
                 <div className="flex justify-between text-base">
-                  <dt className="text-[#515154]">Max puls</dt>
-                  <dd className="font-semibold text-[#1D1D1F]">{maxHR} bpm</dd>
+                  <dt className="text-secondary">Max puls</dt>
+                  <dd className="font-semibold text-primary">{maxHR} bpm</dd>
                 </div>
               )}
             </dl>
@@ -108,7 +108,7 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
       {/* Classification bar — ruler design */}
       {vo2 != null && (
         <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
-          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-5">
+          <p className="text-sm font-black uppercase tracking-widest text-primary mb-5">
             Konditionsklass {gender === "K" ? "— Kvinna" : gender === "M" ? "— Man" : ""}
           </p>
           {(() => {
@@ -123,10 +123,10 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
                     className="absolute flex flex-col items-center"
                     style={{ left: `${markerPct}%`, transform: "translateX(-50%)" }}
                   >
-                    <span className="text-xs font-black text-[#1D1D1F] tabular-nums whitespace-nowrap">
+                    <span className="text-xs font-black text-primary tabular-nums whitespace-nowrap">
                       {vo2} ml/kg/min
                     </span>
-                    <span className="text-[10px] text-[#515154] whitespace-nowrap">
+                    <span className="text-[10px] text-secondary whitespace-nowrap">
                       {activeZone >= 0 ? VO2MAX_ZONES[activeZone].label : ""}
                     </span>
                     <div className="mt-0.5 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#1D1D1F]" />
@@ -163,10 +163,10 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
                         className="flex flex-col items-center overflow-hidden"
                         style={{ width: `${widthPct}%` }}
                       >
-                        <span className={`text-[9px] uppercase leading-tight text-center w-full px-0.5 truncate ${isActive ? "font-black text-[#1D1D1F]" : "font-medium text-[#86868B]"}`}>
+                        <span className={`text-[9px] uppercase leading-tight text-center w-full px-0.5 truncate ${isActive ? "font-black text-primary" : "font-medium text-[#86868B]"}`}>
                           {zone.label}
                         </span>
-                        <span className={`text-[9px] tabular-nums ${isActive ? "text-[#515154]" : "text-[#86868B]/50"}`}>
+                        <span className={`text-[9px] tabular-nums ${isActive ? "text-secondary" : "text-[#86868B]/50"}`}>
                           {start > 0 ? start : "—"}
                         </span>
                       </div>

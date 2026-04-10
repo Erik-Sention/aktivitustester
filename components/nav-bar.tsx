@@ -30,6 +30,13 @@ export function NavBar({ userName, role }: NavBarProps) {
           </span>
         </Link>
 
+        {/* Nav links */}
+        <nav className="hidden sm:flex items-center gap-6">
+          <Link href="/dashboard/athletes" className="text-base font-medium text-primary hover:text-interactive transition-colors">
+            Atleter
+          </Link>
+        </nav>
+
         {/* Right */}
         <div className="flex items-center gap-4">
           <span className="hidden sm:block text-base text-primary">
