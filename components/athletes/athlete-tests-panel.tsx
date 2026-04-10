@@ -59,6 +59,9 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [showUpload, setShowUpload] = useState(false)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
   const [filesLoading, setFilesLoading] = useState(true)
+  const [kindFilter, setKindFilter] = useState<"all" | "test" | "file">("all")
+  const [testTypeFilter, setTestTypeFilter] = useState<string>("all")
+  const [sportFilter, setSportFilter] = useState<string>("all")
   const [editingFileId, setEditingFileId] = useState<string | null>(null)
   const [editingResultType, setEditingResultType] = useState("")
   const [previewFile, setPreviewFile] = useState<SerializedAthleteFile | null>(null)
@@ -104,9 +107,21 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     router.push(`/dashboard/tests/compare?ids=${ids}`)
   }
 
+  const availableSports = [...new Set(tests.map((t) => t.sport))]
+
+  const sportLabels: Record<string, string> = {
+    cykel: "Cykel", lopning: "Löpning", skidor_band: "Skidor", skierg: "Skierg", kajak: "Kajak",
+  }
+
   const items: ListItem[] = [
-    ...tests.map((t): ListItem => ({ kind: "test", dateStr: t.testDateStr, data: t })),
-    ...fileResults.map((f): ListItem => ({ kind: "file", dateStr: f.testDateStr, data: f })),
+    ...tests
+      .filter(() => kindFilter !== "file")
+      .filter((t) => testTypeFilter === "all" || t.testType === testTypeFilter)
+      .filter((t) => sportFilter === "all" || t.sport === sportFilter)
+      .map((t): ListItem => ({ kind: "test", dateStr: t.testDateStr, data: t })),
+    ...fileResults
+      .filter((_f) => kindFilter !== "test")
+      .map((f): ListItem => ({ kind: "file", dateStr: f.testDateStr, data: f })),
   ].sort((a, b) => b.dateStr.localeCompare(a.dateStr))
 
   return (
@@ -137,6 +152,43 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
         </div>
       </div>
 
+      {/* Filter pills — typ */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: "Alla", kind: "all" as const, type: "all" },
+          { label: "Tröskeltest", kind: "test" as const, type: "troskeltest" },
+          { label: "VO₂ max", kind: "test" as const, type: "vo2max" },
+          { label: "Wingate", kind: "test" as const, type: "wingate" },
+          { label: "Dokument", kind: "file" as const, type: "all" },
+        ].map(({ label, kind, type }) => {
+          const active = kindFilter === kind && (kind === "all" || kind === "file" || testTypeFilter === type)
+          return (
+            <button
+              key={label}
+              onClick={() => { setKindFilter(kind); setTestTypeFilter(type); setSportFilter("all") }}
+              className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }))}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Filter pills — sport (dold vid Dokument-filter) */}
+      {kindFilter !== "file" && availableSports.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {["all", ...availableSports].map((sport) => (
+            <button
+              key={sport}
+              onClick={() => setSportFilter(sport)}
+              className={cn(buttonVariants({ variant: sportFilter === sport ? "default" : "outline", size: "sm" }))}
+            >
+              {sport === "all" ? "Alla sporter" : (sportLabels[sport] ?? sport)}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filesLoading ? (
         <div className="space-y-2">
           {[...Array(tests.length + 1)].map((_, i) => (
@@ -151,7 +203,11 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-[#515154] text-base">Inga tester registrerade ännu.</p>
+        <p className="text-[#515154] text-base">
+          {kindFilter === "all" && testTypeFilter === "all" && sportFilter === "all"
+            ? "Inga tester registrerade ännu."
+            : "Inga tester matchar filtret."}
+        </p>
       ) : (
         <div className="space-y-2">
           {items.map((item) => {
