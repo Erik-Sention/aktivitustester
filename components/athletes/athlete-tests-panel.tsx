@@ -6,7 +6,7 @@ import { collection, query, where, orderBy, getDocs, doc, deleteDoc, updateDoc }
 import { db } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil, Check, X as XIcon } from "lucide-react"
+import { Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil, Check, X as XIcon, Download } from "lucide-react"
 import Link from "next/link"
 import { SerializedAthleteFile } from "@/types"
 import { UploadResultDialog } from "./upload-result-dialog"
@@ -60,6 +60,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
   const [editingFileId, setEditingFileId] = useState<string | null>(null)
   const [editingResultType, setEditingResultType] = useState("")
+  const [previewFile, setPreviewFile] = useState<SerializedAthleteFile | null>(null)
 
   async function fetchFiles() {
     const q = query(
@@ -223,7 +224,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 </div>
 
                 {/* Content */}
-                <a href={f.storageUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 no-underline hover:opacity-70 transition-opacity">
+                <div onClick={() => !isEditing && setPreviewFile(f)} className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity">
                   <div className="flex items-center gap-2 flex-wrap">
                     {isEditing ? (
                       <input
@@ -239,7 +240,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                     <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Dokument</span>
                   </div>
                   <p className="text-sm text-[#515154] mt-0.5 truncate">{f.fileName}</p>
-                </a>
+                </div>
 
                 {/* Date */}
                 <span className="flex-shrink-0 text-sm text-[#515154]">{dateLabel}</span>
@@ -264,6 +265,61 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
       {showUpload && (
         <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} />
+      )}
+
+      {previewFile && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setPreviewFile(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl mx-4 overflow-hidden"
+            style={{ maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#E5E5EA]">
+              <div className="min-w-0">
+                <p className="font-semibold text-[#1D1D1F] truncate">{previewFile.resultType}</p>
+                <p className="text-xs text-[#515154] truncate">{previewFile.fileName}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                <a
+                  href={previewFile.storageUrl}
+                  download={previewFile.fileName}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                >
+                  <Download className="w-4 h-4" />
+                  Ladda ned
+                </a>
+                <button onClick={() => setPreviewFile(null)} className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors">
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="flex-1 overflow-auto bg-[#F5F5F7]" style={{ minHeight: 0 }}>
+              {previewFile.storageUrl.match(/\.pdf(\?|$)/i) || previewFile.fileName.toLowerCase().endsWith(".pdf") ? (
+                <iframe src={previewFile.storageUrl} className="w-full h-full" style={{ minHeight: "70vh" }} />
+              ) : previewFile.fileName.match(/\.(jpe?g|png|gif|webp)$/i) ? (
+                <div className="flex items-center justify-center p-6 min-h-64">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={previewFile.storageUrl} alt={previewFile.fileName} className="max-w-full max-h-[70vh] rounded-lg shadow" />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
+                  <FileText className="w-16 h-16 text-[#86868B]" />
+                  <p className="text-[#515154]">Förhandsgranskning ej tillgänglig för denna filtyp.</p>
+                  <a href={previewFile.storageUrl} download={previewFile.fileName} className={cn(buttonVariants())}>
+                    <Download className="w-4 h-4" />
+                    Ladda ned filen
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
