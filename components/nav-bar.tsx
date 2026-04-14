@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { doc, onSnapshot } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
+import { db, auth } from "@/lib/firebase"
 import type { CoachProfile } from "@/lib/coach-profile"
 
 interface NavBarProps {
@@ -19,16 +20,26 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "coach_profiles", uid),
-      (snap) => {
-        const p = snap.exists() ? (snap.data() as CoachProfile) : null
-        setDisplayName(p?.displayName ?? null)
-        setAvatarUrl(p?.avatarUrl ?? null)
-      },
-      () => {}
-    )
-    return unsub
+    let unsubSnap: (() => void) | undefined
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        unsubSnap = onSnapshot(
+          doc(db, "coach_profiles", uid),
+          (snap) => {
+            const p = snap.exists() ? (snap.data() as CoachProfile) : null
+            setDisplayName(p?.displayName ?? null)
+            setAvatarUrl(p?.avatarUrl ?? null)
+          },
+          () => {}
+        )
+      }
+    })
+
+    return () => {
+      unsubAuth()
+      unsubSnap?.()
+    }
   }, [uid])
 
   const shownName = displayName || userName

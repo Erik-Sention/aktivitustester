@@ -1,0 +1,165 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { onAuthStateChanged } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { getAthlete } from "@/lib/athletes"
+import { getTests } from "@/lib/tests"
+import { Athlete, Test } from "@/types"
+import Link from "next/link"
+import { buttonVariants } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { cn, fullName } from "@/lib/utils"
+import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
+import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
+import { SerializedAthleteFile } from "@/types"
+import { Pencil, Mail, Phone, User, Calendar, Hash } from "lucide-react"
+
+function PageSpinner() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="h-8 w-8 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+    </div>
+  )
+}
+
+export function AthleteDetailClient({ id }: { id: string }) {
+  const [athlete, setAthlete] = useState<Athlete | null>(null)
+  const [tests, setTests] = useState<Test[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      unsub()
+      if (!user) { router.push("/login"); return }
+      const [a, t] = await Promise.all([getAthlete(id), getTests(id)])
+      setAthlete(a)
+      setTests(t)
+      setLoading(false)
+    })
+    return unsub
+  }, [id, router])
+
+  if (loading) return <PageSpinner />
+
+  if (!athlete) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-lg font-semibold text-primary">Atleten hittades inte</p>
+        <Link href="/dashboard/athletes" className={cn(buttonVariants({ variant: "outline" }), "mt-4")}>
+          Tillbaka till atleter
+        </Link>
+      </div>
+    )
+  }
+
+  const serializedTests: SerializedTest[] = tests.map((t) => ({
+    id: t.id,
+    testType: t.testType,
+    sport: t.sport,
+    testDateStr: new Date(t.testDate.seconds * 1000).toLocaleDateString("sv-SE"),
+    inputParams: {
+      startWatt: t.inputParams.startWatt ?? 0,
+      stepSize: t.inputParams.stepSize ?? 0,
+      testDuration: t.inputParams.testDuration,
+    },
+    results: {
+      atWatt: t.results.atWatt,
+      ltWatt: t.results.ltWatt,
+      maxHR: t.results.maxHR,
+      maxLactate: t.results.maxLactate,
+    },
+  }))
+
+  const serializedFiles: SerializedAthleteFile[] = []
+
+  const birthDateStr = athlete.birthDate
+    ? new Date(athlete.birthDate.seconds * 1000).toLocaleDateString("sv-SE")
+    : null
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+      {/* Left: Profile card */}
+      <Card className="sticky top-6">
+        <CardContent className="p-6 space-y-5">
+          <div>
+            <h1 className="text-xl font-bold text-primary">
+              {fullName(athlete.firstName, athlete.lastName)}
+            </h1>
+            {athlete.gender && (
+              <p className="text-sm text-secondary mt-0.5">
+                {athlete.gender === "M" ? "Man" : "Kvinna"}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {birthDateStr && (
+              <div className="flex items-start gap-2.5">
+                <Calendar className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Född</p>
+                  <p className="text-sm text-primary">{birthDateStr}</p>
+                </div>
+              </div>
+            )}
+            {athlete.personnummer && (
+              <div className="flex items-start gap-2.5">
+                <Hash className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Personnummer</p>
+                  <p className="text-sm text-primary">{athlete.personnummer}</p>
+                </div>
+              </div>
+            )}
+            {athlete.email && (
+              <div className="flex items-start gap-2.5">
+                <Mail className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">E-post</p>
+                  <p className="text-sm text-primary break-all">{athlete.email}</p>
+                </div>
+              </div>
+            )}
+            {athlete.phone && (
+              <div className="flex items-start gap-2.5">
+                <Phone className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Telefon</p>
+                  <p className="text-sm text-primary">{athlete.phone}</p>
+                </div>
+              </div>
+            )}
+            {athlete.mainCoach && (
+              <div className="flex items-start gap-2.5">
+                <User className="h-4 w-4 text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-secondary uppercase tracking-wide">Huvudcoach</p>
+                  <p className="text-sm text-primary">{athlete.mainCoach}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-black/[0.06]" />
+
+          <div className="flex gap-2">
+            <Link
+              href={`/dashboard/athletes/${id}/edit`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 justify-center")}
+            >
+              <Pencil className="h-4 w-4" />
+              Redigera
+            </Link>
+            <DeleteAthleteButton athleteId={id} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Right: Tests */}
+      <AthleteTestsPanel tests={serializedTests} fileResults={serializedFiles} athleteId={id} />
+    </div>
+  )
+}

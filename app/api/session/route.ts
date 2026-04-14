@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 
 const SESSION_COOKIE = 'session'
-const SESSION_MAX_AGE = 60 * 60 * 24 * 14 // 14 days
+const SESSION_MAX_AGE = 60 * 60 * 12 // 12 hours
 
 function secret() {
   const s = process.env.SESSION_SECRET

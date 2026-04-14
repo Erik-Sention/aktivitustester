@@ -6,7 +6,13 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url")
   if (!url) return new NextResponse("Missing url", { status: 400 })
 
-  if (!url.startsWith("https://firebasestorage.googleapis.com/")) {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return new NextResponse("Forbidden", { status: 403 })
+  }
+  if (parsed.hostname !== "firebasestorage.googleapis.com") {
     return new NextResponse("Forbidden", { status: 403 })
   }
 

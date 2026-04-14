@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { storage } from "@/lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
+import { storage, auth } from "@/lib/firebase"
 import { getCoachProfileClient, upsertCoachProfileClient } from "@/lib/coach-profile"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,13 +20,18 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getCoachProfileClient(uid)
-      .then((p) => {
-        if (p?.displayName) setDisplayName(p.displayName)
-        if (p?.avatarUrl) setAvatarUrl(p.avatarUrl)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub() // one-shot — unsubscribe after first resolved state
+      if (!user) { setLoading(false); return }
+      getCoachProfileClient(uid)
+        .then((p) => {
+          if (p?.displayName) setDisplayName(p.displayName)
+          if (p?.avatarUrl) setAvatarUrl(p.avatarUrl)
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    })
+    return unsub
   }, [uid])
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
