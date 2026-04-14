@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import {
   RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation,
-  TestInputParams, CoachAssessment, SportSettings,
+  TestInputParams, CoachAssessment, SportSettings, WingateData, WingateInputParams,
 } from "@/types"
 
 const SPORT_LABELS: Record<SportType, string> = {
@@ -59,6 +59,8 @@ interface EditFormProps {
   inputParams: TestInputParams
   coachAssessment: CoachAssessment | null
   settings: SportSettings | null
+  wingateData: WingateData | null
+  wingateInputParams: WingateInputParams | null
 }
 
 export function EditTestForm({
@@ -66,6 +68,7 @@ export function EditTestForm({
   sport: initialSport, testType: initialTestType, protocol: initialProtocol,
   testLocation: initialLocation, testLeader: initialLeader,
   inputParams, coachAssessment: initialCoach, settings: initialSettings,
+  wingateData: initialWingateData, wingateInputParams: initialWingateParams,
 }: EditFormProps) {
   const router = useRouter()
 
@@ -91,6 +94,19 @@ export function EditTestForm({
     setCoach((prev) => ({ ...prev, [field]: value === "" ? null : (parseFloat(value) || null) }))
   }
 
+  const [wingateData, setWingateData] = useState({
+    peakPower: initialWingateData?.peakPower?.toString() ?? "",
+    meanPower: initialWingateData?.meanPower?.toString() ?? "",
+    minPower: initialWingateData?.minPower?.toString() ?? "",
+  })
+  const [wingateParams, setWingateParams] = useState({
+    bodyWeightPercent: initialWingateParams?.bodyWeightPercent?.toString() ?? "10",
+    bodyWeight: initialWingateParams?.bodyWeight?.toString() ?? "",
+    saddleVerticalMm: initialWingateParams?.saddleVerticalMm?.toString() ?? "",
+    saddleHorizontalMm: initialWingateParams?.saddleHorizontalMm?.toString() ?? "",
+    startCadenceRpm: initialWingateParams?.startCadenceRpm?.toString() ?? "",
+  })
+
   const [rows, setRows] = useState<RawDataPoint[]>(initialRows)
   const [lacStrings, setLacStrings] = useState<Record<number, string>>({})
 
@@ -111,6 +127,10 @@ export function EditTestForm({
     try {
       const speedBased = sport === "lopning" || sport === "skidor_band"
       const hasCoach = Object.values(coach).some((v) => v !== null)
+      const isWingate = testType === "wingate"
+      const peak = parseFloat(wingateData.peakPower)
+      const mean = parseFloat(wingateData.meanPower)
+      const min = parseFloat(wingateData.minPower)
       await updateTestAction(testId, athleteId, {
         testDate: date,
         notes: noteText,
@@ -133,6 +153,16 @@ export function EditTestForm({
         heightCm: parseFloat(heightCm) || null,
         coachAssessment: hasCoach ? coach : undefined,
         settings: initialSettings ?? undefined,
+        ...(isWingate && peak && mean && min ? {
+          wingateData: { peakPower: peak, meanPower: mean, minPower: min },
+          wingateInputParams: {
+            bodyWeightPercent: parseFloat(wingateParams.bodyWeightPercent) || 10,
+            bodyWeight: parseFloat(wingateParams.bodyWeight) || null,
+            saddleVerticalMm: parseInt(wingateParams.saddleVerticalMm) || null,
+            saddleHorizontalMm: parseInt(wingateParams.saddleHorizontalMm) || null,
+            startCadenceRpm: parseInt(wingateParams.startCadenceRpm) || null,
+          },
+        } : {}),
       })
     } catch (e: unknown) {
       if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e
@@ -253,7 +283,87 @@ export function EditTestForm({
         </div>
       </div>
 
-      {/* Section 3: Coachbedömning */}
+      {/* Section 3: Wingatedata (only for Wingate tests) */}
+      {testType === "wingate" && (
+        <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
+          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Wingatedata</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="peakPower">Peak (W)</Label>
+              <Input id="peakPower" type="text" inputMode="numeric"
+                value={wingateData.peakPower}
+                onChange={(e) => setWingateData((p) => ({ ...p, peakPower: e.target.value }))}
+                placeholder="t.ex. 1100" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="meanPower">Medel (W)</Label>
+              <Input id="meanPower" type="text" inputMode="numeric"
+                value={wingateData.meanPower}
+                onChange={(e) => setWingateData((p) => ({ ...p, meanPower: e.target.value }))}
+                placeholder="t.ex. 850" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="minPower">Min (W)</Label>
+              <Input id="minPower" type="text" inputMode="numeric"
+                value={wingateData.minPower}
+                onChange={(e) => setWingateData((p) => ({ ...p, minPower: e.target.value }))}
+                placeholder="t.ex. 600" />
+            </div>
+            {(() => {
+              const p = parseFloat(wingateData.peakPower)
+              const m = parseFloat(wingateData.minPower)
+              if (!p || !m || p <= 0) return null
+              const fi = ((p - m) / p * 100).toFixed(1)
+              return (
+                <div className="space-y-1 col-span-2 sm:col-span-3">
+                  <Label>Fatigue Index (beräknat)</Label>
+                  <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#1D1D1F]">
+                    {fi} %
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="bwPercent">% kroppsvikt (bromslast)</Label>
+              <Input id="bwPercent" type="text" inputMode="decimal"
+                value={wingateParams.bodyWeightPercent}
+                onChange={(e) => setWingateParams((p) => ({ ...p, bodyWeightPercent: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgBodyWeight">Kroppsvikt (kg)</Label>
+              <Input id="wgBodyWeight" type="text" inputMode="decimal"
+                value={wingateParams.bodyWeight}
+                onChange={(e) => setWingateParams((p) => ({ ...p, bodyWeight: e.target.value }))}
+                placeholder="—" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgCadence">Startkadens (rpm)</Label>
+              <Input id="wgCadence" type="text" inputMode="numeric"
+                value={wingateParams.startCadenceRpm}
+                onChange={(e) => setWingateParams((p) => ({ ...p, startCadenceRpm: e.target.value }))}
+                placeholder="t.ex. 110" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgSaddleV">Sadel vertikal (mm)</Label>
+              <Input id="wgSaddleV" type="text" inputMode="numeric"
+                value={wingateParams.saddleVerticalMm}
+                onChange={(e) => setWingateParams((p) => ({ ...p, saddleVerticalMm: e.target.value }))}
+                placeholder="t.ex. 720" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wgSaddleH">Sadel horisontell (mm)</Label>
+              <Input id="wgSaddleH" type="text" inputMode="numeric"
+                value={wingateParams.saddleHorizontalMm}
+                onChange={(e) => setWingateParams((p) => ({ ...p, saddleHorizontalMm: e.target.value }))}
+                placeholder="t.ex. 3" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coachbedömning */}
       <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Coachbedömning</p>
         <div className="grid grid-cols-2 gap-6">
@@ -280,7 +390,7 @@ export function EditTestForm({
         </div>
       </div>
 
-      {/* Section 4: Minutdata */}
+      {/* Minutdata */}
       <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-white shadow-sm">
         <div className="border-b border-[hsl(var(--border))] bg-[#F5F5F7]/50 px-5 py-3">
           <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>

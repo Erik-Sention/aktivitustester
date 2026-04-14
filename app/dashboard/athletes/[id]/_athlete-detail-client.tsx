@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { cn, fullName } from "@/lib/utils"
 import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
 import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
-import { SerializedAthleteFile } from "@/types"
 import { Pencil, Mail, Phone, User, Calendar, Hash } from "lucide-react"
 
 function PageSpinner() {
@@ -72,8 +71,6 @@ export function AthleteDetailClient({ id }: { id: string }) {
       maxLactate: t.results.maxLactate,
     },
   }))
-
-  const serializedFiles: SerializedAthleteFile[] = []
 
   const birthDateStr = athlete.birthDate
     ? new Date(athlete.birthDate.seconds * 1000).toLocaleDateString("sv-SE")
@@ -159,7 +156,7 @@ export function AthleteDetailClient({ id }: { id: string }) {
       </Card>
 
       {/* Right: Tests */}
-      <AthleteTestsPanel tests={serializedTests} fileResults={serializedFiles} athleteId={id} />
+      <AthleteTestsPanel tests={serializedTests} fileResults={[]} athleteId={id} />
     </div>
   )
 }

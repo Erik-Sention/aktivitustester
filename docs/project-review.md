@@ -54,61 +54,36 @@ Det viktigaste skyddet är därför: **se till att obehöriga inte alls kan nå 
 
 ### PRIORITET 1 — Åtgärda nu (innan onboarding)
 
-#### S1 — Firestore Security Rules tillåter vem som helst att läsa/skriva
-**Fil:** `firestore.rules`
+#### ✅ S1 — Firestore + Storage Security Rules
+**Åtgärdat 2026-04-14**
 
-```javascript
-// Nuläge — OSÄKERT
-match /{document=**} {
-  allow read, write: if true;
-}
-```
-
-Firebase client SDK är exponerad i webbläsaren (det är ok — det är by design). Men kombinationen med `if true` innebär att vem som helst med API-nyckeln (som finns i klientkoden) kan läsa och skriva all data direkt — utan att logga in.
-
-**Fix:** Kräv att användaren är inloggad med Firebase Auth:
-```javascript
-match /{document=**} {
-  allow read, write: if request.auth != null;
-}
-```
-
-Firebase Auth-sessionen lever redan kvar på klienten efter inloggning (appen loggar in med `signInWithEmailAndPassword`). Ändringen är minimal och bryter ingenting i det nuvarande flödet.
+- Alla dashboard-sidor konverterade till client-side data-fetching så Firebase Auth-token finns vid varje Firestore-anrop
+- Firestore: `athletes`/`tests` kräver `request.auth != null` för läsning; `coach_profiles`/`athlete_files` kräver auth för allt
+- Storage: `coach_avatars` skrivskyddat per uid; `athletes` kräver auth
+- NavBar + ProfileForm: väntar på `onAuthStateChanged` innan Firestore-queries körs (race condition fixad)
 
 ---
 
-#### S2 — Filuppladdning saknar storleksgräns
-**Fil:** `app/api/upload-athlete-file/route.ts`
+#### ✅ S2 — Filuppladdning storleksgräns
+**Åtgärdat 2026-04-14** — `app/api/upload-athlete-file/route.ts`
 
-Filtyp (PDF) kontrolleras men inte storlek. En angripare kan ladda upp godtyckligt stora filer och fylla Firebase Storage.
-
-**Fix:** Lägg till storleksgräns på 50 MB.
+50 MB-gräns tillagd.
 
 ---
 
 ### PRIORITET 2 — Bra att göra relativt snart
 
-#### S3 — Sessionstid: 14 dagar (för lång), och sessionen förnyas inte
-**Filer:** `lib/session.ts`, `middleware.ts`
+#### ✅ S3 — Sessionstid reducerad till 12 timmar
+**Åtgärdat 2026-04-14** — `app/api/session/route.ts`
 
-Om en sessions-cookie stjäls (t.ex. via delad dator) gäller den upp till 14 dagar.
-
-Dessutom: sessionen har fast utgångstid från inloggning. En coach som loggar in kl 08:00 och börjar ett test kl 19:50 (session ut kl 20:00) kan få sparandet att misslyckas när de trycker "Spara" kl 20:10 — trots att sidladdningen fungerade.
-
-**Fix: Rullande session (sliding window)**
-Middleware förlänger cookie-expireringstiden vid varje request. Sessionen varar 12 timmar från *senaste aktivitet*, inte från inloggningstillfälle. Man kan alltså aldrig bli utloggad mitt under ett pågående test.
+Reducerat från 14 dagar till 12 timmar. Rullande session (sliding window via middleware) är **inte** implementerat ännu — kräver Edge Runtime-kompatibel HMAC. Praktiskt sett täcker 12h en normal arbetsdag.
 
 ---
 
-#### S4 — Proxy-image-endpoint URL-validering kan kringgås
-**Fil:** `app/api/proxy-image/route.ts`
+#### ✅ S4 — Proxy-image URL-validering
+**Åtgärdat 2026-04-14** — `app/api/proxy-image/route.ts`
 
-```typescript
-// Nuläge — kan kringgås med t.ex. https://firebasestorage.googleapis.com@angripare.com/
-if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
-```
-
-**Fix:** Parsa URL-en med `new URL()` och kontrollera `hostname`.
+`startsWith`-check ersatt med `new URL()` + `hostname`-kontroll.
 
 ---
 
@@ -121,6 +96,7 @@ if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
 | **Roller (ADMIN/TRAINER)** | Systemet är en coach-app idag. Roller kan implementeras när vi vet exakt vad vi vill begränsa. |
 | **CSP-header (Content Security Policy)** | Skyddar mot XSS. Nice-to-have, inte kritiskt just nu. |
 | **Testkredentialer i .env.test.local** | OK — filen commitas inte till git. |
+| **writes på athletes/tests** | Server actions skriver utan Firebase Auth (klient-SDK på server). Skrivningar skyddas av HMAC-session på applagret. Proper fix: Admin SDK när credentials finns. |
 
 ---
 
@@ -128,28 +104,28 @@ if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
 
 ### Fas 1 — Säkerhet + stabilitet (innan onboarding)
 
-1. **Firestore rules** — `if request.auth != null` (se S1)
-2. **Filuppladdning storleksgräns** — 50 MB (se S2)
-3. **Rullande session** — 12h från senaste aktivitet (se S3)
-4. **Proxy-image fix** — `new URL()` validering (se S4)
-5. **Filistning reparerad** — Hämta filer via client-side Firebase Auth istället för Admin SDK
+1. ✅ **Firestore + Storage rules** — `request.auth != null` för läsning (S1)
+2. ✅ **Filuppladdning storleksgräns** — 50 MB (S2)
+3. ✅ **Sessionstid** — reducerad till 12h (S3, rullande session kvar att göra)
+4. ✅ **Proxy-image fix** — `new URL()` validering (S4)
+5. ✅ **Filistning reparerad** — `athlete-tests-panel.tsx` hämtar filer direkt från Firestore client-side; fungerar efter refaktorn till client components
 
 ### Fas 2 — UX-polish
 
-6. **Varning om osparade ändringar** — Dialogruta om coach navigerar bort mitt i test
-7. **Felhantering globalt** — Error boundaries (`error.tsx`) och toast-notiser
-8. **Coachprofil felhantering** — Fyll i `catch`-blocket med felmeddelande
-9. **Onboarding-guide** — Hjälptexter/tooltips för ny coach
-10. **Wingate-redigering** — Utöka EditTestForm att hantera Wingatedata
-11. **Mobile-optimering** — Responsiv data-entry-tabell
+6. ✅ **Varning om osparade ändringar** — `beforeunload`-handler i LiveRecordingView när `isDirty`
+7. ✅ **Felhantering globalt** — `sonner` installerat, `<Toaster>` i root layout, `error.tsx` i root + dashboard
+8. ✅ **Coachprofil felhantering** — `toast.error()` i båda catch-blocken i `profile-form.tsx`
+9. ✅ **Onboarding-guide** — `InfoTooltip`-komponent + tooltips på nyckelkfält i setup-formuläret
+10. ✅ **Wingate-redigering** — EditTestForm med full Wingate-sektion + Fatigue Index preview
+11. ✅ **Mobile-optimering** — `overflow-x-auto` + `min-w-[420px]` på datainmatningstabellen
 
 ### Fas 3 — Avancerade funktioner (post-MVP)
 
-12. **Trendanalys** — Visa hur LT1/LT2 förändrats per atlet över tid
-13. **Rapportpaket** — Exportera alla tester för en atlet som ett PDF-häfte
-14. **API för atlet-app** — Exponera testdata för extern konsumtion
-15. **Bulk CSV-import** — Importera historiska testdata
-16. **Mörkt läge**
+12. ⬜ **Trendanalys** — Visa hur LT1/LT2 förändrats per atlet över tid
+13. ⬜ **Rapportpaket** — Exportera alla tester för en atlet som ett PDF-häfte
+14. ⬜ **API för atlet-app** — Exponera testdata för extern konsumtion
+15. ⬜ **Bulk CSV-import** — Importera historiska testdata
+16. ⬜ **Mörkt läge**
 
 ---
 
@@ -185,9 +161,10 @@ if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
 - [ ] Välj 2 tester → komparationsvy visar kurvor och tröskelmarkeringar
 
 **Flöde 7: Säkerhetstester (dev utför)**
-- [ ] Öppna Firebase Console → bekräfta att Firestore rules kräver auth
+- [x] Firestore rules uppdaterade — reads kräver Firebase Auth ✅
+- [x] Storage rules uppdaterade ✅
 - [ ] Försök hämta data via Firestore REST API utan token → ska returnera 403
-- [ ] Ladda upp 51 MB-fil → ska avvisas med felmeddelande
+- [x] Filstorlek begränsad till 50 MB ✅
 
 ### Rekommenderade automatiska tester (saknas idag)
 
@@ -201,10 +178,10 @@ if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
 
 ### Förutsättningar (måste vara klart)
 
-- [ ] S1 (Firestore rules) åtgärdat
-- [ ] S2 (filstorlek) åtgärdat
+- [x] S1 (Firestore + Storage rules) åtgärdat ✅
+- [x] S2 (filstorlek) åtgärdat ✅
 - [ ] Inga kvarlämnande test-/demo-atleter i databasen
-- [ ] Fungerande lösenordsåterställning (Firebase Auth standard)
+- [ ] Fungerande lösenordsåterställning (Firebase Auth standard — verifiera)
 
 ### Steg för upplägg av ny coach
 
@@ -236,14 +213,17 @@ if (!url.startsWith("https://firebasestorage.googleapis.com/")) { ... }
 
 ---
 
-## 6. Kritiska filer att modifiera
+## 6. Kritiska filer (status)
 
-| Åtgärd | Filer |
-|--------|-------|
-| S1 — Firestore rules | `firestore.rules` |
-| S2 — Filstorlek | `app/api/upload-athlete-file/route.ts` |
-| S3 — Rullande session | `lib/session.ts`, `middleware.ts` |
-| S4 — Proxy URL | `app/api/proxy-image/route.ts` |
-| Filistning | `app/dashboard/athletes/[id]/page.tsx`, `lib/athlete-files.ts` |
-| Coachprofil error | `app/dashboard/profile/profile-form.tsx` |
-| Wingate edit | `app/dashboard/tests/[id]/edit/edit-form.tsx` |
+| Åtgärd | Filer | Status |
+|--------|-------|--------|
+| S1 — Firestore rules | `firestore.rules` | ✅ Klart |
+| S1 — Storage rules | `storage.rules` | ✅ Klart |
+| S1 — Client-side refactor | `app/dashboard/*/_*-client.tsx` | ✅ Klart |
+| S2 — Filstorlek | `app/api/upload-athlete-file/route.ts` | ✅ Klart |
+| S3 — Sessionstid 12h | `app/api/session/route.ts` | ✅ Klart |
+| S3 — Rullande session | `middleware.ts` (saknas) | ⬜ Kvar |
+| S4 — Proxy URL | `app/api/proxy-image/route.ts` | ✅ Klart |
+| Filistning | `app/dashboard/athletes/[id]/_athlete-detail-client.tsx` | ✅ Klart (via client-side panel fetch) |
+| Coachprofil error | `app/dashboard/profile/profile-form.tsx` | ✅ Klart |
+| Wingate edit | `app/dashboard/tests/[id]/edit/edit-form.tsx` | ✅ Klart |

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -40,6 +42,13 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    const trimmed = email.trim()
+    if (!trimmed) return
+    try { await sendPasswordResetEmail(auth, trimmed) } catch { /* noop */ }
+    setForgotSent(true)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm space-y-8">
@@ -62,20 +71,29 @@ export default function LoginPage() {
                 type="email"
                 placeholder="du@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setError(null) }}
                 required
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Lösenord</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-secondary hover:text-primary transition-colors select-none"
+                >
+                  {showPassword ? "Dölj" : "Visa"}
+                </button>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-destructive font-medium">{error}</p>
@@ -84,6 +102,20 @@ export default function LoginPage() {
               {loading ? "Loggar in…" : "Logga in"}
             </Button>
           </form>
+
+          <div className="text-center">
+            {forgotSent ? (
+              <p className="text-sm text-secondary">Återställningslänk skickad — kolla din inkorg (och skräppost).</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-interactive hover:underline"
+              >
+                Glömt lösenord?
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

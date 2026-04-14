@@ -65,6 +65,8 @@ export function EditTestClient({ id }: { id: string }) {
         inputParams={test.inputParams}
         coachAssessment={test.coachAssessment ?? null}
         settings={test.settings ?? null}
+        wingateData={test.wingateData ?? null}
+        wingateInputParams={test.wingateInputParams ?? null}
       />
     </div>
   )

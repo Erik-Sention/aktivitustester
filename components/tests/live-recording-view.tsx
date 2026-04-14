@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { fullName } from "@/lib/utils"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { Play, Pause, RotateCcw } from "lucide-react"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
@@ -240,6 +241,35 @@ function StageTimer({
   )
 }
 
+// ── Confirm leave dialog ──────────────────────────────────────────────
+
+function ConfirmLeaveDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
+        <h2 className="text-base font-bold text-[#1D1D1F]">Osparade ändringar</h2>
+        <p className="text-sm text-[#515154]">
+          Du har inmatad data som inte sparats. Om du lämnar försvinner all data.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl border border-[hsl(var(--border))] text-sm font-medium text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors"
+          >
+            Stanna kvar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 rounded-xl bg-[#FF3B30] text-white text-sm font-semibold hover:bg-[#d93025] transition-colors"
+          >
+            Lämna ändå
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────
 
 const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
@@ -259,6 +289,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const pendingBack = useRef<(() => void) | null>(null)
 
   // ── Load coach display name for testLeader pre-fill ──────────────
   useEffect(() => {
@@ -435,6 +467,54 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [activeRow, setActiveRow] = useState<number | null>(null)
   const [lacStrings, setLacStrings] = useState<Record<number, string>>({})
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+
+  // ── Unsaved-changes guard ─────────────────────────────────────────
+  const isDirty =
+    step === "recording" && (
+      rows.some((r) => r.hr > 0 || r.lac > 0) ||
+      Object.values(wingateResults).some((v) => v !== "") ||
+      exhaustionLacStr !== "" || exhaustionBorg !== "" || exhaustionWattStr !== ""
+    )
+
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [isDirty])
+
+  // Push a dummy history entry when entering recording so we can intercept back
+  useEffect(() => {
+    if (step === "recording") {
+      window.history.pushState({ guardedStep: true }, "")
+    }
+  }, [step])
+
+  // Intercept browser back button while in recording step
+  useEffect(() => {
+    const handler = () => {
+      if (step !== "recording") return
+      if (isDirty) {
+        // Re-push so back button can be intercepted again if user cancels
+        window.history.pushState({ guardedStep: true }, "")
+        pendingBack.current = () => setStep("setup")
+        setShowConfirm(true)
+      } else {
+        setStep("setup")
+      }
+    }
+    window.addEventListener("popstate", handler)
+    return () => window.removeEventListener("popstate", handler)
+  }, [step, isDirty])
+
+  function requestBack(onConfirmed: () => void) {
+    if (isDirty) {
+      pendingBack.current = onConfirmed
+      setShowConfirm(true)
+    } else {
+      onConfirmed()
+    }
+  }
 
   function getEditableFields(row: RawDataPoint, dur: number): string[] {
     if (lacEnabled(row, dur) && borgEnabled(row, dur)) return ["hr", "lac", "borg", "cadence"]
@@ -754,7 +834,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               </div>
               {form.testType !== "wingate" && (
                 <div className="space-y-1">
-                  <Label htmlFor="protocol">Val 3 — Protokoll</Label>
+                  <Label htmlFor="protocol">Val 3 — Protokoll<InfoTooltip text="Standard 3-minprotokoll är rekommenderat för laktattröskeltest. Ramp-test används för VO2max." /></Label>
                   <Select id="protocol" value={form.protocol} onChange={(e) => changeProtocol(e.target.value as ProtocolType)}>
                     {PROTOCOL_OPTIONS[form.sport].map((p) => (
                       <option key={p.value} value={p.value}>{p.label}</option>
@@ -929,15 +1009,15 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="startWatt">Start (W)</Label>
+                  <Label htmlFor="startWatt">Start (W)<InfoTooltip text="Första stegets belastning. Vanligtvis 50–100 W beroende på atletens nivå." /></Label>
                   <Input id="startWatt" type="number" value={form.startWatt} onChange={(e) => update("startWatt", e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="stepSize">Steg (W)</Label>
+                  <Label htmlFor="stepSize">Steg (W)<InfoTooltip text="Effektökning per steg. Vanligtvis 20–30 W för tröskeltest." /></Label>
                   <Input id="stepSize" type="number" value={form.stepSize} onChange={(e) => update("stepSize", e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="testDuration">Min/steg</Label>
+                  <Label htmlFor="testDuration">Min/steg<InfoTooltip text="Antal minuter per belastningssteg. 3 min är standard för cykel." /></Label>
                   <Input id="testDuration" type="number" value={form.testDuration} onChange={(e) => update("testDuration", e.target.value)} />
                 </div>
               </div>
@@ -946,7 +1026,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             {/* Vikt + Längd */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="bodyWeight">Vikt (kg) <span className="text-secondary font-normal">– idag</span></Label>
+                <Label htmlFor="bodyWeight">Vikt (kg) <span className="text-secondary font-normal">– idag</span><InfoTooltip text="Atletens kroppsvikt vid testtillfället. Används för relativa effektvärden (W/kg)." /></Label>
                 <Input id="bodyWeight" type="number" step="0.1" value={form.bodyWeight} onChange={(e) => update("bodyWeight", e.target.value)} placeholder="t.ex. 72,5" />
               </div>
               <div className="space-y-1">
@@ -1006,7 +1086,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setStep("setup")}>Tillbaka</Button>
+            <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>Tillbaka</Button>
             <Button onClick={handleWingateSave} disabled={saving}>
               {saving ? "Sparar…" : "Spara test"}
             </Button>
@@ -1050,6 +1130,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         </div>
 
         {error && <p className="text-sm text-[hsl(var(--destructive))] text-center">{error}</p>}
+        {showConfirm && <ConfirmLeaveDialog onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
       </div>
     )
   }
@@ -1082,9 +1163,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Sparar…" : "Spara test"}
           </Button>
-          <Button variant="outline" onClick={() => {
-            if (window.confirm("Gå tillbaka till inställningar? Inmatad data raderas.")) setStep("setup")
-          }}>
+          <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>
             Tillbaka
           </Button>
         </div>
@@ -1118,7 +1197,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             </button>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
-            <table className="w-full text-base table-fixed">
+            <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full text-base table-fixed min-w-[420px]">
               <thead>
                 <tr className="text-sm font-black uppercase tracking-wider text-[#1D1D1F] border-b border-[hsl(var(--border))]/60">
                   <th className="px-3 py-3 text-left w-14">Min</th>
@@ -1235,6 +1315,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="px-5 py-4 border-t border-[hsl(var(--border))]/40">
@@ -1487,6 +1568,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       </div>
 
       {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+      {showConfirm && <ConfirmLeaveDialog onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
     </div>
   )
 }

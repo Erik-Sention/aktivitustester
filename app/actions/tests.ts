@@ -95,6 +95,8 @@ export async function updateTestAction(
     heightCm?: number | null
     coachAssessment?: CoachAssessment
     settings?: SportSettings
+    wingateData?: WingateData
+    wingateInputParams?: WingateInputParams
   }
 ) {
   await requireSession()
@@ -127,6 +129,8 @@ export async function updateTestAction(
     } : {}),
     ...(data.coachAssessment ? { coachAssessment: data.coachAssessment } : {}),
     ...(data.settings ? { settings: data.settings } : {}),
+    ...(data.wingateData ? { wingateData: data.wingateData } : {}),
+    ...(data.wingateInputParams ? { wingateInputParams: data.wingateInputParams } : {}),
   })
 
   revalidatePath(`/dashboard/tests/${id}`)

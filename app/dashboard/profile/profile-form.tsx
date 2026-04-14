@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { onAuthStateChanged } from "firebase/auth"
+import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
 import { storage, auth } from "@/lib/firebase"
 import { getCoachProfileClient, upsertCoachProfileClient } from "@/lib/coach-profile"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,7 +29,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
           if (p?.displayName) setDisplayName(p.displayName)
           if (p?.avatarUrl) setAvatarUrl(p.avatarUrl)
         })
-        .catch(() => {})
+        .catch(() => { toast.error("Kunde inte hämta profilen.") })
         .finally(() => setLoading(false))
     })
     return unsub
@@ -73,7 +74,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch {
-      // TODO: show error
+      toast.error("Kunde inte spara profilen. Försök igen.")
     } finally {
       setSaving(false)
     }
@@ -88,6 +89,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-apple p-8 space-y-6">
 
       {/* Avatar picker */}
@@ -149,6 +151,105 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
 
       <Button type="submit" disabled={saving || uploading} className="w-full" size="lg">
         {saved ? "Sparat!" : saving ? "Sparar…" : "Spara profil"}
+      </Button>
+    </form>
+
+    <ChangePasswordSection email={email} />
+    </>
+  )
+}
+
+function ChangePasswordSection({ email }: { email: string }) {
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwSaved, setPwSaved] = useState(false)
+  const [pwSaving, setPwSaving] = useState(false)
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError(null)
+
+    if (newPassword !== confirmPassword) {
+      setPwError("Lösenorden matchar inte.")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPwError("Lösenordet måste vara minst 6 tecken.")
+      return
+    }
+
+    const user = auth.currentUser
+    if (!user) return
+
+    setPwSaving(true)
+    try {
+      const credential = EmailAuthProvider.credential(email, currentPassword)
+      await reauthenticateWithCredential(user, credential)
+      await updatePassword(user, newPassword)
+      setPwSaved(true)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      setTimeout(() => setPwSaved(false), 3000)
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setPwError("Fel nuvarande lösenord.")
+      } else {
+        setPwError("Något gick fel. Försök igen.")
+      }
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleChangePassword} className="bg-white rounded-3xl shadow-apple p-8 space-y-4">
+      <p className="text-sm font-black uppercase tracking-widest text-primary">Byt lösenord</p>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="currentPassword">Nuvarande lösenord</Label>
+        <Input
+          id="currentPassword"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => { setCurrentPassword(e.target.value); setPwError(null) }}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="newPassword">Nytt lösenord</Label>
+        <Input
+          id="newPassword"
+          type="password"
+          value={newPassword}
+          onChange={(e) => { setNewPassword(e.target.value); setPwError(null) }}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="confirmPassword">Bekräfta nytt lösenord</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => { setConfirmPassword(e.target.value); setPwError(null) }}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+
+      {pwError && <p className="text-sm text-destructive font-medium">{pwError}</p>}
+      {pwSaved && <p className="text-sm text-green-600 font-medium">Lösenord uppdaterat!</p>}
+
+      <Button type="submit" disabled={pwSaving} className="w-full" size="lg">
+        {pwSaving ? "Sparar…" : "Byt lösenord"}
       </Button>
     </form>
   )

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Rajdhani } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -25,7 +26,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="sv" className={`${playfair.variable} ${rajdhani.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster position="bottom-right" richColors />
+      </body>
     </html>
   );
 }
