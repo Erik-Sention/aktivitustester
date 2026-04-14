@@ -10,7 +10,7 @@ import { ReportDownloadButton } from "@/components/tests/report-download-button"
 import { Vo2MaxResultsPanel } from "@/components/tests/vo2max-results-panel"
 import { WingateResultsPanel } from "@/components/tests/wingate-results-panel"
 import { WingatePowerChart } from "@/components/tests/wingate-power-chart"
-import { Pencil } from "lucide-react"
+import { Pencil, ChevronRight } from "lucide-react"
 
 function testTypeLabel(type: string) {
   if (type === "troskeltest") return "Tröskeltest"
@@ -90,7 +90,12 @@ export default async function TestDetailPage({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0" data-pdf-hide>
-          <ReportDownloadButton test={serializedTest} athleteName={athleteName} gender={athlete?.gender ?? ""} />
+          <ReportDownloadButton
+            test={serializedTest}
+            athleteName={athleteName}
+            gender={athlete?.gender ?? ""}
+            coachId={test.coachId}
+          />
           <Link
             href={`/dashboard/tests/${id}/edit`}
             className={cn(buttonVariants({ variant: "outline", size: "default" }), "gap-2")}

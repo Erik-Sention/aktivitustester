@@ -13,6 +13,7 @@ import { Play, Pause, RotateCcw } from "lucide-react"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
 import { calculateVo2Max } from "@/lib/calculations"
+import { getCoachProfileClient } from "@/lib/coach-profile"
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface LiveRecordingViewProps {
   defaultAthleteId?: string
   defaultTestType?: string
   defaultTestLeader?: string
+  coachUid?: string
 }
 
 // ── Sport / testtype / protocol config ────────────────────────────────
@@ -253,10 +255,23 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
   nedreGransPuls: null,
 }
 
-export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader }: LiveRecordingViewProps) {
+export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid }: LiveRecordingViewProps) {
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // ── Load coach display name for testLeader pre-fill ──────────────
+  useEffect(() => {
+    if (!coachUid) return
+    getCoachProfileClient(coachUid).then((p) => {
+      if (p?.displayName) {
+        setForm((prev) => ({
+          ...prev,
+          testLeader: prev.testLeader === (defaultTestLeader ?? "") ? p.displayName : prev.testLeader,
+        }))
+      }
+    }).catch(() => {})
+  }, [coachUid]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Setup form ────────────────────────────────────────────────────
   const [form, setForm] = useState({

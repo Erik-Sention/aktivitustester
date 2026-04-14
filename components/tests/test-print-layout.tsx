@@ -14,6 +14,8 @@ interface TestPrintLayoutProps {
   test: SerializedTest
   athleteName: string
   gender?: "M" | "K" | ""
+  coachName?: string
+  coachAvatarUrl?: string
 }
 
 function testTypeLabel(type: string) {
@@ -230,7 +232,7 @@ function PrintTestChart({ rows, dur, height = 480 }: { rows: RawDataPoint[]; dur
   )
 }
 
-export function TestPrintLayout({ test, athleteName, gender = "" }: TestPrintLayoutProps) {
+export function TestPrintLayout({ test, athleteName, gender = "", coachName, coachAvatarUrl }: TestPrintLayoutProps) {
   const testDateStr = new Date(test.testDate.seconds * 1000).toLocaleDateString("sv-SE")
   const testDuration = test.inputParams.testDuration || 3
 
@@ -263,30 +265,59 @@ export function TestPrintLayout({ test, athleteName, gender = "" }: TestPrintLay
         style={{ width: "794px" }}
       >
         {/* Header */}
-        <header className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">
-            {testTypeLabel(test.testType)}
-            <span className="ml-2 text-lg font-normal text-[#1D1D1F]/60">
-              — {sportLabel(test.sport)} — {athleteName}
-            </span>
-          </h1>
-          <p className="text-base text-[#1D1D1F]">
-            {testDateStr}
-            {!isWingate && (test.inputParams.startWatt ?? 0) > 0 && (
-              <>
-                <span className="ml-3 text-[#86868B]">·</span>
-                <span className="ml-3">
-                  {test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min
-                </span>
-              </>
+        <header className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">
+              {testTypeLabel(test.testType)}
+              <span className="ml-2 text-lg font-normal text-[#1D1D1F]/60">
+                — {sportLabel(test.sport)} — {athleteName}
+              </span>
+            </h1>
+            <p className="text-base text-[#1D1D1F]">
+              {testDateStr}
+              {!isWingate && (test.inputParams.startWatt ?? 0) > 0 && (
+                <>
+                  <span className="ml-3 text-[#86868B]">·</span>
+                  <span className="ml-3">
+                    {test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min
+                  </span>
+                </>
+              )}
+              {isWingate && wingateInputParams?.startCadenceRpm && (
+                <>
+                  <span className="ml-3 text-[#86868B]">·</span>
+                  <span className="ml-3">Startkadens {wingateInputParams.startCadenceRpm} rpm</span>
+                </>
+              )}
+            </p>
+            {(coachName || test.testLeader) && (
+              <p className="text-sm text-[#515154]">
+                Testledare: {coachName || test.testLeader}
+              </p>
             )}
-            {isWingate && wingateInputParams?.startCadenceRpm && (
-              <>
-                <span className="ml-3 text-[#86868B]">·</span>
-                <span className="ml-3">Startkadens {wingateInputParams.startCadenceRpm} rpm</span>
-              </>
-            )}
-          </p>
+          </div>
+
+          {/* Coach avatar */}
+          {(coachAvatarUrl || coachName) && (
+            <div className="flex items-center gap-2.5 flex-shrink-0">
+              <div className="h-12 w-12 rounded-full overflow-hidden bg-[#007AFF]/10 flex items-center justify-center text-sm font-bold text-[#007AFF]">
+                {coachAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={coachAvatarUrl} alt={coachName ?? ""} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                ) : (
+                  <span>
+                    {coachName?.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+                  </span>
+                )}
+              </div>
+              {coachName && (
+                <div>
+                  <p className="text-xs text-[#515154]">Testledare</p>
+                  <p className="text-sm font-semibold text-[#1D1D1F]">{coachName}</p>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* VO2max results */}

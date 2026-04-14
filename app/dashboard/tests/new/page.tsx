@@ -27,6 +27,7 @@ export default async function NewTestPage({
       defaultAthleteId={athleteId}
       defaultTestType={defaultType}
       defaultTestLeader={user.email}
+      coachUid={user.uid}
     />
   )
 }

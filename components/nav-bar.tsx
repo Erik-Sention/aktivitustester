@@ -1,15 +1,43 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { doc, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import type { CoachProfile } from "@/lib/coach-profile"
 
 interface NavBarProps {
   userName: string
   role: string
+  uid: string
 }
 
-export function NavBar({ userName, role }: NavBarProps) {
+export function NavBar({ userName, role, uid }: NavBarProps) {
   const router = useRouter()
+  const [displayName, setDisplayName] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "coach_profiles", uid),
+      (snap) => {
+        const p = snap.exists() ? (snap.data() as CoachProfile) : null
+        setDisplayName(p?.displayName ?? null)
+        setAvatarUrl(p?.avatarUrl ?? null)
+      },
+      () => {}
+    )
+    return unsub
+  }, [uid])
+
+  const shownName = displayName || userName
+  const initials = shownName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 
   async function handleLogout() {
     await fetch("/api/session", { method: "DELETE" })
@@ -37,13 +65,25 @@ export function NavBar({ userName, role }: NavBarProps) {
           </Link>
         </nav>
 
-        {/* Right */}
+        {/* Right — avatar + name → profile + logout */}
         <div className="flex items-center gap-4">
-          <span className="hidden sm:block text-base text-primary">
-            {userName}
-            <span className="text-primary/30 mx-1.5">·</span>
-            <span className="capitalize">{role.toLowerCase()}</span>
-          </span>
+          <Link
+            href="/dashboard/profile"
+            className="flex items-center gap-2.5 hover:opacity-75 transition-opacity"
+          >
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-[#007AFF]/10 flex items-center justify-center text-xs font-bold text-interactive flex-shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <span className="hidden sm:block text-base text-primary">
+              {shownName}
+              <span className="text-primary/30 mx-1.5">·</span>
+              <span className="capitalize">{role.toLowerCase()}</span>
+            </span>
+          </Link>
           <button
             onClick={handleLogout}
             className="text-base text-primary hover:text-interactive transition-colors font-medium"

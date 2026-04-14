@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { FileDown } from "lucide-react"
 import type { Test } from "@/types"
+import { getCoachProfileClient } from "@/lib/coach-profile"
 
 type PlainTS = { seconds: number; nanoseconds: number }
 export type SerializedTest = Omit<Test, "testDate" | "createdAt"> & {
@@ -14,6 +15,7 @@ interface Props {
   test: SerializedTest
   athleteName: string
   gender?: "M" | "K" | ""
+  coachId?: string
 }
 
 const A4_W_MM = 210
@@ -84,8 +86,15 @@ function findCutPoints(
 async function generatePDF(
   test: SerializedTest,
   athleteName: string,
-  gender: "M" | "K" | ""
+  gender: "M" | "K" | "",
+  coachId?: string
 ): Promise<Blob> {
+  const coachProfile = coachId ? await getCoachProfileClient(coachId).catch(() => null) : null
+  const coachName = coachProfile?.displayName
+  // Proxy the avatar through our API route to avoid CORS issues in html2canvas
+  const coachAvatarUrl = coachProfile?.avatarUrl
+    ? `/api/proxy-image?url=${encodeURIComponent(coachProfile.avatarUrl)}`
+    : undefined
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import("html2canvas"),
     import("jspdf"),
@@ -103,7 +112,7 @@ async function generatePDF(
   const root = createRoot(container)
   root.render(
     // @ts-ignore — JSX in async function
-    <TestPrintLayout test={test} athleteName={athleteName} gender={gender} />
+    <TestPrintLayout test={test} athleteName={athleteName} gender={gender} coachName={coachName} coachAvatarUrl={coachAvatarUrl} />
   )
 
   // 3. Wait for fonts + Recharts to finish rendering
@@ -165,13 +174,13 @@ async function generatePDF(
 }
 
 // ─── Button ───────────────────────────────────────────────────────────────────
-export function ReportDownloadButton({ test, athleteName, gender = "" }: Props) {
+export function ReportDownloadButton({ test, athleteName, gender = "", coachId }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleDownload() {
     setLoading(true)
     try {
-      const blob = await generatePDF(test, athleteName, gender)
+      const blob = await generatePDF(test, athleteName, gender, coachId)
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       const slug = athleteName.replace(/\s+/g, "-").toLowerCase()
