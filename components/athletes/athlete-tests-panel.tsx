@@ -12,8 +12,14 @@ import {
   Maximize2, Minimize2,
 } from "lucide-react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { SerializedAthleteFile } from "@/types"
-import { PdfViewer } from "@/components/athletes/pdf-viewer"
+
+// react-pdf uses DOMMatrix at module evaluation time — must be client-only
+const PdfViewer = dynamic(
+  () => import("@/components/athletes/pdf-viewer").then((m) => m.PdfViewer),
+  { ssr: false }
+)
 import { UploadResultDialog } from "./upload-result-dialog"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
