@@ -79,7 +79,7 @@ export function AthleteDetailClient({ id }: { id: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
       {/* Left: Profile card */}
-      <Card className="sticky top-6">
+      <Card className="lg:sticky lg:top-6">
         <CardContent className="p-6 space-y-5">
           <div>
             <h1 className="text-xl font-bold text-primary">
