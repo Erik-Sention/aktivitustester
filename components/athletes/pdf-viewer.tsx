@@ -21,7 +21,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0)
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(800)
   const [scale, setScale] = useState(1)
 
@@ -38,10 +38,9 @@ export function PdfViewer({ url }: PdfViewerProps) {
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [url])
 
-  // containerRef is on the overflow-x-auto div — contentRect.width stays stable
-  // even when content overflows horizontally
+  // Measure the scroll container's stable viewport width
   useEffect(() => {
-    const el = containerRef.current
+    const el = scrollRef.current
     if (!el) return
     const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width))
     ro.observe(el)
@@ -65,9 +64,10 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const pageWidth = Math.round(containerWidth * scale)
 
   return (
-    <div className="w-full flex flex-col">
-      {/* Zoom toolbar — sticky so it stays visible while scrolling through pages */}
-      <div className="sticky top-0 z-10 flex items-center justify-center gap-1 bg-white/95 backdrop-blur-sm border-b border-[#E5E5EA] px-3 py-2 flex-shrink-0">
+    // h-full fills the content wrapper; flex-col stacks zoom bar above the scroll area
+    <div className="h-full flex flex-col">
+      {/* Zoom bar — sits outside the scroll container so it's always visible */}
+      <div className="flex-shrink-0 flex items-center justify-center gap-1 bg-white border-b border-[#E5E5EA] px-3 py-2">
         <button
           onClick={() => setScale(s => Math.max(ZOOM_MIN, +(s - ZOOM_STEP).toFixed(2)))}
           disabled={scale <= ZOOM_MIN}
@@ -93,11 +93,14 @@ export function PdfViewer({ url }: PdfViewerProps) {
         </button>
       </div>
 
-      {/* containerRef measures the stable viewport width.
-          Inner div uses minWidth: pageWidth so it grows when zoomed,
-          enabling overflow-x-auto to scroll. items-center keeps pages
-          centered when zoomed out (scale < 1). */}
-      <div ref={containerRef} className="overflow-x-auto bg-[#F5F5F7]">
+      {/* Scroll area owns both X and Y scrolling.
+          flex-1 min-h-0 fills remaining height so the scrollbar
+          always sits at the bottom of the visible viewport — not
+          buried below all the PDF pages. */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto bg-[#F5F5F7]">
+        {/* minWidth: pageWidth forces horizontal expansion when zoomed in,
+            triggering the overflow-auto scrollbar. items-center keeps pages
+            centred when zoomed out (pageWidth < containerWidth). */}
         <div
           className="flex flex-col items-center py-4 gap-4"
           style={{ minWidth: pageWidth }}
