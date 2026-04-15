@@ -185,6 +185,7 @@ export interface AthleteFile {
   testDateEnd?: Timestamp  // optional end date for ranges
   fileName: string
   storageUrl: string
+  uploadGroupId?: string   // shared by files uploaded together
   createdAt: Timestamp
 }
 
@@ -195,6 +196,7 @@ export interface SerializedAthleteFile {
   testDateEndStr?: string
   fileName: string
   storageUrl: string
+  uploadGroupId?: string   // shared by files uploaded together
 }
 
 // --- Auth session (returned to client components) ---
