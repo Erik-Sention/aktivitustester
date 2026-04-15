@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { SerializedAthleteFile } from "@/types"
+import { PdfViewer } from "@/components/athletes/pdf-viewer"
 import { UploadResultDialog } from "./upload-result-dialog"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -820,7 +821,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
             <div className="flex-1 overflow-auto bg-[#F5F5F7] flex flex-col" style={{ minHeight: 0 }}>
               {previewFile.fileName.toLowerCase().endsWith(".pdf") || previewFile.storageUrl.match(/\.pdf(\?|$)/i) ? (
-                <iframe src={previewFile.storageUrl} className="w-full flex-1" style={{ minHeight: "70vh" }} />
+                <PdfViewer url={previewFile.storageUrl} />
               ) : previewFile.fileName.match(/\.(jpe?g|png|gif|webp)$/i) ? (
                 <div className="flex items-center justify-center p-6 min-h-64">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
