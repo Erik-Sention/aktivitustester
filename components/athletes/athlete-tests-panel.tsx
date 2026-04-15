@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil,
   Check, X as XIcon, Download, Folder, ChevronDown, ChevronRight,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, ZoomIn, ZoomOut,
 } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -306,6 +306,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [addToGroup, setAddToGroup] = useState<{ groupId: string; resultType: string; testDateStr: string } | null>(null)
   const [previewFullscreen, setPreviewFullscreen] = useState(false)
+  const [pdfScale, setPdfScale] = useState(1)
   const [excelData, setExcelData] = useState<{
     headers: string[]
     rows: unknown[][]
@@ -465,6 +466,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setExcelData(null)
     setExcelLoading(false)
     setPreviewFullscreen(false)
+    setPdfScale(1)
   }
 
   // --- Render a single file row (used inside groups and for lone files) ---
@@ -616,6 +618,12 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       </div>
     )
   }
+
+  const isPdf = !!previewFile && (
+    previewFile.fileName.toLowerCase().endsWith(".pdf") ||
+    !!previewFile.storageUrl.match(/\.pdf(\?|$)/i)
+  )
+  const pdfPageWidth = Math.round(760 * pdfScale)
 
   return (
     <div className="space-y-3">
@@ -793,9 +801,16 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 ? "w-screen h-screen rounded-none shadow-none"
                 : isExcel(previewFile.fileName)
                   ? "w-[95vw] max-w-[95vw] mx-2 rounded-2xl shadow-2xl"
-                  : "w-full max-w-4xl mx-4 rounded-2xl shadow-2xl"
+                  : isPdf
+                    ? "mx-4 rounded-2xl shadow-2xl"
+                    : "w-full max-w-4xl mx-4 rounded-2xl shadow-2xl"
             )}
-            style={previewFullscreen ? undefined : { maxHeight: "92vh" }}
+            style={previewFullscreen
+              ? undefined
+              : isPdf
+                ? { maxHeight: "92vh", width: pdfPageWidth + 32, maxWidth: "calc(95vw - 16px)", minWidth: 320 }
+                : { maxHeight: "92vh" }
+            }
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-3 border-b border-[#E5E5EA]">
@@ -825,9 +840,38 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
               </div>
             </div>
 
+            {/* PDF zoom bar — rendered outside the scroll area so it's always visible */}
+            {isPdf && (
+              <div className="flex-shrink-0 flex items-center justify-center gap-1 border-b border-[#E5E5EA] bg-white px-3 py-2">
+                <button
+                  onClick={() => setPdfScale(s => Math.max(0.5, +(s - 0.25).toFixed(2)))}
+                  disabled={pdfScale <= 0.5}
+                  className="p-1.5 rounded-lg text-[#515154] hover:bg-[#F5F5F7] disabled:opacity-30 transition-colors"
+                  title="Zooma ut"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPdfScale(1)}
+                  className="px-2 py-1 text-xs font-medium text-[#515154] hover:bg-[#F5F5F7] rounded-lg transition-colors min-w-[3.5rem] text-center"
+                  title="Återställ zoom"
+                >
+                  {Math.round(pdfScale * 100)}%
+                </button>
+                <button
+                  onClick={() => setPdfScale(s => Math.min(3, +(s + 0.25).toFixed(2)))}
+                  disabled={pdfScale >= 3}
+                  className="p-1.5 rounded-lg text-[#515154] hover:bg-[#F5F5F7] disabled:opacity-30 transition-colors"
+                  title="Zooma in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="flex-1 overflow-auto bg-[#F5F5F7] flex flex-col" style={{ minHeight: 0 }}>
-              {previewFile.fileName.toLowerCase().endsWith(".pdf") || previewFile.storageUrl.match(/\.pdf(\?|$)/i) ? (
-                <PdfViewer url={previewFile.storageUrl} />
+              {isPdf ? (
+                <PdfViewer url={previewFile.storageUrl} pageWidth={pdfPageWidth} />
               ) : previewFile.fileName.match(/\.(jpe?g|png|gif|webp)$/i) ? (
                 <div className="flex items-center justify-center p-6 min-h-64">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
