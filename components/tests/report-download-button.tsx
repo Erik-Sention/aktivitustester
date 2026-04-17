@@ -35,7 +35,7 @@ async function fetchAsBase64(url: string): Promise<string | undefined> {
   }
 }
 
-async function generatePDF(
+export async function generatePDF(
   test: SerializedTest,
   athleteName: string,
   gender: "M" | "K" | "",

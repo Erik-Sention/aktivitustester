@@ -14,6 +14,7 @@ export interface SerializedAthlete {
   phone: string
   mainCoach?: string
   currentWeight: number | null
+  status?: string
 }
 
 interface AthletesTableProps {
@@ -65,7 +66,21 @@ export function AthletesTable({ athletes }: AthletesTableProps) {
                   onClick={() => router.push(`/dashboard/athletes/${athlete.id}`)}
                   className="hover:bg-[#F5F5F7]/50 transition-colors cursor-pointer"
                 >
-                  <td className="px-4 py-5 font-medium text-primary">{fullName(athlete.firstName, athlete.lastName)}</td>
+                  <td className="px-4 py-5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-primary">{fullName(athlete.firstName, athlete.lastName)}</span>
+                      {athlete.status === 'Pending_Consent' && (
+                        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800")}>
+                          Inväntar samtycke
+                        </span>
+                      )}
+                      {athlete.status === 'Consent_Revoked' && (
+                        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800")}>
+                          Samtycke indraget
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-5 text-secondary">{athlete.email || "—"}</td>
                   <td className="px-4 py-5 text-secondary">{athlete.phone || "—"}</td>
                   <td className="px-4 py-5 text-secondary">{athlete.mainCoach || "—"}</td>

@@ -3,8 +3,19 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
-import { createAthlete, updateAthlete, deleteAthlete } from "@/lib/athletes"
+import { createAthlete, updateAthlete, deleteAthlete, declineAthlete, restoreDeclinedAthlete } from "@/lib/athletes"
+import { getCoachProfileClient } from "@/lib/coach-profile"
+import { createConsentEvent } from "@/lib/consent-events"
 import { Timestamp } from "firebase/firestore"
+
+async function coachDisplayName(uid: string, email: string): Promise<string> {
+  try {
+    const profile = await getCoachProfileClient(uid)
+    return profile?.displayName || email
+  } catch {
+    return email
+  }
+}
 
 async function requireSession() {
   const user = await getSessionUser()
@@ -87,11 +98,29 @@ export async function deleteAthleteAction(id: string) {
   redirect("/dashboard/athletes")
 }
 
+export async function declineConsentAction(athleteId: string, archiveData?: Record<string, unknown>) {
+  const user = await requireSession()
+  await declineAthlete(athleteId, archiveData)
+  await createConsentEvent({
+    athleteId,
+    coachId: user.uid,
+    coachDisplayName: await coachDisplayName(user.uid, user.email),
+    eventType: 'declined',
+  })
+  revalidatePath('/dashboard/athletes')
+}
+
 export async function revokeConsentAction(athleteId: string) {
-  await requireSession()
+  const user = await requireSession()
   await updateAthlete(athleteId, {
     status: 'Consent_Revoked',
     consentRevokedAt: Timestamp.now(),
+  })
+  await createConsentEvent({
+    athleteId,
+    coachId: user.uid,
+    coachDisplayName: await coachDisplayName(user.uid, user.email),
+    eventType: 'revoked',
   })
   revalidatePath(`/dashboard/athletes/${athleteId}`)
 }
@@ -102,6 +131,12 @@ export async function renewConsentAction(athleteId: string) {
     status: 'Active',
     consentAt: Timestamp.now(),
     consentVerifiedBy: user.uid,
+  })
+  await createConsentEvent({
+    athleteId,
+    coachId: user.uid,
+    coachDisplayName: await coachDisplayName(user.uid, user.email),
+    eventType: 'renewed',
   })
   revalidatePath(`/dashboard/athletes/${athleteId}`)
 }
@@ -127,5 +162,22 @@ export async function grantConsentAction(
     consentVerifiedBy: user.uid,
     consentAt: Timestamp.now(),
   })
+  await createConsentEvent({
+    athleteId,
+    coachId: user.uid,
+    coachDisplayName: await coachDisplayName(user.uid, user.email),
+    eventType: 'granted',
+    personnummer: data.personnummer,
+    gender: data.gender || undefined,
+    phone: data.phone || undefined,
+    mainCoach: data.mainCoach || undefined,
+    email: data.email || undefined,
+  })
   revalidatePath(`/dashboard/athletes/${athleteId}`)
+}
+
+export async function restoreDeclinedAthleteAction(athleteId: string, data: Record<string, unknown>) {
+  await requireSession()
+  await restoreDeclinedAthlete(athleteId, data)
+  revalidatePath('/dashboard/athletes')
 }

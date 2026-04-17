@@ -6,7 +6,8 @@ import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { getAthletes } from "@/lib/athletes"
 import { getCoachProfilesClient } from "@/lib/coach-profile"
-import { grantConsentAction } from "@/app/actions/athletes"
+import { grantConsentAction, declineConsentAction } from "@/app/actions/athletes"
+import { Athlete } from "@/types"
 import { LiveRecordingView } from "@/components/tests/live-recording-view"
 import { ConsentModal, ConsentData } from "@/components/tests/consent-modal"
 
@@ -25,7 +26,7 @@ interface NewTestClientProps {
 
 export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClientProps) {
   const [ready, setReady] = useState(false)
-  const [athletes, setAthletes] = useState<{ id: string; firstName: string; lastName: string; currentWeight?: number }[]>([])
+  const [athletes, setAthletes] = useState<{ id: string; firstName: string; lastName: string; gender?: string; currentWeight?: number }[]>([])
   const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
   const [coachEmail, setCoachEmail] = useState("")
   const [coachUid, setCoachUid] = useState("")
@@ -33,6 +34,7 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
   const [consentAthleteName, setConsentAthleteName] = useState("")
   const [consentAthleteEmail, setConsentAthleteEmail] = useState("")
   const [guestMode, setGuestMode] = useState(false)
+  const [pendingConsentAthlete, setPendingConsentAthlete] = useState<Athlete | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
         id: a.id,
         firstName: a.firstName,
         lastName: a.lastName,
+        gender: a.gender,
         currentWeight: a.currentWeight ?? undefined,
       })))
 
@@ -61,6 +64,7 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
         if (athlete?.status === 'Pending_Consent') {
           setConsentAthleteName(`${athlete.firstName} ${athlete.lastName}`)
           setConsentAthleteEmail(athlete.email ?? "")
+          setPendingConsentAthlete(athlete)
           setShowConsentModal(true)
         }
       }
@@ -87,6 +91,20 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
     setGuestMode(true)
   }
 
+  async function handleGuestSessionEnd() {
+    if (!pendingConsentAthlete) return
+    await declineConsentAction(pendingConsentAthlete.id, {
+      firstName: pendingConsentAthlete.firstName,
+      lastName: pendingConsentAthlete.lastName,
+      email: pendingConsentAthlete.email,
+      phone: pendingConsentAthlete.phone,
+      clinicId: pendingConsentAthlete.clinicId,
+      personnummer: pendingConsentAthlete.personnummer ?? null,
+      gender: pendingConsentAthlete.gender,
+      mainCoach: pendingConsentAthlete.mainCoach ?? null,
+    })
+  }
+
   if (!ready) return <PageSpinner />
 
   return (
@@ -107,6 +125,7 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
         defaultTestLeader={coachEmail}
         coachUid={coachUid}
         guestMode={guestMode}
+        onGuestSessionEnd={pendingConsentAthlete ? handleGuestSessionEnd : undefined}
       />
     </>
   )

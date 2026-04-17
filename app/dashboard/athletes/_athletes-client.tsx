@@ -64,6 +64,7 @@ export function AthletesClientPage() {
           phone: a.phone,
           mainCoach: a.mainCoach,
           currentWeight: a.currentWeight,
+          status: a.status,
         }))} />
       )}
     </div>

@@ -11,10 +11,11 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn, fullName } from "@/lib/utils"
-import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
 import { RevokeConsentButton } from "@/components/athletes/revoke-consent-button"
-import { RenewConsentButton } from "@/components/athletes/renew-consent-button"
 import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
+import { ConsentModal } from "@/components/tests/consent-modal"
+import { grantConsentAction, declineConsentAction } from "@/app/actions/athletes"
+import { getCoachProfilesClient } from "@/lib/coach-profile"
 import { Pencil, Mail, Phone, User, Calendar, Hash, ShieldCheck, ShieldOff, Clock } from "lucide-react"
 
 function PageSpinner() {
@@ -29,15 +30,18 @@ export function AthleteDetailClient({ id }: { id: string }) {
   const [athlete, setAthlete] = useState<Athlete | null>(null)
   const [tests, setTests] = useState<Test[]>([])
   const [loading, setLoading] = useState(true)
+  const [showConsentModal, setShowConsentModal] = useState(false)
+  const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
   const router = useRouter()
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       unsub()
       if (!user) { router.push("/login"); return }
-      const [a, t] = await Promise.all([getAthlete(id), getTests(id)])
+      const [a, t, cs] = await Promise.all([getAthlete(id), getTests(id), getCoachProfilesClient()])
       setAthlete(a)
       setTests(t)
+      setCoaches(cs.map(c => ({ uid: c.uid, displayName: c.displayName })))
       setLoading(false)
     })
     return unsub
@@ -176,25 +180,33 @@ export function AthleteDetailClient({ id }: { id: string }) {
                 ? new Date(athlete.consentRevokedAt.seconds * 1000).toLocaleDateString("sv-SE")
                 : null
               return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
-                    <ShieldOff className="h-4 w-4 text-red-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-red-800">Samtycke indraget</p>
-                      {revokedDate && (
-                        <p className="text-xs text-red-700">Indraget {revokedDate}</p>
-                      )}
-                    </div>
+                <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                  <ShieldOff className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-800">Samtycke indraget</p>
+                    {revokedDate && (
+                      <p className="text-xs text-red-700">Indraget {revokedDate}</p>
+                    )}
                   </div>
-                  <RenewConsentButton athleteId={id} onRenewed={refetchAthlete} />
                 </div>
               )
             }
             if (status === 'Pending_Consent') {
               return (
-                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
-                  <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                  <p className="text-xs font-semibold text-amber-800">Inväntar samtycke</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-800">Inväntar samtycke</p>
+                      <p className="text-xs text-amber-700">Lös samtycket vid nästa testtillfälle</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowConsentModal(true)}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full justify-center")}
+                  >
+                    Bekräfta samtycke
+                  </button>
                 </div>
               )
             }
@@ -211,13 +223,53 @@ export function AthleteDetailClient({ id }: { id: string }) {
               <Pencil className="h-4 w-4" />
               Redigera
             </Link>
-            <DeleteAthleteButton athleteId={id} />
           </div>
         </CardContent>
       </Card>
 
       {/* Right: Tests */}
-      <AthleteTestsPanel tests={serializedTests} fileResults={[]} athleteId={id} />
+      <AthleteTestsPanel
+        tests={serializedTests}
+        fileResults={[]}
+        athleteId={id}
+        requiresConsent={athlete.status === 'Pending_Consent' || athlete.status === 'Consent_Revoked'}
+        onConsentRequired={() => setShowConsentModal(true)}
+      />
+
+      {showConsentModal && (
+        <ConsentModal
+          athleteName={fullName(athlete.firstName, athlete.lastName)}
+          athleteEmail={athlete.email ?? ""}
+          coaches={coaches}
+          onConsent={async (data) => {
+            await grantConsentAction(id, data)
+            setShowConsentModal(false)
+            await refetchAthlete()
+          }}
+          onGuest={
+            athlete.status === 'Pending_Consent'
+              ? async () => {
+                  await declineConsentAction(id, {
+                    firstName: athlete.firstName,
+                    lastName: athlete.lastName,
+                    email: athlete.email,
+                    phone: athlete.phone,
+                    clinicId: athlete.clinicId,
+                    personnummer: athlete.personnummer ?? null,
+                    gender: athlete.gender,
+                    mainCoach: athlete.mainCoach ?? null,
+                  })
+                  router.push("/dashboard/athletes")
+                }
+              : () => setShowConsentModal(false)
+          }
+          onGuestLabel={
+            athlete.status === 'Pending_Consent'
+              ? "NEJ – Kunden tackar nej till registrering"
+              : "Avbryt"
+          }
+        />
+      )}
     </div>
   )
 }

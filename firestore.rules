@@ -13,12 +13,26 @@ service cloud.firestore {
       allow write: if true;
     }
 
-    // coach_profiles + athlete_files: client-side only — require Firebase Auth.
+    // coach_profiles: read is public (display names only, used by server actions too).
+    // Write requires Firebase Auth.
     match /coach_profiles/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     match /athlete_files/{docId} {
       allow read, write: if request.auth != null;
+    }
+
+    // consent_events: written by server actions (same pattern as athletes/tests).
+    match /consent_events/{docId} {
+      allow read: if request.auth != null;
+      allow write: if true;
+    }
+
+    // declined_athletes: written by server actions when consent is declined.
+    match /declined_athletes/{docId} {
+      allow read: if request.auth != null;
+      allow write: if true;
     }
 
     // coaches: read is public (checked at login before auth exists).

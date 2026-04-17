@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, serverTimestamp } from 'firebase/firestore'
 import { Athlete, AthleteInput } from '@/types'
 
 const COL = 'athletes'
@@ -32,5 +32,33 @@ export async function updateAthlete(id: string, input: Partial<AthleteInput>): P
 }
 
 export async function deleteAthlete(id: string): Promise<void> {
+  await deleteDoc(doc(db, COL, id))
+}
+
+export async function getDeclinedAthletes(): Promise<Array<Record<string, unknown> & { id: string }>> {
+  const snap = await getDocs(collection(db, 'declined_athletes'))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function restoreDeclinedAthlete(id: string, data: Record<string, unknown>): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { declinedAt, ...athleteData } = data
+  await setDoc(doc(db, COL, id), {
+    ...athleteData,
+    status: 'Pending_Consent',
+    consentAt: null,
+    consentRevokedAt: null,
+    consentVerifiedBy: null,
+  })
+  await deleteDoc(doc(db, 'declined_athletes', id))
+}
+
+export async function declineAthlete(id: string, archiveData?: Record<string, unknown>): Promise<void> {
+  if (archiveData) {
+    await setDoc(doc(db, 'declined_athletes', id), {
+      ...archiveData,
+      declinedAt: serverTimestamp(),
+    })
+  }
   await deleteDoc(doc(db, COL, id))
 }

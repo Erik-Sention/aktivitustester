@@ -9,11 +9,12 @@ import { buttonVariants } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil,
   Check, X as XIcon, Download, Folder, ChevronDown, ChevronRight,
-  Maximize2, Minimize2, ZoomIn, ZoomOut,
+  Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff,
 } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { SerializedAthleteFile } from "@/types"
+import { getConsentEvents, ConsentEvent } from "@/lib/consent-events"
 
 // react-pdf uses DOMMatrix at module evaluation time — must be client-only
 const PdfViewer = dynamic(
@@ -39,6 +40,8 @@ interface AthleteTestsPanelProps {
   tests: SerializedTest[]
   fileResults: SerializedAthleteFile[]
   athleteId: string
+  requiresConsent?: boolean
+  onConsentRequired?: () => void
 }
 
 function testTypeLabel(type: string) {
@@ -73,6 +76,7 @@ type FileDisplayItem = SingleFileItem | GroupItem
 type ListItem =
   | { kind: "test"; dateStr: string; data: SerializedTest }
   | { kind: "file-item"; dateStr: string; data: FileDisplayItem }
+  | { kind: "consent"; dateStr: string; data: ConsentEvent }
 
 // ---- Excel preview helpers ----
 
@@ -291,13 +295,13 @@ function groupFiles(fileResults: SerializedAthleteFile[]): FileDisplayItem[] {
   return result
 }
 
-export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId }: AthleteTestsPanelProps) {
+export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, requiresConsent, onConsentRequired }: AthleteTestsPanelProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
   const [filesLoading, setFilesLoading] = useState(true)
-  const [kindFilter, setKindFilter] = useState<"all" | "test" | "file">("all")
+  const [kindFilter, setKindFilter] = useState<"all" | "test" | "file" | "consent">("all")
   const [testTypeFilter, setTestTypeFilter] = useState<string>("all")
   const [sportFilter, setSportFilter] = useState<string>("all")
   const [editingFileId, setEditingFileId] = useState<string | null>(null)
@@ -313,6 +317,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     metaRows: unknown[][]
   } | null>(null)
   const [excelLoading, setExcelLoading] = useState(false)
+  const [consentEvents, setConsentEvents] = useState<ConsentEvent[]>([])
 
   async function fetchFiles() {
     const q = query(
@@ -341,7 +346,15 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setFilesLoading(false)
   }
 
-  useEffect(() => { fetchFiles() }, [athleteId])
+  async function fetchConsentEventsForAthlete() {
+    const events = await getConsentEvents(athleteId)
+    setConsentEvents(events)
+  }
+
+  useEffect(() => {
+    fetchFiles()
+    fetchConsentEventsForAthlete()
+  }, [athleteId])
 
   function toggle(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -377,15 +390,21 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
   const items: ListItem[] = [
     ...tests
-      .filter(() => kindFilter !== "file")
+      .filter(() => kindFilter !== "file" && kindFilter !== "consent")
       .filter((t) => testTypeFilter === "all" || t.testType === testTypeFilter)
       .filter((t) => sportFilter === "all" || t.sport === sportFilter)
       .map((t): ListItem => ({ kind: "test", dateStr: t.testDateStr, data: t })),
     ...fileDisplayItems
-      .filter(() => kindFilter !== "test")
+      .filter(() => kindFilter !== "test" && kindFilter !== "consent")
       .map((fd): ListItem => {
         const dateStr = fd.kind === "single-file" ? fd.file.testDateStr : fd.files[0].testDateStr
         return { kind: "file-item", dateStr, data: fd }
+      }),
+    ...consentEvents
+      .filter(() => kindFilter !== "test" && kindFilter !== "file")
+      .map((ev): ListItem => {
+        const dateStr = new Date(ev.timestamp.seconds * 1000).toLocaleDateString("sv-SE")
+        return { kind: "consent", dateStr, data: ev }
       }),
   ].sort((a, b) => b.dateStr.localeCompare(a.dateStr))
 
@@ -467,6 +486,46 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setExcelLoading(false)
     setPreviewFullscreen(false)
     setPdfScale(1)
+  }
+
+  function renderConsentRow(ev: ConsentEvent) {
+    const labels: Record<string, string> = {
+      granted: "Samtycke bekräftat",
+      renewed: "Samtycke förnyat",
+      revoked: "Samtycke indraget",
+      declined: "Samtycke avböjt",
+    }
+    const isPositive = ev.eventType === "granted" || ev.eventType === "renewed"
+    const isRevoked = ev.eventType === "revoked"
+    const dateStr = new Date(ev.timestamp.seconds * 1000).toLocaleDateString("sv-SE")
+    const details = [
+      ev.gender === "M" ? "Man" : ev.gender === "K" ? "Kvinna" : null,
+      ev.personnummer ? ev.personnummer : null,
+    ].filter(Boolean).join(" · ")
+
+    return (
+      <div
+        key={`consent-${ev.id}`}
+        className="bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4"
+      >
+        <div className={cn(
+          "flex-shrink-0 w-5 h-5 flex items-center justify-center",
+          isPositive ? "text-green-600" : isRevoked ? "text-red-500" : "text-amber-500"
+        )}>
+          {isPositive ? <ShieldCheck className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-[#1D1D1F]">{labels[ev.eventType] ?? ev.eventType}</span>
+          <p className="text-sm text-[#515154] mt-0.5">
+            {ev.coachDisplayName}
+            {details ? ` · ${details}` : ""}
+          </p>
+        </div>
+
+        <span className="flex-shrink-0 text-sm text-[#515154]">{dateStr}</span>
+      </div>
+    )
   }
 
   // --- Render a single file row (used inside groups and for lone files) ---
@@ -628,7 +687,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-lg font-semibold">Tester</h2>
+        <h2 className="text-lg font-semibold">Historik</h2>
         <div className="flex gap-2">
           {selected.size >= 2 && (
             <button
@@ -640,7 +699,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </button>
           )}
           <button
-            onClick={() => setShowUpload(true)}
+            onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <Upload className="h-4 w-4" />
@@ -656,13 +715,14 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       {/* Filter pills — typ */}
       <div className="flex flex-wrap gap-2">
         {[
-          { label: "Alla",        kind: "all"  as const, type: "all" },
-          { label: "Tröskeltest", kind: "test" as const, type: "troskeltest" },
-          { label: "VO₂ max",    kind: "test" as const, type: "vo2max" },
-          { label: "Wingate",    kind: "test" as const, type: "wingate" },
-          { label: "Dokument",   kind: "file" as const, type: "all" },
+          { label: "Alla",        kind: "all"     as const, type: "all" },
+          { label: "Tröskeltest", kind: "test"    as const, type: "troskeltest" },
+          { label: "VO₂ max",    kind: "test"    as const, type: "vo2max" },
+          { label: "Wingate",    kind: "test"    as const, type: "wingate" },
+          { label: "Dokument",   kind: "file"    as const, type: "all" },
+          { label: "Samtycke",   kind: "consent" as const, type: "all" },
         ].map(({ label, kind, type }) => {
-          const active = kindFilter === kind && (kind === "all" || kind === "file" || testTypeFilter === type)
+          const active = kindFilter === kind && (kind === "all" || kind === "file" || kind === "consent" || testTypeFilter === type)
           return (
             <button
               key={label}
@@ -706,8 +766,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       ) : items.length === 0 ? (
         <p className="text-[#515154] text-base">
           {kindFilter === "all" && testTypeFilter === "all" && sportFilter === "all"
-            ? "Inga tester registrerade ännu."
-            : "Inga tester matchar filtret."}
+            ? "Ingen historik registrerad ännu."
+            : "Inget matchar filtret."}
         </p>
       ) : (
         <div className="space-y-2">
@@ -762,6 +822,11 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   <span className="flex-shrink-0 text-sm text-[#515154]">{test.testDateStr}</span>
                 </div>
               )
+            }
+
+            // Consent event
+            if (item.kind === "consent") {
+              return renderConsentRow(item.data)
             }
 
             // File display item

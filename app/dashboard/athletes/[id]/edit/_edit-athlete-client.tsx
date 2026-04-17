@@ -8,6 +8,9 @@ import { getAthlete } from "@/lib/athletes"
 import { Athlete } from "@/types"
 import { fullName } from "@/lib/utils"
 import { AthleteForm } from "@/components/athletes/athlete-form"
+import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
+import { RevokeConsentButton } from "@/components/athletes/revoke-consent-button"
+import { RenewConsentButton } from "@/components/athletes/renew-consent-button"
 import { AthleteStatus } from "@/types"
 
 function ConsentPill({ status }: { status: AthleteStatus | undefined }) {
@@ -45,6 +48,11 @@ export function EditAthleteClient({ id }: { id: string }) {
     return unsub
   }, [id, router])
 
+  async function refetchAthlete() {
+    const a = await getAthlete(id)
+    if (a) setAthlete(a)
+  }
+
   if (loading) return <PageSpinner />
   if (!athlete) return null
 
@@ -54,11 +62,17 @@ export function EditAthleteClient({ id }: { id: string }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <h1 className="text-2xl font-bold">
           Redigera — {fullName(athlete.firstName, athlete.lastName)}
         </h1>
         <ConsentPill status={athlete.status} />
+        {athlete.status === 'Active' && (
+          <RevokeConsentButton athleteId={id} onRevoked={refetchAthlete} />
+        )}
+        {athlete.status === 'Consent_Revoked' && (
+          <RenewConsentButton athleteId={id} onRenewed={refetchAthlete} />
+        )}
       </div>
       <AthleteForm
         existing={{
@@ -73,6 +87,9 @@ export function EditAthleteClient({ id }: { id: string }) {
           mainCoach: athlete.mainCoach ?? "",
         }}
       />
+      <div className="border-t border-black/[0.06] pt-4">
+        <DeleteAthleteButton athleteId={id} />
+      </div>
     </div>
   )
 }

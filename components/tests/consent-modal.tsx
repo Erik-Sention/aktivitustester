@@ -19,7 +19,8 @@ interface ConsentModalProps {
   athleteEmail: string
   coaches: { uid: string; displayName: string }[]
   onConsent: (data: ConsentData) => Promise<void>
-  onGuest: () => void
+  onGuest: () => void | Promise<void>
+  onGuestLabel?: string
 }
 
 function isValidPersonnummer(pnr: string): boolean {
@@ -27,7 +28,7 @@ function isValidPersonnummer(pnr: string): boolean {
   return digits.length === 10 || digits.length === 12
 }
 
-export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, onGuest }: ConsentModalProps) {
+export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, onGuest, onGuestLabel }: ConsentModalProps) {
   const [form, setForm] = useState<ConsentData>({
     personnummer: "",
     gender: "",
@@ -36,6 +37,7 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
     email: athleteEmail,
   })
   const [saving, setSaving] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
   const [pnrError, setPnrError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -61,6 +63,17 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
     } catch {
       setSubmitError("Något gick fel. Försök igen.")
       setSaving(false)
+    }
+  }
+
+  async function handleGuest() {
+    setGuestLoading(true)
+    setSubmitError(null)
+    try {
+      await onGuest()
+    } catch {
+      setSubmitError("Något gick fel. Försök igen.")
+      setGuestLoading(false)
     }
   }
 
@@ -150,18 +163,18 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
         <div className="flex flex-col gap-2">
           <Button
             onClick={handleConsent}
-            disabled={saving || !canSave}
+            disabled={saving || guestLoading || !canSave}
             className="w-full"
           >
             {saving ? "Sparar…" : "JA – Kunden ger samtycke"}
           </Button>
           <Button
             variant="outline"
-            onClick={onGuest}
-            disabled={saving}
+            onClick={handleGuest}
+            disabled={saving || guestLoading}
             className="w-full"
           >
-            NEJ – Kör som gäst (data sparas ej)
+            {guestLoading ? "Sparar…" : (onGuestLabel ?? "NEJ – Kör som gäst (data sparas ej)")}
           </Button>
         </div>
       </div>

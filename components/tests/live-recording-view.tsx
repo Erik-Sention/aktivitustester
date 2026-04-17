@@ -14,7 +14,8 @@ import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { Play, Pause, RotateCcw } from "lucide-react"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
-import { calculateVo2Max } from "@/lib/calculations"
+import { calculateVo2Max, interpolateLactateThreshold } from "@/lib/calculations"
+import { generatePDF, SerializedTest as ReportSerializedTest } from "@/components/tests/report-download-button"
 import { getCoachProfileClient } from "@/lib/coach-profile"
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ interface AthleteOption {
   id: string
   firstName: string
   lastName: string
+  gender?: string
   currentWeight?: number | null
 }
 
@@ -33,6 +35,7 @@ interface LiveRecordingViewProps {
   defaultTestLeader?: string
   coachUid?: string
   guestMode?: boolean
+  onGuestSessionEnd?: () => Promise<void>
 }
 
 // ── Sport / testtype / protocol config ────────────────────────────────
@@ -287,10 +290,11 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
   nedreGransPuls: null,
 }
 
-export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid, guestMode = false }: LiveRecordingViewProps) {
+export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid, guestMode = false, onGuestSessionEnd }: LiveRecordingViewProps) {
   const router = useRouter()
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
+  const [guestDownloadLoading, setGuestDownloadLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const pendingBack = useRef<(() => void) | null>(null)
@@ -600,6 +604,67 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
   // ── Chart data (all minute rows for staircase chart) ─────────────
   const dur = parseInt(form.testDuration) || 3
+
+  async function handleGuestDownloadPDF() {
+    const athlete = athletes.find((a) => a.id === form.athleteId)
+    const athleteName = athlete ? fullName(athlete.firstName, athlete.lastName) : "Gäst"
+    const gender = (athlete?.gender ?? "") as "M" | "K" | ""
+    const finalRows = rows.filter((p) => p.hr > 0 || p.lac > 0 || p.watt > 0)
+    const testDateTs = { seconds: Math.floor(new Date(form.testDate).getTime() / 1000), nanoseconds: 0 }
+    const now = { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 }
+    const lacRows = finalRows.filter((r) => r.lac > 0)
+    const atWatt = lacRows.length >= 2 ? interpolateLactateThreshold(lacRows, 2) : null
+    const ltWatt = lacRows.length >= 2 ? interpolateLactateThreshold(lacRows, 4) : null
+    const maxHR = finalRows.reduce((m, r) => r.hr > m ? r.hr : m, 0) || null
+    const maxLactate = finalRows.reduce((m, r) => r.lac > m ? r.lac : m, 0) || null
+
+    const guestTest: ReportSerializedTest = {
+      id: "guest",
+      athleteId: form.athleteId,
+      coachId: coachUid ?? "",
+      clinicId: "",
+      testDate: testDateTs,
+      createdAt: now,
+      sport: form.sport,
+      testType: form.testType,
+      protocol: form.protocol,
+      testLocation: (form.testLocation || "stockholm") as import("@/types").ClinicLocation,
+      testLeader: form.testLeader,
+      inputParams: {
+        startWatt: parseInt(form.startWatt) || 0,
+        stepSize: parseInt(form.stepSize) || 0,
+        startSpeed: parseFloat(form.startSpeed) || undefined,
+        speedIncrement: parseFloat(form.speedIncrement) || undefined,
+        incline: parseFloat(form.incline) || undefined,
+        testDuration: parseInt(form.testDuration) || 3,
+        bodyWeight: parseFloat(form.bodyWeight) || null,
+        heightCm: parseFloat(form.heightCm) || null,
+      },
+      results: { vo2Max: null, atWatt: atWatt ?? null, ltWatt: ltWatt ?? null, maxHR, maxLactate },
+      rawData: finalRows,
+      notes: form.notes,
+    }
+
+    setGuestDownloadLoading(true)
+    try {
+      const blob = await generatePDF(guestTest, athleteName, gender, coachUid)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${athleteName.replace(/\s+/g, "-").toLowerCase()}-${form.testDate}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Guest PDF generation failed:", err)
+    } finally {
+      setGuestDownloadLoading(false)
+    }
+  }
+
+  async function handleGuestEnd() {
+    if (onGuestSessionEnd) await onGuestSessionEnd()
+    router.back()
+  }
 
   async function handleSave() {
     if (guestMode) return
@@ -1085,7 +1150,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       <div className="mx-auto max-w-lg space-y-6">
         {guestMode && (
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-            <span className="font-semibold">Gästläge:</span> Inga data sparas historiskt. Be kunden fota skärmen om de vill spara sina värden.
+            <span className="font-semibold">Gästläge:</span> Inga data sparas. Ladda ned resultaten som PDF när testet är klart.
           </div>
         )}
         <div className="flex items-center justify-between">
@@ -1098,7 +1163,12 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>Tillbaka</Button>
             {guestMode ? (
-              <Button variant="outline" onClick={() => router.back()}>Avsluta session</Button>
+              <>
+                <Button variant="outline" onClick={handleGuestDownloadPDF} disabled={guestDownloadLoading}>
+                  {guestDownloadLoading ? "Genererar PDF…" : "Ladda ned PDF"}
+                </Button>
+                <Button variant="outline" onClick={handleGuestEnd}>Avsluta session</Button>
+              </>
             ) : (
               <Button onClick={handleWingateSave} disabled={saving}>
                 {saving ? "Sparar…" : "Spara test"}
@@ -1157,7 +1227,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     <div className="space-y-5">
       {guestMode && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-          <span className="font-semibold">Gästläge:</span> Inga data sparas historiskt. Be kunden fota skärmen om de vill spara sina värden.
+          <span className="font-semibold">Gästläge:</span> Inga data sparas. Ladda ned resultaten som PDF när testet är klart.
         </div>
       )}
       <div className="flex items-start justify-between gap-4">
@@ -1180,7 +1250,12 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             onStageChange={() => {}}
           />
           {guestMode ? (
-            <Button variant="outline" onClick={() => router.back()}>Avsluta session</Button>
+            <>
+              <Button variant="outline" onClick={handleGuestDownloadPDF} disabled={guestDownloadLoading}>
+                {guestDownloadLoading ? "Genererar PDF…" : "Ladda ned PDF"}
+              </Button>
+              <Button variant="outline" onClick={handleGuestEnd}>Avsluta session</Button>
+            </>
           ) : (
             <>
               <Button onClick={handleSave} disabled={saving}>
