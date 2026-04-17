@@ -29,11 +29,13 @@ export interface Clinic {
 
 // --- Athlete ---
 
+export type AthleteStatus = 'Pending_Consent' | 'Active' | 'Consent_Revoked'
+
 export interface Athlete {
   id: string
   firstName: string
   lastName: string
-  personnummer: string
+  personnummer?: string
   birthDate: Timestamp | null
   gender: 'M' | 'K' | ''
   email: string
@@ -44,6 +46,10 @@ export interface Athlete {
   clinicId: string
   createdBy: string
   createdAt: Timestamp
+  status: AthleteStatus
+  consentVerifiedBy?: string
+  consentAt?: Timestamp
+  consentRevokedAt?: Timestamp
 }
 
 export type AthleteInput = Omit<Athlete, 'id' | 'createdAt'>

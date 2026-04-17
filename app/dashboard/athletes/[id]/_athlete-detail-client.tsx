@@ -12,8 +12,10 @@ import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn, fullName } from "@/lib/utils"
 import { DeleteAthleteButton } from "@/components/athletes/delete-athlete-button"
+import { RevokeConsentButton } from "@/components/athletes/revoke-consent-button"
+import { RenewConsentButton } from "@/components/athletes/renew-consent-button"
 import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
-import { Pencil, Mail, Phone, User, Calendar, Hash } from "lucide-react"
+import { Pencil, Mail, Phone, User, Calendar, Hash, ShieldCheck, ShieldOff, Clock } from "lucide-react"
 
 function PageSpinner() {
   return (
@@ -40,6 +42,11 @@ export function AthleteDetailClient({ id }: { id: string }) {
     })
     return unsub
   }, [id, router])
+
+  async function refetchAthlete() {
+    const a = await getAthlete(id)
+    setAthlete(a)
+  }
 
   if (loading) return <PageSpinner />
 
@@ -139,6 +146,60 @@ export function AthleteDetailClient({ id }: { id: string }) {
               </div>
             )}
           </div>
+
+          <div className="border-t border-black/[0.06]" />
+
+          {/* Consent status */}
+          {(() => {
+            const status = athlete.status
+            if (status === 'Active') {
+              const consentDate = athlete.consentAt
+                ? new Date(athlete.consentAt.seconds * 1000).toLocaleDateString("sv-SE")
+                : null
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+                    <ShieldCheck className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-green-800">Samtycke aktivt</p>
+                      {consentDate && (
+                        <p className="text-xs text-green-700">Bekräftat {consentDate}</p>
+                      )}
+                    </div>
+                  </div>
+                  <RevokeConsentButton athleteId={id} onRevoked={refetchAthlete} />
+                </div>
+              )
+            }
+            if (status === 'Consent_Revoked') {
+              const revokedDate = athlete.consentRevokedAt
+                ? new Date(athlete.consentRevokedAt.seconds * 1000).toLocaleDateString("sv-SE")
+                : null
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                    <ShieldOff className="h-4 w-4 text-red-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-red-800">Samtycke indraget</p>
+                      {revokedDate && (
+                        <p className="text-xs text-red-700">Indraget {revokedDate}</p>
+                      )}
+                    </div>
+                  </div>
+                  <RenewConsentButton athleteId={id} onRenewed={refetchAthlete} />
+                </div>
+              )
+            }
+            if (status === 'Pending_Consent') {
+              return (
+                <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                  <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-xs font-semibold text-amber-800">Inväntar samtycke</p>
+                </div>
+              )
+            }
+            return null
+          })()}
 
           <div className="border-t border-black/[0.06]" />
 

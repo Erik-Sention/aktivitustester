@@ -8,6 +8,17 @@ import { getAthlete } from "@/lib/athletes"
 import { Athlete } from "@/types"
 import { fullName } from "@/lib/utils"
 import { AthleteForm } from "@/components/athletes/athlete-form"
+import { AthleteStatus } from "@/types"
+
+function ConsentPill({ status }: { status: AthleteStatus | undefined }) {
+  if (status === 'Active')
+    return <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">● Samtycke aktivt</span>
+  if (status === 'Consent_Revoked')
+    return <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">● Samtycke indraget</span>
+  if (status === 'Pending_Consent')
+    return <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">● Inväntar samtycke</span>
+  return null
+}
 
 function PageSpinner() {
   return (
@@ -43,9 +54,12 @@ export function EditAthleteClient({ id }: { id: string }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <h1 className="text-2xl font-bold">
-        Redigera — {fullName(athlete.firstName, athlete.lastName)}
-      </h1>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">
+          Redigera — {fullName(athlete.firstName, athlete.lastName)}
+        </h1>
+        <ConsentPill status={athlete.status} />
+      </div>
       <AthleteForm
         existing={{
           id: athlete.id,

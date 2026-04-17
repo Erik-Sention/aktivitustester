@@ -39,6 +39,7 @@ export async function createAthleteAction(data: {
     mainCoach: data.mainCoach || '',
     clinicId: user.clinicId,
     createdBy: user.uid,
+    status: 'Pending_Consent',
   })
 
   revalidatePath("/dashboard/athletes")
@@ -84,4 +85,47 @@ export async function deleteAthleteAction(id: string) {
   await deleteAthlete(id)
   revalidatePath("/dashboard/athletes")
   redirect("/dashboard/athletes")
+}
+
+export async function revokeConsentAction(athleteId: string) {
+  await requireSession()
+  await updateAthlete(athleteId, {
+    status: 'Consent_Revoked',
+    consentRevokedAt: Timestamp.now(),
+  })
+  revalidatePath(`/dashboard/athletes/${athleteId}`)
+}
+
+export async function renewConsentAction(athleteId: string) {
+  const user = await requireSession()
+  await updateAthlete(athleteId, {
+    status: 'Active',
+    consentAt: Timestamp.now(),
+    consentVerifiedBy: user.uid,
+  })
+  revalidatePath(`/dashboard/athletes/${athleteId}`)
+}
+
+export async function grantConsentAction(
+  athleteId: string,
+  data: {
+    personnummer: string
+    gender: string
+    phone: string
+    mainCoach: string
+    email?: string
+  }
+) {
+  const user = await requireSession()
+  await updateAthlete(athleteId, {
+    status: 'Active',
+    personnummer: data.personnummer,
+    gender: (data.gender as 'M' | 'K' | '') || '',
+    phone: data.phone || '',
+    mainCoach: data.mainCoach || '',
+    ...(data.email !== undefined ? { email: data.email } : {}),
+    consentVerifiedBy: user.uid,
+    consentAt: Timestamp.now(),
+  })
+  revalidatePath(`/dashboard/athletes/${athleteId}`)
 }

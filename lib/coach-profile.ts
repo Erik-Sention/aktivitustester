@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 export interface CoachProfile {
@@ -12,6 +12,11 @@ export async function getCoachProfileClient(uid: string): Promise<CoachProfile |
   const snap = await getDoc(doc(db, "coach_profiles", uid))
   if (!snap.exists()) return null
   return snap.data() as CoachProfile
+}
+
+export async function getCoachProfilesClient(): Promise<CoachProfile[]> {
+  const snap = await getDocs(collection(db, "coach_profiles"))
+  return snap.docs.map((d) => d.data() as CoachProfile)
 }
 
 export async function upsertCoachProfileClient(

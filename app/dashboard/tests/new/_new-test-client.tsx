@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { getAthletes } from "@/lib/athletes"
+import { getCoachProfilesClient } from "@/lib/coach-profile"
+import { grantConsentAction } from "@/app/actions/athletes"
 import { LiveRecordingView } from "@/components/tests/live-recording-view"
+import { ConsentModal, ConsentData } from "@/components/tests/consent-modal"
 
 function PageSpinner() {
   return (
@@ -23,8 +26,13 @@ interface NewTestClientProps {
 export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClientProps) {
   const [ready, setReady] = useState(false)
   const [athletes, setAthletes] = useState<{ id: string; firstName: string; lastName: string; currentWeight?: number }[]>([])
+  const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
   const [coachEmail, setCoachEmail] = useState("")
   const [coachUid, setCoachUid] = useState("")
+  const [showConsentModal, setShowConsentModal] = useState(false)
+  const [consentAthleteName, setConsentAthleteName] = useState("")
+  const [consentAthleteEmail, setConsentAthleteEmail] = useState("")
+  const [guestMode, setGuestMode] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -33,27 +41,73 @@ export function NewTestClient({ defaultAthleteId, defaultTestType }: NewTestClie
       if (!user) { router.push("/login"); return }
       setCoachEmail(user.email ?? "")
       setCoachUid(user.uid)
-      const data = await getAthletes()
-      setAthletes(data.map((a) => ({
+
+      const [athleteData, coachData] = await Promise.all([
+        getAthletes(),
+        getCoachProfilesClient().catch(() => []),
+      ])
+
+      setAthletes(athleteData.map((a) => ({
         id: a.id,
         firstName: a.firstName,
         lastName: a.lastName,
         currentWeight: a.currentWeight ?? undefined,
       })))
+
+      setCoaches(coachData.map((c) => ({ uid: c.uid, displayName: c.displayName })))
+
+      if (defaultAthleteId) {
+        const athlete = athleteData.find((a) => a.id === defaultAthleteId)
+        if (athlete?.status === 'Pending_Consent') {
+          setConsentAthleteName(`${athlete.firstName} ${athlete.lastName}`)
+          setConsentAthleteEmail(athlete.email ?? "")
+          setShowConsentModal(true)
+        }
+      }
+
       setReady(true)
     })
     return unsub
-  }, [router])
+  }, [router, defaultAthleteId])
+
+  async function handleConsent(data: ConsentData) {
+    if (!defaultAthleteId) return
+    await grantConsentAction(defaultAthleteId, {
+      personnummer: data.personnummer,
+      gender: data.gender,
+      phone: data.phone,
+      mainCoach: data.mainCoach,
+      email: data.email,
+    })
+    setShowConsentModal(false)
+  }
+
+  function handleGuest() {
+    setShowConsentModal(false)
+    setGuestMode(true)
+  }
 
   if (!ready) return <PageSpinner />
 
   return (
-    <LiveRecordingView
-      athletes={athletes}
-      defaultAthleteId={defaultAthleteId}
-      defaultTestType={defaultTestType}
-      defaultTestLeader={coachEmail}
-      coachUid={coachUid}
-    />
+    <>
+      {showConsentModal && (
+        <ConsentModal
+          athleteName={consentAthleteName}
+          athleteEmail={consentAthleteEmail}
+          coaches={coaches}
+          onConsent={handleConsent}
+          onGuest={handleGuest}
+        />
+      )}
+      <LiveRecordingView
+        athletes={athletes}
+        defaultAthleteId={defaultAthleteId}
+        defaultTestType={defaultTestType}
+        defaultTestLeader={coachEmail}
+        coachUid={coachUid}
+        guestMode={guestMode}
+      />
+    </>
   )
 }

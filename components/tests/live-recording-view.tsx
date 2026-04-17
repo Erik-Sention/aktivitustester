@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { createTestAction, createWingateTestAction } from "@/app/actions/tests"
 import { WingateTimer } from "@/components/tests/wingate-recording-view"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,7 @@ interface LiveRecordingViewProps {
   defaultTestType?: string
   defaultTestLeader?: string
   coachUid?: string
+  guestMode?: boolean
 }
 
 // ── Sport / testtype / protocol config ────────────────────────────────
@@ -285,7 +287,8 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
   nedreGransPuls: null,
 }
 
-export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid }: LiveRecordingViewProps) {
+export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid, guestMode = false }: LiveRecordingViewProps) {
+  const router = useRouter()
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -355,6 +358,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   })
 
   async function handleWingateSave() {
+    if (guestMode) return
     const peak = parseFloat(wingateResults.peakPower)
     const mean = parseFloat(wingateResults.meanPower)
     const min = parseFloat(wingateResults.minPower)
@@ -598,6 +602,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const dur = parseInt(form.testDuration) || 3
 
   async function handleSave() {
+    if (guestMode) return
     if (!form.athleteId) { setError("Välj en atlet"); return }
     setSaving(true)
     setError(null)
@@ -1078,6 +1083,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     const wingateAthlete = athletes.find((a) => a.id === form.athleteId)
     return (
       <div className="mx-auto max-w-lg space-y-6">
+        {guestMode && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+            <span className="font-semibold">Gästläge:</span> Inga data sparas historiskt. Be kunden fota skärmen om de vill spara sina värden.
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Wingate — Cykel</h1>
@@ -1087,9 +1097,13 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>Tillbaka</Button>
-            <Button onClick={handleWingateSave} disabled={saving}>
-              {saving ? "Sparar…" : "Spara test"}
-            </Button>
+            {guestMode ? (
+              <Button variant="outline" onClick={() => router.back()}>Avsluta session</Button>
+            ) : (
+              <Button onClick={handleWingateSave} disabled={saving}>
+                {saving ? "Sparar…" : "Spara test"}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1141,6 +1155,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
   return (
     <div className="space-y-5">
+      {guestMode && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          <span className="font-semibold">Gästläge:</span> Inga data sparas historiskt. Be kunden fota skärmen om de vill spara sina värden.
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">
@@ -1160,12 +1179,18 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             totalStages={stageCount || 1}
             onStageChange={() => {}}
           />
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Sparar…" : "Spara test"}
-          </Button>
-          <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>
-            Tillbaka
-          </Button>
+          {guestMode ? (
+            <Button variant="outline" onClick={() => router.back()}>Avsluta session</Button>
+          ) : (
+            <>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "Sparar…" : "Spara test"}
+              </Button>
+              <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>
+                Tillbaka
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
