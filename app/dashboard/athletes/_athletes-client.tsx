@@ -22,6 +22,11 @@ function PageSpinner() {
 export function AthletesClientPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -34,7 +39,7 @@ export function AthletesClientPage() {
     return unsub
   }, [])
 
-  if (loading) return <PageSpinner />
+  if (!mounted || loading) return <PageSpinner />
 
   return (
     <div className="space-y-4">

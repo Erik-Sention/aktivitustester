@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, where, orderBy, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore"
+import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -22,6 +22,7 @@ const PdfViewer = dynamic(
   { ssr: false }
 )
 import { UploadResultDialog } from "./upload-result-dialog"
+import { DeleteFileButton } from "./delete-file-button"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
@@ -326,7 +327,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       orderBy("testDate", "desc")
     )
     const snap = await getDocs(q)
-    const files: SerializedAthleteFile[] = snap.docs.map((d) => {
+    const files: SerializedAthleteFile[] = snap.docs.filter((d) => !d.data().isArchived).map((d) => {
       const data = d.data()
       const testDate = data.testDate?.toDate ? data.testDate.toDate() : new Date(data.testDate)
       const testDateEnd = data.testDateEnd?.toDate
@@ -408,21 +409,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       }),
   ].sort((a, b) => b.dateStr.localeCompare(a.dateStr))
 
-  // --- File delete helpers ---
-
-  async function handleDeleteFile(f: SerializedAthleteFile, e: React.MouseEvent) {
-    e.stopPropagation()
-    if (!confirm(`Ta bort "${f.fileName}"?`)) return
-    await deleteDoc(doc(db, "athlete_files", f.id))
-    setFileResults((prev) => prev.filter((x) => x.id !== f.id))
-  }
-
-  async function handleDeleteGroup(files: SerializedAthleteFile[], e: React.MouseEvent) {
-    e.stopPropagation()
-    const label = files.length === 1 ? files[0].fileName : `${files.length} filer`
-    if (!confirm(`Ta bort hela gruppen (${label})?`)) return
-    await Promise.all(files.map((f) => deleteDoc(doc(db, "athlete_files", f.id))))
-    const ids = new Set(files.map((f) => f.id))
+  function handleArchived(fileIds: string[]) {
+    const ids = new Set(fileIds)
     setFileResults((prev) => prev.filter((x) => !ids.has(x.id)))
   }
 
@@ -595,9 +583,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 <Pencil className="w-4 h-4" />
               </button>
             )}
-            <button aria-label="Radera" onClick={(e) => handleDeleteFile(f, e)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <DeleteFileButton fileIds={[f.id]} athleteId={athleteId} onArchived={handleArchived} />
           </div>
         )}
       </div>
@@ -647,14 +633,10 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             Lägg till filer
           </button>
 
-          {/* Delete whole group */}
-          <button
-            onClick={(e) => handleDeleteGroup(group.files, e)}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors flex-shrink-0"
-            title="Radera hela gruppen"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {/* Archive whole group */}
+          <div className="flex-shrink-0">
+            <DeleteFileButton fileIds={group.files.map((f) => f.id)} athleteId={athleteId} onArchived={handleArchived} />
+          </div>
 
           {/* Expand/collapse */}
           <div className="flex-shrink-0 text-[#515154]">

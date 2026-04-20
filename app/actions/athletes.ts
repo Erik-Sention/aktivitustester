@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
-import { createAthlete, updateAthlete, deleteAthlete, declineAthlete, restoreDeclinedAthlete } from "@/lib/athletes"
+import { createAthlete, updateAthlete, archiveAthlete, declineAthlete, restoreDeclinedAthlete } from "@/lib/athletes"
 import { getCoachProfileClient } from "@/lib/coach-profile"
 import { createConsentEvent } from "@/lib/consent-events"
 import { Timestamp } from "firebase/firestore"
@@ -91,9 +91,9 @@ export async function updateAthleteAction(
   redirect(`/dashboard/athletes/${id}`)
 }
 
-export async function deleteAthleteAction(id: string) {
-  await requireSession()
-  await deleteAthlete(id)
+export async function deleteAthleteAction(id: string, reason: string) {
+  const user = await requireSession()
+  await archiveAthlete(id, user.uid, reason)
   revalidatePath("/dashboard/athletes")
   redirect("/dashboard/athletes")
 }

@@ -41,3 +41,4 @@ export async function createAthleteFile(
 export async function deleteAthleteFile(fileId: string): Promise<void> {
   await adminDb.collection('athlete_files').doc(fileId).delete()
 }
+

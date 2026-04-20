@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
-import { createTest as createTestDb, updateTest as updateTestDb, deleteTest as deleteTestDb } from "@/lib/tests"
+import { createTest as createTestDb, updateTest as updateTestDb, archiveTest as archiveTestDb } from "@/lib/tests"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, SportSettings, CoachAssessment, WingateData, WingateInputParams } from "@/types"
 import { Timestamp, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -173,9 +173,9 @@ export async function createWingateTestAction(data: {
   redirect(`/dashboard/tests/${id}`)
 }
 
-export async function deleteTestAction(id: string, athleteId: string) {
-  await requireSession()
-  await deleteTestDb(id)
+export async function deleteTestAction(id: string, athleteId: string, reason: string) {
+  const user = await requireSession()
+  await archiveTestDb(id, user.uid, reason)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
   redirect(`/dashboard/athletes/${athleteId}`)
 }

@@ -21,7 +21,9 @@ export async function getTests(athleteId?: string): Promise<Test[]> {
     ? query(col, where('athleteId', '==', athleteId), orderBy('testDate', 'desc'))
     : query(col, orderBy('testDate', 'desc'))
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Test))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Test))
+    .filter(t => !t.isArchived)
 }
 
 export async function getTest(id: string): Promise<Test | null> {
@@ -48,4 +50,13 @@ export async function updateTest(id: string, input: Partial<TestInput>): Promise
 
 export async function deleteTest(id: string): Promise<void> {
   await deleteDoc(doc(db, COL, id))
+}
+
+export async function archiveTest(id: string, coachId: string, reason: string): Promise<void> {
+  await updateDoc(doc(db, COL, id), {
+    isArchived: true,
+    archivedAt: serverTimestamp(),
+    archivedBy: coachId,
+    archivedReason: reason,
+  })
 }

@@ -10,7 +10,9 @@ export async function getAthletes(clinicId?: string): Promise<Athlete[]> {
     ? query(col, where('clinicId', '==', clinicId), orderBy('createdAt', 'desc'))
     : query(col, orderBy('createdAt', 'desc'))
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Athlete))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Athlete))
+    .filter(a => !a.isArchived)
 }
 
 export async function getAthlete(id: string): Promise<Athlete | null> {
@@ -33,6 +35,15 @@ export async function updateAthlete(id: string, input: Partial<AthleteInput>): P
 
 export async function deleteAthlete(id: string): Promise<void> {
   await deleteDoc(doc(db, COL, id))
+}
+
+export async function archiveAthlete(id: string, coachId: string, reason: string): Promise<void> {
+  await updateDoc(doc(db, COL, id), {
+    isArchived: true,
+    archivedAt: serverTimestamp(),
+    archivedBy: coachId,
+    archivedReason: reason,
+  })
 }
 
 export async function getDeclinedAthletes(): Promise<Array<Record<string, unknown> & { id: string }>> {

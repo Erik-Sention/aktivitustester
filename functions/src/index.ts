@@ -1,6 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler"
+import { onDocumentUpdated } from "firebase-functions/v2/firestore"
 import { initializeApp } from "firebase-admin/app"
-import { getFirestore, Timestamp } from "firebase-admin/firestore"
+import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore"
 
 initializeApp()
 
@@ -30,4 +31,30 @@ export const cleanupPendingConsent = onSchedule("every 24 hours", async () => {
   await batch.commit()
 
   console.log(`Deleted ${snapshot.size} stale Pending_Consent athlete(s).`)
+})
+
+export const clearAthleteArchiveFields = onDocumentUpdated("athletes/{id}", async (event) => {
+  const before = event.data?.before.data()
+  const after = event.data?.after.data()
+  if (!before || !after) return
+  if (before.isArchived === true && after.isArchived === false) {
+    await event.data!.after.ref.update({
+      archivedAt: FieldValue.delete(),
+      archivedBy: FieldValue.delete(),
+      archivedReason: FieldValue.delete(),
+    })
+  }
+})
+
+export const clearTestArchiveFields = onDocumentUpdated("tests/{id}", async (event) => {
+  const before = event.data?.before.data()
+  const after = event.data?.after.data()
+  if (!before || !after) return
+  if (before.isArchived === true && after.isArchived === false) {
+    await event.data!.after.ref.update({
+      archivedAt: FieldValue.delete(),
+      archivedBy: FieldValue.delete(),
+      archivedReason: FieldValue.delete(),
+    })
+  }
 })

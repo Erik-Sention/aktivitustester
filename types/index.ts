@@ -50,6 +50,10 @@ export interface Athlete {
   consentVerifiedBy?: string
   consentAt?: Timestamp
   consentRevokedAt?: Timestamp
+  isArchived?: boolean
+  archivedAt?: Timestamp
+  archivedBy?: string
+  archivedReason?: string
 }
 
 export type AthleteInput = Omit<Athlete, 'id' | 'createdAt'>
@@ -175,6 +179,10 @@ export interface Test {
   rawData: RawDataPoint[]
   notes: string
   createdAt: Timestamp
+  isArchived?: boolean
+  archivedAt?: Timestamp
+  archivedBy?: string
+  archivedReason?: string
 }
 
 export type TestInput = Omit<Test, 'id' | 'results' | 'createdAt'>
@@ -193,6 +201,10 @@ export interface AthleteFile {
   storageUrl: string
   uploadGroupId?: string   // shared by files uploaded together
   createdAt: Timestamp
+  isArchived?: boolean
+  archivedAt?: Timestamp
+  archivedBy?: string
+  archivedReason?: string
 }
 
 export interface SerializedAthleteFile {

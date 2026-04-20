@@ -30,9 +30,14 @@ export function AthleteDetailClient({ id }: { id: string }) {
   const [athlete, setAthlete] = useState<Athlete | null>(null)
   const [tests, setTests] = useState<Test[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [showConsentModal, setShowConsentModal] = useState(false)
   const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
   const router = useRouter()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -52,7 +57,7 @@ export function AthleteDetailClient({ id }: { id: string }) {
     setAthlete(a)
   }
 
-  if (loading) return <PageSpinner />
+  if (!mounted || loading) return <PageSpinner />
 
   if (!athlete) {
     return (
