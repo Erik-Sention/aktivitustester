@@ -1,9 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { renewConsentAction } from "@/app/actions/athletes"
 import { Button } from "@/components/ui/button"
 import { ShieldCheck } from "lucide-react"
+
+const ConsentDocumentModal = dynamic(
+  () => import("@/components/athletes/consent-document-modal").then((m) => m.ConsentDocumentModal),
+  { ssr: false }
+)
 
 export function RenewConsentButton({
   athleteId,
@@ -15,6 +21,7 @@ export function RenewConsentButton({
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showConsentDoc, setShowConsentDoc] = useState(false)
 
   async function handleRenew() {
     setLoading(true)
@@ -30,17 +37,27 @@ export function RenewConsentButton({
 
   if (confirming) {
     return (
-      <div className="space-y-1">
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={handleRenew} disabled={loading}>
-            {loading ? "Sparar…" : "Bekräfta"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setConfirming(false)} disabled={loading}>
-            Avbryt
-          </Button>
+      <>
+        {showConsentDoc && <ConsentDocumentModal onClose={() => setShowConsentDoc(false)} />}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowConsentDoc(true)}
+            className="text-xs text-[#007AFF] hover:underline"
+          >
+            Läs samtyckesavtalet här
+          </button>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" onClick={handleRenew} disabled={loading}>
+              {loading ? "Sparar…" : "Bekräfta"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(false)} disabled={loading}>
+              Avbryt
+            </Button>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-      </div>
+      </>
     )
   }
 

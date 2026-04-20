@@ -1,10 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
+
+const ConsentDocumentModal = dynamic(
+  () => import("@/components/athletes/consent-document-modal").then((m) => m.ConsentDocumentModal),
+  { ssr: false }
+)
 
 export interface ConsentData {
   personnummer: string
@@ -40,6 +46,7 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
   const [guestLoading, setGuestLoading] = useState(false)
   const [pnrError, setPnrError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showConsentDoc, setShowConsentDoc] = useState(false)
 
   function update(field: keyof ConsentData, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -78,6 +85,8 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
   }
 
   return (
+    <>
+    {showConsentDoc && <ConsentDocumentModal onClose={() => setShowConsentDoc(false)} />}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 overflow-y-auto">
       <div className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full space-y-5 my-auto">
         <div className="space-y-1">
@@ -153,6 +162,14 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setShowConsentDoc(true)}
+          className="text-xs text-[#007AFF] hover:underline text-left"
+        >
+          Läs samtyckesavtalet här
+        </button>
+
         <p className="text-xs text-secondary">
           Genom att bekräfta intygar du som coach att samtycke har inhämtats. Datum och din
           användaridentitet loggas automatiskt.
@@ -179,5 +196,6 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, on
         </div>
       </div>
     </div>
+    </>
   )
 }

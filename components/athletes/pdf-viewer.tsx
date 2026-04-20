@@ -23,7 +23,8 @@ export function PdfViewer({ url, pageWidth }: PdfViewerProps) {
     setError(null)
   }
 
-  const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`
+  // data: URLs are self-contained strings the worker reads inline — no proxy needed
+  const fileSource = url.startsWith("data:") ? url : `/api/proxy-image?url=${encodeURIComponent(url)}`
 
   return (
     <div className="flex-1 min-h-0 overflow-auto bg-[#F5F5F7]">
@@ -39,7 +40,7 @@ export function PdfViewer({ url, pageWidth }: PdfViewerProps) {
           style={{ minWidth: pageWidth }}
         >
           <Document
-            file={proxyUrl}
+            file={fileSource}
             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
             onLoadError={() => setError("Kunde inte läsa PDF")}
             loading={

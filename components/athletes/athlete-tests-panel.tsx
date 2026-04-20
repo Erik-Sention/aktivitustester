@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, createElement } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import {
-  Plus, GitCompareArrows, FileText, Upload, Trash2, Pencil,
-  Check, X as XIcon, Download, Folder, ChevronDown, ChevronRight,
+  Plus, GitCompareArrows, FileText, Upload, Pencil, Eye, MoreHorizontal,
+  Check, X as XIcon, Download, FileDown, Folder, ChevronDown, ChevronRight,
   Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff,
 } from "lucide-react"
 import Link from "next/link"
@@ -41,6 +41,7 @@ interface AthleteTestsPanelProps {
   tests: SerializedTest[]
   fileResults: SerializedAthleteFile[]
   athleteId: string
+  athleteName?: string
   requiresConsent?: boolean
   onConsentRequired?: () => void
 }
@@ -296,7 +297,7 @@ function groupFiles(fileResults: SerializedAthleteFile[]): FileDisplayItem[] {
   return result
 }
 
-export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, requiresConsent, onConsentRequired }: AthleteTestsPanelProps) {
+export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, athleteName, requiresConsent, onConsentRequired }: AthleteTestsPanelProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
@@ -319,6 +320,10 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   } | null>(null)
   const [excelLoading, setExcelLoading] = useState(false)
   const [consentEvents, setConsentEvents] = useState<ConsentEvent[]>([])
+  const [consentPreview, setConsentPreview] = useState<{ dataUrl: string; blobUrl: string; name: string } | null>(null)
+  const [previewMoreOpen, setPreviewMoreOpen] = useState(false)
+  const [consentPreviewLoading, setConsentPreviewLoading] = useState<string | null>(null)
+  const [consentPreviewScale, setConsentPreviewScale] = useState(1)
 
   async function fetchFiles() {
     const q = query(
@@ -336,6 +341,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       return {
         id: d.id,
         resultType: data.resultType,
+        category: data.category,
         testDateStr: testDate.toLocaleDateString("sv-SE"),
         testDateEndStr: testDateEnd?.toLocaleDateString("sv-SE"),
         fileName: data.fileName,
@@ -474,6 +480,49 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setExcelLoading(false)
     setPreviewFullscreen(false)
     setPdfScale(1)
+    setPreviewMoreOpen(false)
+  }
+
+  async function handleConsentPreview(ev: ConsentEvent) {
+    if (!athleteName) return
+    setConsentPreviewLoading(ev.id)
+    try {
+      const [{ pdf }, { ConsentReceiptDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/athletes/consent-receipt-pdf"),
+      ])
+      const ts = new Date(ev.timestamp.seconds * 1000)
+      const blob = await pdf(createElement(ConsentReceiptDocument, {
+        athleteId: ev.athleteId,
+        athleteName,
+        athleteEmail: ev.email,
+        personnummer: ev.personnummer,
+        eventType: ev.eventType,
+        eventDate: ts.toLocaleDateString("sv-SE"),
+        systemTimestamp: ts.toISOString(),
+        coachDisplayName: ev.coachDisplayName,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as any).toBlob()
+      const blobUrl = URL.createObjectURL(blob)
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
+      const slug = athleteName.replace(/\s+/g, "-").toLowerCase()
+      setConsentPreview({ dataUrl, blobUrl, name: `${slug}-samtycke-${ev.eventType}-${ts.toLocaleDateString("sv-SE")}.pdf` })
+      setConsentPreviewScale(1)
+    } catch (err) {
+      console.error("Consent preview failed:", err)
+    } finally {
+      setConsentPreviewLoading(null)
+    }
+  }
+
+  function closeConsentPreview() {
+    if (consentPreview) URL.revokeObjectURL(consentPreview.blobUrl)
+    setConsentPreview(null)
+    setConsentPreviewScale(1)
   }
 
   function renderConsentRow(ev: ConsentEvent) {
@@ -489,7 +538,11 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     return (
       <div
         key={`consent-${ev.id}`}
-        className="bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4"
+        onClick={() => athleteName && handleConsentPreview(ev)}
+        className={cn(
+          "bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4 transition-colors",
+          athleteName && "cursor-pointer hover:bg-[#F5F5F7]/50"
+        )}
       >
         <div className={cn(
           "flex-shrink-0 w-5 h-5 flex items-center justify-center",
@@ -505,7 +558,17 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           </p>
         </div>
 
-        <span className="flex-shrink-0 text-sm text-[#515154]">{dateStr}</span>
+        <span className="flex-shrink-0 text-sm text-[#515154] mr-1">{dateStr}</span>
+        {athleteName && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleConsentPreview(ev) }}
+            disabled={consentPreviewLoading === ev.id}
+            className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm transition-all hover:bg-[#F5F5F7] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          >
+            <Eye className="h-3 w-3" />
+            {consentPreviewLoading === ev.id ? "Genererar…" : "Visa"}
+          </button>
+        )}
       </div>
     )
   }
@@ -514,12 +577,18 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   function renderSingleFileRow(f: SerializedAthleteFile, indented = false) {
     const dateLabel = f.testDateEndStr ? `${f.testDateStr} – ${f.testDateEndStr}` : f.testDateStr
     const isEditing = editingFileId === f.id
+    const isActive = previewFile?.id === f.id
 
     return (
       <div
         key={`file-${f.id}`}
+        onClick={() => !isEditing && openPreview(f)}
         className={cn(
-          "bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4",
+          "bg-white rounded-2xl border shadow-sm flex items-center gap-3 px-4 py-4 transition-colors",
+          !isEditing && "cursor-pointer hover:bg-[#F5F5F7]/50",
+          isActive
+            ? "border-[#007AFF] shadow-[0_0_0_2px_rgba(0,122,255,0.1)]"
+            : "border-[hsl(var(--border))]",
           indented && "ml-6 border-l-2 border-l-[#007AFF]/20 rounded-l-none"
         )}
       >
@@ -527,10 +596,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           <FileText className="w-4 h-4" />
         </div>
 
-        <div
-          onClick={() => !isEditing && openPreview(f)}
-          className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity"
-        >
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {isEditing ? (
               <input
@@ -538,7 +604,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 aria-label="Redigera resultattyp"
                 value={editingResultType}
                 onChange={(e) => setEditingResultType(e.target.value)}
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => e.stopPropagation()}
                 className="text-sm font-semibold border border-[#007AFF] rounded px-1.5 py-0.5 outline-none"
               />
             ) : (
@@ -548,14 +614,15 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
               <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Dokument</span>
             )}
           </div>
-          {/* Always show actual filename */}
-          <p className="text-sm text-[#515154] mt-0.5 truncate">{f.fileName}</p>
+          {f.resultType !== f.fileName && (
+            <p className="text-sm text-[#515154] mt-0.5 truncate">{f.fileName}</p>
+          )}
         </div>
 
-        <span className="flex-shrink-0 text-sm text-[#515154]">{dateLabel}</span>
+        <span className="flex-shrink-0 text-sm text-[#515154] mr-1">{dateLabel}</span>
 
         {isEditing ? (
-          <div className="flex gap-1 flex-shrink-0">
+          <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <button aria-label="Spara" onClick={(e) => handleSaveEdit(f, e)} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors">
               <Check className="w-4 h-4" />
             </button>
@@ -564,26 +631,39 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </button>
           </div>
         ) : (
-          <div className="flex gap-1 flex-shrink-0">
-            <a
-              aria-label={`Ladda ned ${f.fileName}`}
-              href={f.storageUrl}
-              download={f.fileName}
-              onClick={(e) => e.stopPropagation()}
-              className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-            {!indented && (
-              <button
-                aria-label="Redigera"
-                onClick={(e) => { e.preventDefault(); setEditingFileId(f.id); setEditingResultType(f.resultType) }}
-                className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Actions only visible when this file's preview is open */}
+            {isActive && (
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                <a
+                  aria-label={`Ladda ned ${f.fileName}`}
+                  href={f.storageUrl}
+                  download={f.fileName}
+                  className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+                {!indented && (
+                  <button
+                    aria-label="Redigera"
+                    onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingResultType(f.resultType) }}
+                    className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <DeleteFileButton fileIds={[f.id]} athleteId={athleteId} onArchived={handleArchived} />
+                </div>
+              </div>
             )}
-            <DeleteFileButton fileIds={[f.id]} athleteId={athleteId} onArchived={handleArchived} />
+            <button
+              onClick={(e) => { e.stopPropagation(); openPreview(f) }}
+              className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm transition-all hover:bg-[#F5F5F7] flex-shrink-0"
+            >
+              <Eye className="h-3 w-3" />
+              Visa
+            </button>
           </div>
         )}
       </div>
@@ -611,7 +691,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-[#1D1D1F]">{sample.resultType}</span>
+              <span className="font-semibold text-[#1D1D1F]">{sample.category ?? sample.resultType}</span>
               <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                 {group.files.length} filer
               </span>
@@ -621,29 +701,27 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
           <span className="flex-shrink-0 text-sm text-[#515154]">{dateLabel}</span>
 
-          {/* Add file to group */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setAddToGroup({ groupId: group.groupId, resultType: sample.resultType, testDateStr: sample.testDateStr })
-            }}
-            className={cn(buttonVariants({ size: "sm" }), "flex-shrink-0")}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Lägg till filer
-          </button>
+          {isExpanded && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAddToGroup({ groupId: group.groupId, resultType: sample.resultType, testDateStr: sample.testDateStr })
+                }}
+                className={cn(buttonVariants({ size: "sm" }), "flex-shrink-0")}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Lägg till filer
+              </button>
+              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <DeleteFileButton fileIds={group.files.map((f) => f.id)} athleteId={athleteId} onArchived={handleArchived} />
+              </div>
+            </>
+          )}
 
-          {/* Archive whole group */}
-          <div className="flex-shrink-0">
-            <DeleteFileButton fileIds={group.files.map((f) => f.id)} athleteId={athleteId} onArchived={handleArchived} />
-          </div>
-
-          {/* Expand/collapse */}
-          <div className="flex-shrink-0 text-[#515154]">
-            {isExpanded
-              ? <ChevronDown className="w-4 h-4" />
-              : <ChevronRight className="w-4 h-4" />
-            }
+          <div className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm flex-shrink-0">
+            {isExpanded ? "Stäng" : "Visa"}
+            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </div>
         </div>
 
@@ -798,7 +876,11 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                     </p>
                   </div>
 
-                  <span className="flex-shrink-0 text-sm text-[#515154]">{test.testDateStr}</span>
+                  <span className="flex-shrink-0 text-sm text-[#515154] mr-1">{test.testDateStr}</span>
+                  <div className="flex-shrink-0 flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/tests/${test.id}`) }}>
+                    <Eye className="h-3 w-3" />
+                    Visa
+                  </div>
                 </div>
               )
             }
@@ -871,6 +953,45 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   <Download className="w-4 h-4" />
                   Ladda ned
                 </a>
+
+                {/* "..." actions menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setPreviewMoreOpen((o) => !o)}
+                    className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
+                    title="Fler alternativ"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                  {previewMoreOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setPreviewMoreOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[#E5E5EA] py-1 z-20 min-w-[160px]">
+                        <button
+                          onClick={() => {
+                            setPreviewMoreOpen(false)
+                            const f = previewFile
+                            closePreview()
+                            setEditingFileId(f.id)
+                            setEditingResultType(f.resultType)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] flex items-center gap-2"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-[#515154]" />
+                          Döp om
+                        </button>
+                        <div className="px-2 py-1">
+                          <DeleteFileButton
+                            fileIds={[previewFile.id]}
+                            athleteId={athleteId}
+                            onArchived={(ids) => { handleArchived(ids); closePreview() }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <button
                   onClick={() => setPreviewFullscreen((f) => !f)}
                   className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
@@ -957,6 +1078,61 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   </a>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {consentPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={closeConsentPreview}
+        >
+          <div
+            className="mx-4 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "92vh", width: Math.round(760 * consentPreviewScale) + 32, maxWidth: "calc(95vw - 16px)", minWidth: 320 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#E5E5EA]">
+              <p className="font-semibold text-[#1D1D1F] truncate">Samtyckesregistrering</p>
+              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                <a
+                  href={consentPreview.blobUrl}
+                  download={consentPreview.name}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                >
+                  <Download className="w-4 h-4" />
+                  Ladda ner
+                </a>
+                <button aria-label="Stäng" onClick={closeConsentPreview} className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors">
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-shrink-0 flex items-center justify-center gap-1 border-b border-[#E5E5EA] bg-white px-3 py-2">
+              <button
+                onClick={() => setConsentPreviewScale(s => Math.max(0.5, +(s - 0.25).toFixed(2)))}
+                disabled={consentPreviewScale <= 0.5}
+                className="p-1.5 rounded-lg text-[#515154] hover:bg-[#F5F5F7] disabled:opacity-30 transition-colors"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setConsentPreviewScale(1)}
+                className="px-2 py-1 text-xs font-medium text-[#515154] hover:bg-[#F5F5F7] rounded-lg transition-colors min-w-[3.5rem] text-center"
+              >
+                {Math.round(consentPreviewScale * 100)}%
+              </button>
+              <button
+                onClick={() => setConsentPreviewScale(s => Math.min(3, +(s + 0.25).toFixed(2)))}
+                disabled={consentPreviewScale >= 3}
+                className="p-1.5 rounded-lg text-[#515154] hover:bg-[#F5F5F7] disabled:opacity-30 transition-colors"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-[#F5F5F7]" style={{ minHeight: 0 }}>
+              <PdfViewer url={consentPreview.dataUrl} pageWidth={Math.round(760 * consentPreviewScale)} />
             </div>
           </div>
         </div>

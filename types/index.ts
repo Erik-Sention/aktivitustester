@@ -210,6 +210,7 @@ export interface AthleteFile {
 export interface SerializedAthleteFile {
   id: string
   resultType: string
+  category?: string
   testDateStr: string
   testDateEndStr?: string
   fileName: string

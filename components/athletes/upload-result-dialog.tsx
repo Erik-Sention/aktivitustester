@@ -48,6 +48,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
   const [testDate, setTestDate] = useState(initialDate ?? "")
   const [testDateEnd, setTestDateEnd] = useState("")
   const [files, setFiles] = useState<File[]>([])
+  const [fileDisplayNames, setFileDisplayNames] = useState<string[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -71,6 +72,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
       // Avoid exact duplicates by name+size
       const existing = new Set(prev.map((f) => `${f.name}-${f.size}`))
       const unique = newFiles.filter((f) => !existing.has(`${f.name}-${f.size}`))
+      setFileDisplayNames((dn) => [...dn, ...unique.map(() => "")])
       return [...prev, ...unique]
     })
   }
@@ -83,6 +85,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
 
   function removeFile(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index))
+    setFileDisplayNames((prev) => prev.filter((_, i) => i !== index))
   }
 
   function uploadFileWithProgress(
@@ -138,7 +141,8 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
           athleteId,
           clinicId: "",
           coachId: "",
-          resultType: effectiveType,
+          resultType: fileDisplayNames[i]?.trim() || file.name,
+          category: effectiveType,
           testDate: new Date(testDate),
           fileName: file.name,
           storageUrl: url,
@@ -289,7 +293,18 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                     className="flex items-center gap-2 bg-[#F5F5F7] rounded-xl px-3 py-2"
                   >
                     <FileText className="h-4 w-4 text-[#515154] flex-shrink-0" />
-                    <span className="text-sm text-[#1D1D1F] flex-1 min-w-0 truncate">{file.name}</span>
+                    <span className="text-xs text-[#515154] w-28 min-w-0 truncate flex-shrink-0" title={file.name}>{file.name}</span>
+                    <input
+                      type="text"
+                      placeholder={file.name}
+                      value={fileDisplayNames[i] ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setFileDisplayNames((prev) => prev.map((v, j) => j === i ? val : v))
+                      }}
+                      disabled={loading}
+                      className="flex-1 min-w-0 bg-white rounded-lg border border-[#C7C7CC] px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#007AFF] disabled:opacity-40 placeholder:text-[#C7C7CC]"
+                    />
                     <span className="text-xs text-[#86868B] flex-shrink-0">{formatBytes(file.size)}</span>
                     <button
                       type="button"

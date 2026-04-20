@@ -234,6 +234,7 @@ export function AthleteDetailClient({ id }: { id: string }) {
         tests={serializedTests}
         fileResults={[]}
         athleteId={id}
+        athleteName={fullName(athlete.firstName, athlete.lastName)}
         requiresConsent={athlete.status === 'Pending_Consent' || athlete.status === 'Consent_Revoked'}
         onConsentRequired={() => setShowConsentModal(true)}
       />
