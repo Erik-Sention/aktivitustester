@@ -11,8 +11,8 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn, fullName } from "@/lib/utils"
-import { RevokeConsentButton } from "@/components/athletes/revoke-consent-button"
 import { AthleteTestsPanel, SerializedTest } from "@/components/athletes/athlete-tests-panel"
+import { AthleteTrendChart } from "@/components/athletes/athlete-trend-chart"
 import { ConsentModal } from "@/components/tests/consent-modal"
 import { grantConsentAction, declineConsentAction } from "@/app/actions/athletes"
 import { getCoachProfilesClient } from "@/lib/coach-profile"
@@ -27,17 +27,16 @@ function PageSpinner() {
 }
 
 export function AthleteDetailClient({ id }: { id: string }) {
+  const [mounted, setMounted] = useState(false)
   const [athlete, setAthlete] = useState<Athlete | null>(null)
   const [tests, setTests] = useState<Test[]>([])
   const [loading, setLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
   const [showConsentModal, setShowConsentModal] = useState(false)
+  const [showTrend, setShowTrend] = useState(false)
   const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
   const router = useRouter()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -57,7 +56,8 @@ export function AthleteDetailClient({ id }: { id: string }) {
     setAthlete(a)
   }
 
-  if (!mounted || loading) return <PageSpinner />
+  if (!mounted) return null
+  if (loading) return <PageSpinner />
 
   if (!athlete) {
     return (
@@ -229,7 +229,8 @@ export function AthleteDetailClient({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {/* Right: Tests */}
+      {/* Right: Tests panel (with integrated Förändring button) + optional trend chart */}
+      <div className="space-y-4">
       <AthleteTestsPanel
         tests={serializedTests}
         fileResults={[]}
@@ -237,7 +238,12 @@ export function AthleteDetailClient({ id }: { id: string }) {
         athleteName={fullName(athlete.firstName, athlete.lastName)}
         requiresConsent={athlete.status === 'Pending_Consent' || athlete.status === 'Consent_Revoked'}
         onConsentRequired={() => setShowConsentModal(true)}
+        hasTrendData={serializedTests.filter((t) => t.testType === "troskeltest" && (t.results.atWatt || t.results.ltWatt)).length >= 2}
+        showTrend={showTrend}
+        onToggleTrend={() => setShowTrend((v) => !v)}
       />
+      {showTrend && <AthleteTrendChart tests={serializedTests} />}
+      </div>
 
       {showConsentModal && (
         <ConsentModal

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { getTest } from "@/lib/tests"
+import { getAthlete } from "@/lib/athletes"
 import { Test } from "@/types"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, fullName } from "@/lib/utils"
 import { CompareView, SerializedFullTest } from "@/components/tests/compare-view"
 import { ArrowLeft } from "lucide-react"
 
@@ -45,6 +46,7 @@ function serialize(t: Test): SerializedFullTest {
 
 export function CompareClient({ idList }: { idList: string[] }) {
   const [tests, setTests] = useState<Test[]>([])
+  const [athleteName, setAthleteName] = useState("")
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -55,6 +57,10 @@ export function CompareClient({ idList }: { idList: string[] }) {
       const fetched = await Promise.all(idList.map((id) => getTest(id)))
       const valid = fetched.filter(Boolean) as Test[]
       setTests(valid)
+      if (valid.length > 0) {
+        const athlete = await getAthlete(valid[0].athleteId)
+        if (athlete) setAthleteName(fullName(athlete.firstName, athlete.lastName))
+      }
       setLoading(false)
     })
     return unsub
@@ -78,11 +84,11 @@ export function CompareClient({ idList }: { idList: string[] }) {
       <div className="flex items-center gap-4">
         <Link href={`/dashboard/athletes/${tests[0].athleteId}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           <ArrowLeft className="h-4 w-4" />
-          Tillbaka
+          Tillbaka till {athleteName || "atleten"}
         </Link>
         <h1 className="text-xl font-bold text-[#1D1D1F]">Jämförelse</h1>
       </div>
-      <CompareView tests={tests.map(serialize)} />
+      <CompareView tests={tests.map(serialize)} athleteName={athleteName} />
     </div>
   )
 }

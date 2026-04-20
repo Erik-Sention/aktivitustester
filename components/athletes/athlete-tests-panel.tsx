@@ -9,7 +9,7 @@ import { buttonVariants, Button } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Pencil, Eye, MoreHorizontal,
   Check, X as XIcon, Download, Folder, ChevronDown, ChevronRight,
-  Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff, Trash2,
+  Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff, Trash2, TrendingUp,
 } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -46,6 +46,9 @@ interface AthleteTestsPanelProps {
   athleteName?: string
   requiresConsent?: boolean
   onConsentRequired?: () => void
+  hasTrendData?: boolean
+  showTrend?: boolean
+  onToggleTrend?: () => void
 }
 
 function testTypeLabel(type: string) {
@@ -299,7 +302,7 @@ function groupFiles(fileResults: SerializedAthleteFile[]): FileDisplayItem[] {
   return result
 }
 
-export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, athleteName, requiresConsent, onConsentRequired }: AthleteTestsPanelProps) {
+export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, athleteName, requiresConsent, onConsentRequired, hasTrendData, showTrend, onToggleTrend }: AthleteTestsPanelProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
@@ -874,42 +877,19 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-lg font-semibold">Historik</h2>
-        <div className="flex gap-2">
-          {selected.size >= 2 && (
-            <button
-              onClick={handleCompare}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              <GitCompareArrows className="h-4 w-4" />
-              Jämför valda ({selected.size})
-            </button>
-          )}
-          <button
-            onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-          >
-            <Upload className="h-4 w-4" />
-            Ladda upp resultat
-          </button>
-          <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
-            <Plus className="h-4 w-4" />
-            Nytt test
-          </Link>
-        </div>
-      </div>
+      {/* Single row: heading + filter pills + action buttons */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <h2 className="text-lg font-semibold mr-1">Historik</h2>
 
-      {/* Filter pills — typ */}
-      <div className="flex flex-wrap gap-2">
+        {/* Type filter pills — only shown when that type has data */}
         {[
-          { label: "Alla",        kind: "all"     as const, type: "all" },
-          { label: "Tröskeltest", kind: "test"    as const, type: "troskeltest" },
-          { label: "VO₂ max",    kind: "test"    as const, type: "vo2max" },
-          { label: "Wingate",    kind: "test"    as const, type: "wingate" },
-          { label: "Dokument",   kind: "file"    as const, type: "all" },
-          { label: "Samtycke",   kind: "consent" as const, type: "all" },
-        ].map(({ label, kind, type }) => {
+          { label: "Alla",        kind: "all"     as const, type: "all",          show: true },
+          { label: "Tröskeltest", kind: "test"    as const, type: "troskeltest",  show: tests.some((t) => t.testType === "troskeltest") },
+          { label: "VO₂ max",    kind: "test"    as const, type: "vo2max",       show: tests.some((t) => t.testType === "vo2max") },
+          { label: "Wingate",    kind: "test"    as const, type: "wingate",      show: tests.some((t) => t.testType === "wingate") },
+          { label: "Dokument",   kind: "file"    as const, type: "all",          show: true },
+          { label: "Samtycke",   kind: "consent" as const, type: "all",          show: true },
+        ].filter((p) => p.show).map(({ label, kind, type }) => {
           const active = kindFilter === kind && (kind === "all" || kind === "file" || kind === "consent" || testTypeFilter === type)
           return (
             <button
@@ -921,22 +901,33 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </button>
           )
         })}
+
+        {/* Action buttons */}
+        {selected.size >= 2 && (
+          <button onClick={handleCompare} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            <GitCompareArrows className="h-4 w-4" />
+            Jämför valda ({selected.size})
+          </button>
+        )}
+        {hasTrendData && (
+          <button onClick={onToggleTrend} className={cn(buttonVariants({ variant: showTrend ? "default" : "outline", size: "sm" }))}>
+            <TrendingUp className="h-4 w-4" />
+            Förändring
+          </button>
+        )}
+        <button
+          onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          <Upload className="h-4 w-4" />
+          Ladda upp
+        </button>
+        <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
+          <Plus className="h-4 w-4" />
+          Nytt test
+        </Link>
       </div>
 
-      {/* Filter pills — sport (dold vid Dokument-filter) */}
-      {kindFilter !== "file" && availableSports.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {["all", ...availableSports].map((sport) => (
-            <button
-              key={sport}
-              onClick={() => setSportFilter(sport)}
-              className={cn(buttonVariants({ variant: sportFilter === sport ? "default" : "outline", size: "sm" }))}
-            >
-              {sport === "all" ? "Alla sporter" : (sportLabels[sport] ?? sport)}
-            </button>
-          ))}
-        </div>
-      )}
 
       {filesLoading ? (
         <div className="space-y-2">
@@ -953,7 +944,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
         </div>
       ) : items.length === 0 ? (
         <p className="text-[#515154] text-base">
-          {kindFilter === "all" && testTypeFilter === "all" && sportFilter === "all"
+          {kindFilter === "all" && testTypeFilter === "all"
             ? "Ingen historik registrerad ännu."
             : "Inget matchar filtret."}
         </p>
