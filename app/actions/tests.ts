@@ -180,6 +180,12 @@ export async function deleteTestAction(id: string, athleteId: string, reason: st
   redirect(`/dashboard/athletes/${athleteId}`)
 }
 
+export async function archiveTestAction(id: string, athleteId: string, reason: string) {
+  const user = await requireSession()
+  await archiveTestDb(id, user.uid, reason)
+  revalidatePath(`/dashboard/athletes/${athleteId}`)
+}
+
 export async function updateCoachAssessmentAction(
   testId: string,
   athleteId: string,

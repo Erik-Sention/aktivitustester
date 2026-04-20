@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants, Button } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Pencil, Eye, MoreHorizontal,
-  Check, X as XIcon, Download, FileDown, Folder, ChevronDown, ChevronRight,
-  Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff,
+  Check, X as XIcon, Download, Folder, ChevronDown, ChevronRight,
+  Maximize2, Minimize2, ZoomIn, ZoomOut, ShieldCheck, ShieldOff, Trash2,
 } from "lucide-react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -23,6 +23,8 @@ const PdfViewer = dynamic(
 )
 import { UploadResultDialog } from "./upload-result-dialog"
 import { DeleteFileButton } from "./delete-file-button"
+import { archiveAthleteFilesAction } from "@/app/actions/athlete-files"
+import { archiveTestAction } from "@/app/actions/tests"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
@@ -324,6 +326,12 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [previewMoreOpen, setPreviewMoreOpen] = useState(false)
   const [consentPreviewLoading, setConsentPreviewLoading] = useState<string | null>(null)
   const [consentPreviewScale, setConsentPreviewScale] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState("")
+  const [archivingMenuId, setArchivingMenuId] = useState<string | null>(null)
+  const [archiveMenuReason, setArchiveMenuReason] = useState("")
+  const [archiveMenuLoading, setArchiveMenuLoading] = useState(false)
 
   async function fetchFiles() {
     const q = query(
@@ -362,6 +370,13 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     fetchFiles()
     fetchConsentEventsForAthlete()
   }, [athleteId])
+
+  useEffect(() => {
+    if (!openMenuId) return
+    function close() { setOpenMenuId(null) }
+    document.addEventListener("click", close)
+    return () => document.removeEventListener("click", close)
+  }, [openMenuId])
 
   function toggle(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -425,6 +440,44 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     await updateDoc(doc(db, "athlete_files", f.id), { resultType: editingResultType })
     setFileResults((prev) => prev.map((x) => x.id === f.id ? { ...x, resultType: editingResultType } : x))
     setEditingFileId(null)
+  }
+
+  async function handleSaveGroupEdit(group: GroupItem) {
+    const trimmed = editingGroupName.trim()
+    if (!trimmed) { setEditingGroupId(null); return }
+    await Promise.all(group.files.map(f => updateDoc(doc(db, "athlete_files", f.id), { category: trimmed })))
+    setFileResults(prev => prev.map(f => f.uploadGroupId === group.groupId ? { ...f, category: trimmed } : f))
+    setEditingGroupId(null)
+  }
+
+  function closeArchiveMenu() {
+    setArchivingMenuId(null)
+    setArchiveMenuReason("")
+    setOpenMenuId(null)
+  }
+
+  async function handleArchiveFiles(ids: string[]) {
+    if (!archiveMenuReason.trim()) return
+    setArchiveMenuLoading(true)
+    try {
+      await archiveAthleteFilesAction(ids, athleteId, archiveMenuReason)
+      handleArchived(ids)
+      closeArchiveMenu()
+    } finally {
+      setArchiveMenuLoading(false)
+    }
+  }
+
+  async function handleArchiveTest(testId: string) {
+    if (!archiveMenuReason.trim()) return
+    setArchiveMenuLoading(true)
+    try {
+      await archiveTestAction(testId, athleteId, archiveMenuReason)
+      router.refresh()
+      closeArchiveMenu()
+    } finally {
+      setArchiveMenuLoading(false)
+    }
   }
 
   async function loadExcel(url: string) {
@@ -523,6 +576,32 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     if (consentPreview) URL.revokeObjectURL(consentPreview.blobUrl)
     setConsentPreview(null)
     setConsentPreviewScale(1)
+  }
+
+  function renderArchiveConfirm(onConfirm: () => void) {
+    return (
+      <div className="p-3" onClick={(e) => e.stopPropagation()}>
+        <div className="relative mb-2">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Orsak till arkivering…"
+            value={archiveMenuReason}
+            onChange={(e) => setArchiveMenuReason(e.target.value.slice(0, 50))}
+            className="w-full rounded-lg border border-[#C7C7CC] px-2.5 py-1.5 text-sm pr-9 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#86868B]">{archiveMenuReason.length}/50</span>
+        </div>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="destructive" onClick={onConfirm} disabled={archiveMenuLoading || !archiveMenuReason.trim()}>
+            {archiveMenuLoading ? "…" : "Bekräfta"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setArchivingMenuId(null); setArchiveMenuReason("") }}>
+            Avbryt
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   function renderConsentRow(ev: ConsentEvent) {
@@ -631,32 +710,45 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Actions only visible when this file's preview is open */}
-            {isActive && (
-              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                <a
-                  aria-label={`Ladda ned ${f.fileName}`}
-                  href={f.storageUrl}
-                  download={f.fileName}
-                  className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                </a>
-                {!indented && (
-                  <button
-                    aria-label="Redigera"
-                    onClick={(e) => { e.stopPropagation(); setEditingFileId(f.id); setEditingResultType(f.resultType) }}
-                    className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                )}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <DeleteFileButton fileIds={[f.id]} athleteId={athleteId} onArchived={handleArchived} />
+          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="relative flex-shrink-0">
+              <button
+                aria-label="Fler alternativ"
+                onClick={() => setOpenMenuId(openMenuId === `file-${f.id}` ? null : `file-${f.id}`)}
+                className="p-1.5 rounded-full hover:bg-[#F5F5F7] text-[#86868B] transition-colors"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {openMenuId === `file-${f.id}` && (
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                  {archivingMenuId === `file-${f.id}` ? renderArchiveConfirm(() => handleArchiveFiles([f.id])) : (
+                    <>
+                      <button
+                        onClick={() => { setEditingFileId(f.id); setEditingResultType(f.resultType); setOpenMenuId(null) }}
+                        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] text-left"
+                      >
+                        <Pencil className="h-3.5 w-3.5 flex-shrink-0" /> Döp om
+                      </button>
+                      <a
+                        href={f.storageUrl}
+                        download={f.fileName}
+                        onClick={() => setOpenMenuId(null)}
+                        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7]"
+                      >
+                        <Download className="h-3.5 w-3.5 flex-shrink-0" /> Ladda ner
+                      </a>
+                      <div className="h-px bg-[hsl(var(--border))]" />
+                      <button
+                        onClick={() => setArchivingMenuId(`file-${f.id}`)}
+                        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 flex-shrink-0" /> Arkivera
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
             <button
               onClick={(e) => { e.stopPropagation(); openPreview(f) }}
               className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm transition-all hover:bg-[#F5F5F7] flex-shrink-0"
@@ -689,40 +781,79 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             <Folder className="w-4 h-4" />
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-[#1D1D1F]">{sample.category ?? sample.resultType}</span>
-              <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                {group.files.length} filer
-              </span>
-              <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Dokument</span>
-            </div>
+          <div className="flex-1 min-w-0" onClick={(e) => editingGroupId === group.groupId && e.stopPropagation()}>
+            {editingGroupId === group.groupId ? (
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <input
+                  autoFocus
+                  value={editingGroupName}
+                  onChange={(e) => setEditingGroupName(e.target.value)}
+                  className="text-sm font-semibold border border-[#007AFF] rounded px-1.5 py-0.5 outline-none flex-1 min-w-0"
+                />
+                <button onClick={() => handleSaveGroupEdit(group)} className="p-1 rounded hover:bg-green-50 text-green-600">
+                  <Check className="w-4 h-4" />
+                </button>
+                <button onClick={() => setEditingGroupId(null)} className="p-1 rounded hover:bg-gray-100 text-[#515154]">
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-[#1D1D1F]">{sample.category ?? sample.resultType}</span>
+                <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  {group.files.length} filer
+                </span>
+                <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Dokument</span>
+              </div>
+            )}
           </div>
 
           <span className="flex-shrink-0 text-sm text-[#515154]">{dateLabel}</span>
 
-          {isExpanded && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setAddToGroup({ groupId: group.groupId, resultType: sample.resultType, testDateStr: sample.testDateStr })
-                }}
-                className={cn(buttonVariants({ size: "sm" }), "flex-shrink-0")}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Lägg till filer
-              </button>
-              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                <DeleteFileButton fileIds={group.files.map((f) => f.id)} athleteId={athleteId} onArchived={handleArchived} />
+          {editingGroupId !== group.groupId && (
+            <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="relative flex-shrink-0">
+                <button
+                  aria-label="Fler alternativ"
+                  onClick={() => setOpenMenuId(openMenuId === `group-${group.groupId}` ? null : `group-${group.groupId}`)}
+                  className="p-1.5 rounded-full hover:bg-[#F5F5F7] text-[#86868B] transition-colors"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+                {openMenuId === `group-${group.groupId}` && (
+                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                    {archivingMenuId === `group-${group.groupId}` ? renderArchiveConfirm(() => handleArchiveFiles(group.files.map(f => f.id))) : (
+                      <>
+                        <button
+                          onClick={() => { setEditingGroupId(group.groupId); setEditingGroupName(sample.category ?? sample.resultType); setOpenMenuId(null) }}
+                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] text-left"
+                        >
+                          <Pencil className="h-3.5 w-3.5 flex-shrink-0" /> Döp om mapp
+                        </button>
+                        <button
+                          onClick={() => { setAddToGroup({ groupId: group.groupId, resultType: sample.category ?? sample.resultType, testDateStr: sample.testDateStr }); setOpenMenuId(null) }}
+                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] text-left"
+                        >
+                          <Plus className="h-3.5 w-3.5 flex-shrink-0" /> Lägg till filer
+                        </button>
+                        <div className="h-px bg-[hsl(var(--border))]" />
+                        <button
+                          onClick={() => setArchivingMenuId(`group-${group.groupId}`)}
+                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 flex-shrink-0" /> Arkivera mapp
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-            </>
+              <div onClick={() => toggleGroup(group.groupId)} className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm cursor-pointer hover:bg-[#F5F5F7]">
+                {isExpanded ? "Stäng" : "Visa"}
+                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </div>
+            </div>
           )}
-
-          <div className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm flex-shrink-0">
-            {isExpanded ? "Stäng" : "Visa"}
-            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </div>
         </div>
 
         {/* Expanded individual files */}
@@ -877,9 +1008,41 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   </div>
 
                   <span className="flex-shrink-0 text-sm text-[#515154] mr-1">{test.testDateStr}</span>
-                  <div className="flex-shrink-0 flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/tests/${test.id}`) }}>
-                    <Eye className="h-3 w-3" />
-                    Visa
+                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative flex-shrink-0">
+                      <button
+                        aria-label="Fler alternativ"
+                        onClick={() => setOpenMenuId(openMenuId === `test-${test.id}` ? null : `test-${test.id}`)}
+                        className="p-1.5 rounded-full hover:bg-[#F5F5F7] text-[#86868B] transition-colors"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                      {openMenuId === `test-${test.id}` && (
+                        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                          {archivingMenuId === `test-${test.id}` ? renderArchiveConfirm(() => handleArchiveTest(test.id)) : (
+                            <>
+                              <button
+                                onClick={() => { router.push(`/dashboard/tests/${test.id}/edit`); setOpenMenuId(null) }}
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] text-left"
+                              >
+                                <Pencil className="h-3.5 w-3.5 flex-shrink-0" /> Redigera
+                              </button>
+                              <div className="h-px bg-[hsl(var(--border))]" />
+                              <button
+                                onClick={() => setArchivingMenuId(`test-${test.id}`)}
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 flex-shrink-0" /> Arkivera
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-1.5 text-xs font-semibold text-[#86868B] shadow-sm cursor-pointer hover:bg-[#F5F5F7]" onClick={() => router.push(`/dashboard/tests/${test.id}`)}>
+                      <Eye className="h-3 w-3" />
+                      Visa
+                    </div>
                   </div>
                 </div>
               )
