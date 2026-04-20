@@ -81,7 +81,7 @@ export function ReportDownloadButton({ test, athleteName, gender = "", coachId }
       const slug = athleteName.replace(/\s+/g, "-").toLowerCase()
       const dateStr = new Date(test.testDate.seconds * 1000).toLocaleDateString("sv-SE")
       a.href = url
-      a.download = `${slug}-${dateStr}.pdf`
+      a.download = `${slug}-${dateStr}-${test.sport}-${test.testType}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {

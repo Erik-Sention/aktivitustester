@@ -498,11 +498,6 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     const isPositive = ev.eventType === "granted" || ev.eventType === "renewed"
     const isRevoked = ev.eventType === "revoked"
     const dateStr = new Date(ev.timestamp.seconds * 1000).toLocaleDateString("sv-SE")
-    const details = [
-      ev.gender === "M" ? "Man" : ev.gender === "K" ? "Kvinna" : null,
-      ev.personnummer ? ev.personnummer : null,
-    ].filter(Boolean).join(" · ")
-
     return (
       <div
         key={`consent-${ev.id}`}
@@ -518,8 +513,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-[#1D1D1F]">{labels[ev.eventType] ?? ev.eventType}</span>
           <p className="text-sm text-[#515154] mt-0.5">
-            {ev.coachDisplayName}
-            {details ? ` · ${details}` : ""}
+            av {ev.coachDisplayName}
           </p>
         </div>
 
@@ -553,6 +547,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             {isEditing ? (
               <input
                 autoFocus
+                aria-label="Redigera resultattyp"
                 value={editingResultType}
                 onChange={(e) => setEditingResultType(e.target.value)}
                 onClick={(e) => e.preventDefault()}
@@ -573,16 +568,17 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
         {isEditing ? (
           <div className="flex gap-1 flex-shrink-0">
-            <button onClick={(e) => handleSaveEdit(f, e)} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors">
+            <button aria-label="Spara" onClick={(e) => handleSaveEdit(f, e)} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors">
               <Check className="w-4 h-4" />
             </button>
-            <button onClick={(e) => { e.preventDefault(); setEditingFileId(null) }} className="p-1.5 rounded-lg hover:bg-gray-100 text-[#515154] transition-colors">
+            <button aria-label="Avbryt" onClick={(e) => { e.preventDefault(); setEditingFileId(null) }} className="p-1.5 rounded-lg hover:bg-gray-100 text-[#515154] transition-colors">
               <XIcon className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div className="flex gap-1 flex-shrink-0">
             <a
+              aria-label={`Ladda ned ${f.fileName}`}
               href={f.storageUrl}
               download={f.fileName}
               onClick={(e) => e.stopPropagation()}
@@ -592,13 +588,14 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </a>
             {!indented && (
               <button
+                aria-label="Redigera"
                 onClick={(e) => { e.preventDefault(); setEditingFileId(f.id); setEditingResultType(f.resultType) }}
                 className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors"
               >
                 <Pencil className="w-4 h-4" />
               </button>
             )}
-            <button onClick={(e) => handleDeleteFile(f, e)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
+            <button aria-label="Radera" onClick={(e) => handleDeleteFile(f, e)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -899,7 +896,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 >
                   {previewFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
-                <button onClick={closePreview} className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors">
+                <button aria-label="Stäng" onClick={closePreview} className="p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#515154] transition-colors">
                   <XIcon className="w-5 h-5" />
                 </button>
               </div>

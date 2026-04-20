@@ -3,6 +3,7 @@ import {
   Line, Polyline, Rect, Circle, G, Path,
   StyleSheet,
 } from '@react-pdf/renderer'
+import type { Style } from '@react-pdf/types'
 import type { RawDataPoint } from '@/types'
 import type { SerializedTest } from './report-download-button'
 
@@ -170,16 +171,20 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     marginBottom: 4,
   },
-  zoneRowHigh: { backgroundColor: '#fee2e2' },
-  zoneRowMed:  { backgroundColor: '#d1fae5' },
-  zoneRowLow:  { backgroundColor: '#dbeafe' },
+  zoneRow1:   { backgroundColor: '#eff6ff' },
+  zoneRow2:   { backgroundColor: '#ecfdf5' },
+  zoneRow3:   { backgroundColor: '#fefce8' },
+  zoneRow4:   { backgroundColor: '#fff7ed' },
+  zoneRow5:   { backgroundColor: '#fee2e2' },
   zoneRowHead: { backgroundColor: C.slate100, marginBottom: 4 },
   zoneColor: {
     width: 8, height: 8, borderRadius: 2, marginRight: 8,
   },
-  zoneColorHigh: { backgroundColor: '#dc2626' },
-  zoneColorMed:  { backgroundColor: '#059669' },
-  zoneColorLow:  { backgroundColor: '#1d4ed8' },
+  zoneColor1: { backgroundColor: '#3b82f6' },
+  zoneColor2: { backgroundColor: '#10b981' },
+  zoneColor3: { backgroundColor: '#eab308' },
+  zoneColor4: { backgroundColor: '#f97316' },
+  zoneColor5: { backgroundColor: '#dc2626' },
   zoneName: {
     fontSize: 8,
     fontFamily: 'Helvetica-Bold',
@@ -618,7 +623,7 @@ function ThresholdBoxes({
     <View style={s.boxRow}>
       <View style={[s.threshBox, s.threshBoxGreen]}>
         <Text style={s.threshTitle}>AEROB TRÖSKEL</Text>
-        <Text style={s.threshSubtitle}>LT1 / FatMax  ≈  2.0 mmol</Text>
+        <Text style={s.threshSubtitle}>LT1 2.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt1Watt)}</Text>
         <Text style={s.threshUnit}>Watt</Text>
         <View style={s.threshDivider} />
@@ -633,7 +638,7 @@ function ThresholdBoxes({
       </View>
       <View style={[s.threshBox, s.threshBoxPurple]}>
         <Text style={s.threshTitle}>ANAEROB TRÖSKEL</Text>
-        <Text style={s.threshSubtitle}>AT / FTP  ≈  4.0 mmol</Text>
+        <Text style={s.threshSubtitle}>AT / FTP 4.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt2Watt)}</Text>
         <Text style={s.threshUnit}>Watt</Text>
         <View style={s.threshDivider} />
@@ -660,43 +665,62 @@ function IntensityZoneTable({
   lt2HR:   number | null
   estMaxHR: number | null
 }) {
-  const hiHR  = lt2HR   ? `${lt2HR}+ slag/min${estMaxHR ? ` (max ${estMaxHR})` : ''}` : '—'
-  const medHR = (lt1HR && lt2HR) ? `${lt1HR} – ${lt2HR - 1} slag/min` : '—'
-  const loHR  = lt1HR   ? `< ${lt1HR} slag/min` : '—'
-  const hiW   = lt2Watt ? `> ${lt2Watt} W` : '—'
-  const medW  = (lt1Watt && lt2Watt) ? `${lt1Watt} – ${lt2Watt - 1} W` : '—'
-  const loW   = lt1Watt ? `< ${lt1Watt} W` : '—'
+  // Split the LT1–LT2 range at the midpoint to create Z2 and Z3
+  const midW  = (lt1Watt && lt2Watt) ? Math.round((lt1Watt + lt2Watt) / 2) : null
+  const midHR = (lt1HR   && lt2HR)   ? Math.round((lt1HR   + lt2HR)   / 2) : null
+  // Z4 upper = LT2 + half the LT1–LT2 gap
+  const z4UpperW  = (lt1Watt && lt2Watt) ? lt2Watt  + Math.round((lt2Watt  - lt1Watt) / 2) : null
+  const z4UpperHR = (lt1HR   && lt2HR)   ? lt2HR    + Math.round((lt2HR    - lt1HR)   / 2) : null
+
+  const zones: { label: string; hr: string; watt: string; rowStyle: Style; dotStyle: Style }[] = [
+    {
+      label: 'Zon 1 – Återhämtning',
+      hr:   lt1HR   ? `< ${lt1HR} slag/min`                                          : '—',
+      watt: lt1Watt ? `< ${lt1Watt} W`                                               : '—',
+      rowStyle: s.zoneRow1, dotStyle: s.zoneColor1,
+    },
+    {
+      label: 'Zon 2 – Grundkondition',
+      hr:   (lt1HR && midHR)     ? `${lt1HR} – ${midHR - 1} slag/min`               : '—',
+      watt: (lt1Watt && midW)    ? `${lt1Watt} – ${midW - 1} W`                     : '—',
+      rowStyle: s.zoneRow2, dotStyle: s.zoneColor2,
+    },
+    {
+      label: 'Zon 3 – Tempo',
+      hr:   (midHR && lt2HR)     ? `${midHR} – ${lt2HR - 1} slag/min`               : '—',
+      watt: (midW && lt2Watt)    ? `${midW} – ${lt2Watt - 1} W`                     : '—',
+      rowStyle: s.zoneRow3, dotStyle: s.zoneColor3,
+    },
+    {
+      label: 'Zon 4 – Tröskel',
+      hr:   (lt2HR && z4UpperHR) ? `${lt2HR} – ${z4UpperHR} slag/min`               : '—',
+      watt: (lt2Watt && z4UpperW)? `${lt2Watt} – ${z4UpperW} W`                     : '—',
+      rowStyle: s.zoneRow4, dotStyle: s.zoneColor4,
+    },
+    {
+      label: 'Zon 5 – Maximal',
+      hr:   z4UpperHR ? `> ${z4UpperHR} slag/min${estMaxHR ? ` (max ${estMaxHR})` : ''}` : '—',
+      watt: z4UpperW  ? `> ${z4UpperW} W`                                            : '—',
+      rowStyle: s.zoneRow5, dotStyle: s.zoneColor5,
+    },
+  ]
 
   return (
     <View>
-      {/* Header row */}
       <View style={[s.zoneRow, s.zoneRowHead]}>
         <View style={{ width: 16 }} />
         <Text style={[s.zoneName, { color: C.slate400, fontSize: 6.5, letterSpacing: 1 }]}>INTENSITETSZON</Text>
         <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>PULS</Text>
         <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>EFFEKT</Text>
       </View>
-      {/* High */}
-      <View style={[s.zoneRow, s.zoneRowHigh]}>
-        <View style={[s.zoneColor, s.zoneColorHigh]} />
-        <Text style={s.zoneName}>Högintensiv</Text>
-        <Text style={s.zoneValBold}>{hiHR}</Text>
-        <Text style={s.zoneVal}>{hiW}</Text>
-      </View>
-      {/* Medium */}
-      <View style={[s.zoneRow, s.zoneRowMed]}>
-        <View style={[s.zoneColor, s.zoneColorMed]} />
-        <Text style={s.zoneName}>Medelintensiv</Text>
-        <Text style={s.zoneValBold}>{medHR}</Text>
-        <Text style={s.zoneVal}>{medW}</Text>
-      </View>
-      {/* Low */}
-      <View style={[s.zoneRow, s.zoneRowLow]}>
-        <View style={[s.zoneColor, s.zoneColorLow]} />
-        <Text style={s.zoneName}>Lågintensiv</Text>
-        <Text style={s.zoneValBold}>{loHR}</Text>
-        <Text style={s.zoneVal}>{loW}</Text>
-      </View>
+      {zones.map((z) => (
+        <View key={z.label} style={[s.zoneRow, z.rowStyle]}>
+          <View style={[s.zoneColor, z.dotStyle]} />
+          <Text style={s.zoneName}>{z.label}</Text>
+          <Text style={s.zoneValBold}>{z.hr}</Text>
+          <Text style={s.zoneVal}>{z.watt}</Text>
+        </View>
+      ))}
     </View>
   )
 }
