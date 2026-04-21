@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo, createElement } from "react"
+import { useState, useEffect, useRef, useMemo, createElement } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { cn } from "@/lib/utils"
+import { cn, isSpeedSport, thresholdUnit } from "@/lib/utils"
 import { buttonVariants, Button } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Pencil, Eye, MoreHorizontal,
@@ -25,6 +25,7 @@ import { UploadResultDialog } from "./upload-result-dialog"
 import { DeleteFileButton } from "./delete-file-button"
 import { archiveAthleteFilesAction } from "@/app/actions/athlete-files"
 import { archiveTestAction } from "@/app/actions/tests"
+import { fetchTestsForExport, buildAthleteCSV, downloadCSV } from "@/lib/export"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
@@ -44,6 +45,7 @@ interface AthleteTestsPanelProps {
   fileResults: SerializedAthleteFile[]
   athleteId: string
   athleteName?: string
+  isAdmin?: boolean
   requiresConsent?: boolean
   onConsentRequired?: () => void
   hasTrendData?: boolean
@@ -302,10 +304,13 @@ function groupFiles(fileResults: SerializedAthleteFile[]): FileDisplayItem[] {
   return result
 }
 
-export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, athleteName, requiresConsent, onConsentRequired, hasTrendData, showTrend, onToggleTrend }: AthleteTestsPanelProps) {
+export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athleteId, athleteName, isAdmin, requiresConsent, onConsentRequired, hasTrendData, showTrend, onToggleTrend }: AthleteTestsPanelProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showUpload, setShowUpload] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
   const [filesLoading, setFilesLoading] = useState(true)
   const [kindFilter, setKindFilter] = useState<"all" | "test" | "file" | "consent">("all")
@@ -389,6 +394,31 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
       else next.add(id)
       return next
     })
+  }
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    function onClickOutside(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [showExportMenu])
+
+  async function handleExport(anonymize: boolean) {
+    if (!athleteName) return
+    setExporting(true)
+    setShowExportMenu(false)
+    try {
+      const fullTests = await fetchTestsForExport(athleteId)
+      const csv = buildAthleteCSV(fullTests, athleteName, anonymize)
+      const slug = anonymize ? 'anonym' : athleteName.replace(/\s+/g, '-').toLowerCase()
+      downloadCSV(csv, `${slug}-testdata.csv`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   function handleCompare() {
@@ -878,54 +908,89 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   return (
     <div className="space-y-3">
       {/* Single row: heading + filter pills + action buttons */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        <h2 className="text-lg font-semibold mr-1">Historik</h2>
+      <div className="flex flex-wrap gap-1.5 items-center justify-between">
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <h2 className="text-lg font-semibold mr-1">Historik</h2>
 
-        {/* Type filter pills — only shown when that type has data */}
-        {[
-          { label: "Alla",        kind: "all"     as const, type: "all",          show: true },
-          { label: "Tröskeltest", kind: "test"    as const, type: "troskeltest",  show: tests.some((t) => t.testType === "troskeltest") },
-          { label: "VO₂ max",    kind: "test"    as const, type: "vo2max",       show: tests.some((t) => t.testType === "vo2max") },
-          { label: "Wingate",    kind: "test"    as const, type: "wingate",      show: tests.some((t) => t.testType === "wingate") },
-          { label: "Dokument",   kind: "file"    as const, type: "all",          show: true },
-          { label: "Samtycke",   kind: "consent" as const, type: "all",          show: true },
-        ].filter((p) => p.show).map(({ label, kind, type }) => {
-          const active = kindFilter === kind && (kind === "all" || kind === "file" || kind === "consent" || testTypeFilter === type)
-          return (
-            <button
-              key={label}
-              onClick={() => { setKindFilter(kind); setTestTypeFilter(type); setSportFilter("all") }}
-              className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }))}
-            >
-              {label}
+          {/* Type filter pills — only shown when that type has data */}
+          {[
+            { label: "Alla",        kind: "all"     as const, type: "all",          show: true },
+            { label: "Tröskeltest", kind: "test"    as const, type: "troskeltest",  show: tests.some((t) => t.testType === "troskeltest") },
+            { label: "VO₂ max",    kind: "test"    as const, type: "vo2max",       show: tests.some((t) => t.testType === "vo2max") },
+            { label: "Wingate",    kind: "test"    as const, type: "wingate",      show: tests.some((t) => t.testType === "wingate") },
+            { label: "Dokument",   kind: "file"    as const, type: "all",          show: true },
+            { label: "Samtycke",   kind: "consent" as const, type: "all",          show: true },
+          ].filter((p) => p.show).map(({ label, kind, type }) => {
+            const active = kindFilter === kind && (kind === "all" || kind === "file" || kind === "consent" || testTypeFilter === type)
+            return (
+              <button
+                key={label}
+                onClick={() => { setKindFilter(kind); setTestTypeFilter(type); setSportFilter("all") }}
+                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }))}
+              >
+                {label}
+              </button>
+            )
+          })}
+
+          {/* Contextual action buttons (inline with filters) */}
+          {selected.size >= 2 && (
+            <button onClick={handleCompare} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <GitCompareArrows className="h-4 w-4" />
+              Jämför valda ({selected.size})
             </button>
-          )
-        })}
+          )}
+          {hasTrendData && (
+            <button onClick={onToggleTrend} className={cn(buttonVariants({ variant: showTrend ? "default" : "outline", size: "sm" }))}>
+              <TrendingUp className="h-4 w-4" />
+              Förändring
+            </button>
+          )}
+        </div>
 
-        {/* Action buttons */}
-        {selected.size >= 2 && (
-          <button onClick={handleCompare} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            <GitCompareArrows className="h-4 w-4" />
-            Jämför valda ({selected.size})
+        {/* Primary actions pinned to the right */}
+        <div className="flex gap-1.5 items-center flex-shrink-0">
+          {isAdmin && athleteName && (
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(v => !v)}
+                disabled={exporting}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? 'Exporterar…' : 'Exportera'}
+                <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-apple-md border border-black/[0.06] py-1.5 min-w-[190px]">
+                  <button
+                    onClick={() => handleExport(false)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-primary hover:bg-[#F5F5F7] transition-colors"
+                  >
+                    CSV med namn
+                  </button>
+                  <button
+                    onClick={() => handleExport(true)}
+                    className="w-full text-left px-4 py-2.5 text-sm text-primary hover:bg-[#F5F5F7] transition-colors"
+                  >
+                    CSV anonymiserad (GDPR)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            <Upload className="h-4 w-4" />
+            Ladda upp
           </button>
-        )}
-        {hasTrendData && (
-          <button onClick={onToggleTrend} className={cn(buttonVariants({ variant: showTrend ? "default" : "outline", size: "sm" }))}>
-            <TrendingUp className="h-4 w-4" />
-            Förändring
-          </button>
-        )}
-        <button
-          onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          <Upload className="h-4 w-4" />
-          Ladda upp
-        </button>
-        <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
-          <Plus className="h-4 w-4" />
-          Nytt test
-        </Link>
+          <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
+            <Plus className="h-4 w-4" />
+            Nytt test
+          </Link>
+        </div>
       </div>
 
 
@@ -991,10 +1056,10 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                       {test.inputParams.startWatt > 0 && (
                         <span>{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
                       )}
-                      {test.inputParams.startWatt > 0 && (test.results.atWatt || test.results.ltWatt) && <span> · </span>}
-                      {test.results.atWatt ? `LT1: ${test.results.atWatt}W` : ""}
+                      {(test.results.atWatt || test.results.ltWatt) && (test.inputParams.startWatt > 0 || isSpeedSport(test.sport)) && <span> · </span>}
+                      {test.results.atWatt ? `LT1: ${test.results.atWatt} ${thresholdUnit(test.sport)}` : ""}
                       {test.results.atWatt && test.results.ltWatt ? " · " : ""}
-                      {test.results.ltWatt ? `LT2: ${test.results.ltWatt}W` : ""}
+                      {test.results.ltWatt ? `LT2: ${test.results.ltWatt} ${thresholdUnit(test.sport)}` : ""}
                     </p>
                   </div>
 

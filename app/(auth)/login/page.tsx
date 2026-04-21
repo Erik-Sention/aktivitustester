@@ -25,11 +25,12 @@ export default function LoginPage() {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password)
       const idToken = await credential.user.getIdToken()
+      const refreshToken = credential.user.refreshToken
 
       const res = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, refreshToken }),
       })
 
       if (!res.ok) throw new Error("Session creation failed")

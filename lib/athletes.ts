@@ -46,6 +46,16 @@ export async function archiveAthlete(id: string, coachId: string, reason: string
   })
 }
 
+export async function restoreAthlete(id: string): Promise<void> {
+  await updateDoc(doc(db, COL, id), {
+    isArchived: false,
+    archivedAt: null,
+    archivedBy: null,
+    archivedReason: null,
+  })
+}
+
+
 export async function getDeclinedAthletes(): Promise<Array<Record<string, unknown> & { id: string }>> {
   const snap = await getDocs(collection(db, 'declined_athletes'))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))

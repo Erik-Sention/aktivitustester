@@ -74,6 +74,11 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
           <Link href="/dashboard/athletes" className="text-base font-medium text-primary hover:text-interactive transition-colors">
             Atleter
           </Link>
+          {role === 'ADMIN' && (
+            <Link href="/dashboard/admin" className="text-base font-medium text-primary hover:text-interactive transition-colors">
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Right — avatar + name → profile + logout */}

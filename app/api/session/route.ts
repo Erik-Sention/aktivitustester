@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
+import { firestoreGet, firestoreSet } from '@/lib/firestore-rest'
 
 const SESSION_COOKIE = 'session'
 const SESSION_MAX_AGE = 60 * 60 * 12 // 12 hours
@@ -16,7 +17,7 @@ function sign(payload: object): string {
   return Buffer.from(JSON.stringify({ data, sig })).toString('base64url')
 }
 
-export function verifyToken(token: string): Record<string, unknown> | null {
+function verifyToken(token: string): Record<string, unknown> | null {
   try {
     const { data, sig } = JSON.parse(Buffer.from(token, 'base64url').toString())
     const expected = createHmac('sha256', secret()).update(data).digest('hex')
@@ -28,7 +29,7 @@ export function verifyToken(token: string): Record<string, unknown> | null {
 }
 
 export async function POST(request: NextRequest) {
-  const { idToken } = await request.json()
+  const { idToken, refreshToken } = await request.json()
   if (!idToken) return NextResponse.json({ error: 'Missing idToken' }, { status: 400 })
 
   // Verify the Firebase ID token via REST API (no Admin SDK needed)
@@ -48,12 +49,42 @@ export async function POST(request: NextRequest) {
   const user = users?.[0]
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Build session payload from Firebase user
+  const uid = user.localId as string
+  const email = (user.email ?? '') as string
+
+  // Look up or create the user doc in Firestore
+  let role: 'ADMIN' | 'TRAINER' = 'TRAINER'
+  let clinicId = ''
+
+  try {
+    const userDoc = await firestoreGet('users', uid, idToken)
+    if (userDoc) {
+      role = (userDoc.role ?? 'TRAINER') as 'ADMIN' | 'TRAINER'
+      clinicId = (userDoc.clinicId as string) ?? ''
+    } else {
+      // Bootstrap: first-time login — check env var for admin override
+      if (process.env.ADMIN_BOOTSTRAP_UID === uid) {
+        role = 'ADMIN'
+      }
+      await firestoreSet('users', uid, {
+        role,
+        email,
+        clinicId,
+        createdAt: new Date().toISOString(),
+      }, idToken)
+    }
+  } catch (err) {
+    // Firestore read failed (e.g. security rules not yet updated) — fall back gracefully
+    console.error('Firestore user doc lookup failed:', err)
+    if (process.env.ADMIN_BOOTSTRAP_UID === uid) role = 'ADMIN'
+  }
+
   const payload = {
-    uid: user.localId,
-    email: user.email ?? '',
-    role: 'TRAINER' as const,   // Default — override via custom claims later
-    clinicId: '',
+    uid,
+    email,
+    role,
+    clinicId,
+    refreshToken: refreshToken ?? '',
     exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
   }
 

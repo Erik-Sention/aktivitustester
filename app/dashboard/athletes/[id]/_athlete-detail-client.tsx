@@ -26,7 +26,7 @@ function PageSpinner() {
   )
 }
 
-export function AthleteDetailClient({ id }: { id: string }) {
+export function AthleteDetailClient({ id, isAdmin }: { id: string; isAdmin?: boolean }) {
   const [mounted, setMounted] = useState(false)
   const [athlete, setAthlete] = useState<Athlete | null>(null)
   const [tests, setTests] = useState<Test[]>([])
@@ -236,6 +236,7 @@ export function AthleteDetailClient({ id }: { id: string }) {
         fileResults={[]}
         athleteId={id}
         athleteName={fullName(athlete.firstName, athlete.lastName)}
+        isAdmin={isAdmin}
         requiresConsent={athlete.status === 'Pending_Consent' || athlete.status === 'Consent_Revoked'}
         onConsentRequired={() => setShowConsentModal(true)}
         hasTrendData={serializedTests.filter((t) => t.testType === "troskeltest" && (t.results.atWatt || t.results.ltWatt)).length >= 2}

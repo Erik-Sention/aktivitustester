@@ -6,10 +6,12 @@ import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from '@/lib/calculati
 const COL = 'tests'
 
 function calculateResults(rawData: RawDataPoint[]): TestResults {
-  const valid = rawData.filter(p => p.lac > 0 && p.watt > 0)
+  const hasSpeed = rawData.some(p => (p.speed ?? 0) > 0)
+  const hasIntensity = (p: RawDataPoint) => hasSpeed ? (p.speed ?? 0) > 0 : p.watt > 0
+  const valid = rawData.filter(p => p.lac > 0 && hasIntensity(p))
   const atWatt = interpolateLactateThreshold(valid, LT1_MMOL)
   const ltWatt = interpolateLactateThreshold(valid, LT2_MMOL)
-  const allActive = rawData.filter(p => p.watt > 0 && p.hr > 0)
+  const allActive = rawData.filter(p => hasIntensity(p) && p.hr > 0)
   const maxHR = allActive.length > 0 ? Math.max(...allActive.map(p => p.hr)) : null
   const maxLactate = valid.length > 0 ? Math.max(...valid.map(p => p.lac)) : null
   return { vo2Max: null, atWatt, ltWatt, maxHR: maxHR || null, maxLactate: maxLactate || null }
@@ -60,3 +62,13 @@ export async function archiveTest(id: string, coachId: string, reason: string): 
     archivedReason: reason,
   })
 }
+
+export async function restoreTest(id: string): Promise<void> {
+  await updateDoc(doc(db, COL, id), {
+    isArchived: false,
+    archivedAt: null,
+    archivedBy: null,
+    archivedReason: null,
+  })
+}
+

@@ -11,6 +11,7 @@ import {
   RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation,
   TestInputParams, CoachAssessment, SportSettings, WingateData, WingateInputParams,
 } from "@/types"
+import { isSpeedSport } from "@/lib/utils"
 
 const SPORT_LABELS: Record<SportType, string> = {
   cykel: "Cykel",
@@ -368,12 +369,14 @@ export function EditTestForm({
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Coachbedömning</p>
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">Effekt</p>
+            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">
+              {isSpeedSport(sport) ? "Hastighet (km/h)" : "Effekt (W)"}
+            </p>
             <div className="space-y-2">
-              {coachField("AT Effekt (W)", "atEffektWatt")}
-              {coachField("LT Effekt (W)", "ltEffektWatt")}
-              {coachField("Gräns Låg/Medel (W)", "granLagMedel")}
-              {coachField("Nedre gräns (W)", "nedreGrans")}
+              {coachField(isSpeedSport(sport) ? "AT Hastighet (km/h)" : "AT Effekt (W)", "atEffektWatt")}
+              {coachField(isSpeedSport(sport) ? "LT Hastighet (km/h)" : "LT Effekt (W)", "ltEffektWatt")}
+              {coachField(isSpeedSport(sport) ? "Gräns Låg/Medel (km/h)" : "Gräns Låg/Medel (W)", "granLagMedel")}
+              {coachField(isSpeedSport(sport) ? "Nedre gräns (km/h)" : "Nedre gräns (W)", "nedreGrans")}
             </div>
           </div>
           <div className="space-y-3">
@@ -400,7 +403,7 @@ export function EditTestForm({
             <thead>
               <tr className="text-sm font-black uppercase tracking-wider text-[#1D1D1F] border-b border-[hsl(var(--border))]">
                 <th className="px-3 py-3 text-left w-16">Min</th>
-                <th className="px-3 py-3 text-right w-20">Watt</th>
+                <th className="px-3 py-3 text-right w-20">{isSpeedSport(sport) ? "km/h" : "Watt"}</th>
                 <th className="px-3 py-3 text-right w-18">Puls</th>
                 <th className="px-3 py-3 text-right w-20">Laktat</th>
                 <th className="px-3 py-3 text-right w-16">Borg</th>
@@ -415,8 +418,13 @@ export function EditTestForm({
                       className="table-input w-14 text-center" />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <input type="number" value={row.watt || ""} onChange={(e) => updateRow(i, "watt", e.target.value)}
-                      className="table-input w-16 text-right" />
+                    {isSpeedSport(sport) ? (
+                      <input type="number" step="0.1" value={(row.speed ?? 0) || ""} onChange={(e) => updateRow(i, "speed", e.target.value)}
+                        className="table-input w-16 text-right" />
+                    ) : (
+                      <input type="number" value={row.watt || ""} onChange={(e) => updateRow(i, "watt", e.target.value)}
+                        className="table-input w-16 text-right" />
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <input type="number" value={row.hr || ""} onChange={(e) => updateRow(i, "hr", e.target.value)}

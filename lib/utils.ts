@@ -21,6 +21,14 @@ export function fullName(
   return [first, last].filter(Boolean).join(" ") || "Unknown";
 }
 
+export function isSpeedSport(sport: string): boolean {
+  return sport === 'lopning' || sport === 'skidor_band'
+}
+
+export function thresholdUnit(sport: string): string {
+  return isSpeedSport(sport) ? 'km/h' : 'W'
+}
+
 export function testTypeLabel(type: string): string {
   switch (type.toUpperCase()) {
     case "VO2MAX":

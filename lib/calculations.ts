@@ -1,22 +1,18 @@
 import { RawDataPoint } from '@/types'
 
-/**
- * Linear interpolation: find the watt value where lactate crosses targetMmol.
- *
- * Sorts rawData by watt, then finds two adjacent points where lactate
- * crosses the threshold, and linearly interpolates the exact watt value.
- *
- * Returns null if the threshold is never reached in the data.
- */
 export function interpolateLactateThreshold(
   rawData: RawDataPoint[],
   targetMmol: number
 ): number | null {
   if (rawData.length < 2) return null
 
+  // Auto-detect speed-based sport: if any point has speed recorded, use speed axis
+  const useSpeed = rawData.some(p => (p.speed ?? 0) > 0)
+  const intensity = (p: RawDataPoint) => useSpeed ? (p.speed ?? 0) : p.watt
+
   const sorted = [...rawData]
-    .filter(p => p.lac > 0 && p.watt > 0)
-    .sort((a, b) => a.watt - b.watt)
+    .filter(p => p.lac > 0 && intensity(p) > 0)
+    .sort((a, b) => intensity(a) - intensity(b))
 
   for (let i = 0; i < sorted.length - 1; i++) {
     const a = sorted[i]
@@ -28,12 +24,13 @@ export function interpolateLactateThreshold(
 
     if (!crossesThreshold) continue
 
-    // Linear interpolation: watt = a.watt + (targetMmol - a.lac) / (b.lac - a.lac) * (b.watt - a.watt)
     const lacDiff = b.lac - a.lac
-    if (lacDiff === 0) return a.watt
+    const iA = intensity(a)
+    if (lacDiff === 0) return useSpeed ? Math.round(iA * 10) / 10 : Math.round(iA)
 
     const fraction = (targetMmol - a.lac) / lacDiff
-    return Math.round(a.watt + fraction * (b.watt - a.watt))
+    const raw = iA + fraction * (intensity(b) - iA)
+    return useSpeed ? Math.round(raw * 10) / 10 : Math.round(raw)
   }
 
   return null
@@ -42,12 +39,6 @@ export function interpolateLactateThreshold(
 export const LT1_MMOL = 2.0 // Aerobic Threshold
 export const LT2_MMOL = 4.0 // Lactate Threshold
 
-/**
- * Kuipers formula for cycling ramp test:
- * VO₂max (ml/kg/min) = (maxWatt × 10.8 / bodyWeightKg) + 7
- *
- * maxWatt = highest completed watt level where HR was recorded
- */
 export function calculateVo2Max(maxWatt: number, bodyWeightKg: number): number {
   return Math.round((maxWatt * 10.8) / bodyWeightKg + 7)
 }

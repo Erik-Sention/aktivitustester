@@ -6,6 +6,7 @@ import {
 import type { Style } from '@react-pdf/types'
 import type { RawDataPoint } from '@/types'
 import type { SerializedTest } from './report-download-button'
+import { isSpeedSport } from '@/lib/utils'
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const C = {
@@ -332,7 +333,7 @@ function buildStaircase(
 }
 
 function PerformanceChart({
-  rawData, lt1Watt, lt2Watt, lt1HR, lt2HR, nedreHR, estMaxHR,
+  rawData, lt1Watt, lt2Watt, lt1HR, lt2HR, nedreHR, estMaxHR, isSpeed,
 }: {
   rawData: RawDataPoint[]
   lt1Watt: number | null
@@ -341,20 +342,25 @@ function PerformanceChart({
   lt2HR:   number | null
   nedreHR: number | null
   estMaxHR: number | null
+  isSpeed?: boolean
 }) {
-  const pts = rawData.filter(p => p.min >= 0 && (p.watt > 0 || p.hr > 0))
+  const pts = rawData.filter(p => p.min >= 0 && (p.watt > 0 || (p.speed ?? 0) > 0 || p.hr > 0))
   if (pts.length < 2) return null
+
+  const intensityOf = (p: RawDataPoint) => isSpeed ? (p.speed ?? 0) : p.watt
 
   const maxMin     = Math.max(...pts.map(p => p.min))
   const maxHRData  = Math.max(...pts.filter(p => p.hr > 0).map(p => p.hr), estMaxHR ?? 0, 120)
-  const maxWattData = Math.max(...pts.filter(p => p.watt > 0).map(p => p.watt), 50)
+  const maxIntensity = isSpeed
+    ? Math.max(...pts.filter(p => (p.speed ?? 0) > 0).map(p => p.speed ?? 0), 10)
+    : Math.max(...pts.filter(p => p.watt > 0).map(p => p.watt), 50)
   const maxLacData = Math.max(...pts.filter(p => p.lac > 0).map(p => p.lac), 4)
 
   const hrAxisMax = Math.ceil((maxHRData + 15) / 25) * 25
 
   const xS  = (m: number) => PX + (m / (maxMin || 1)) * PW
   const hrY = (h: number) => PY2 - (h / hrAxisMax) * PH
-  const wY  = (w: number) => PY2 - (w / (maxWattData * 1.05)) * PH
+  const wY  = (w: number) => PY2 - (w / (maxIntensity * 1.05)) * PH
   const lacY = (l: number) => PY2 - (l / (maxLacData * 1.2)) * PH
 
   // HR axis ticks (every 25 bpm)
@@ -367,27 +373,36 @@ function PerformanceChart({
   for (let m = 0; m <= maxMin; m += tickStep) xTicks.push(m)
   if (xTicks[xTicks.length - 1] !== maxMin) xTicks.push(maxMin)
 
-  // Watt stage labels — one per unique watt level
-  const wattLabels: { min: number; watt: number }[] = []
+  // Intensity stage labels — one per unique intensity level
+  const intensityLabels: { min: number; watt: number }[] = []
   for (let i = 0; i < pts.length; i++) {
-    if (pts[i].watt > 0 && (i === 0 || pts[i].watt !== pts[i - 1].watt)) {
-      wattLabels.push({ min: pts[i].min, watt: pts[i].watt })
+    const v = intensityOf(pts[i])
+    if (v > 0 && (i === 0 || v !== intensityOf(pts[i - 1]))) {
+      intensityLabels.push({ min: pts[i].min, watt: v })
     }
   }
 
   const lacPts = pts.filter(p => p.lac > 0)
   const hrPts  = pts.filter(p => p.hr > 0)
 
-  const wattStaircase = buildStaircase(
-    pts.filter(p => p.watt > 0),
-    xS, wY,
-  )
+  const intensityPts = isSpeed
+    ? pts.filter(p => (p.speed ?? 0) > 0).map(p => ({ min: p.min, watt: p.speed ?? 0 }))
+    : pts.filter(p => p.watt > 0)
+  const wattStaircase = buildStaircase(intensityPts, xS, wY)
   const hrPolyline  = hrPts.map(p => `${xS(p.min).toFixed(1)},${hrY(p.hr).toFixed(1)}`).join(' ')
   const lacPolyline = lacPts.map(p => `${xS(p.min).toFixed(1)},${lacY(p.lac).toFixed(1)}`).join(' ')
 
-  // LT1/LT2 vertical lines — first minute when watt reaches the threshold
-  const lt1Min = lt1Watt ? (pts.find(p => p.watt >= lt1Watt)?.min ?? null) : null
-  const lt2Min = lt2Watt ? (pts.find(p => p.watt >= lt2Watt)?.min ?? null) : null
+  // LT1/LT2 vertical lines — first minute when intensity reaches threshold
+  const lt1Min = lt1Watt
+    ? isSpeed
+      ? (pts.find(p => (p.speed ?? 0) >= lt1Watt)?.min ?? null)
+      : (pts.find(p => p.watt >= lt1Watt)?.min ?? null)
+    : null
+  const lt2Min = lt2Watt
+    ? isSpeed
+      ? (pts.find(p => (p.speed ?? 0) >= lt2Watt)?.min ?? null)
+      : (pts.find(p => p.watt >= lt2Watt)?.min ?? null)
+    : null
 
   const showZones = lt1HR != null && lt2HR != null
 
@@ -424,16 +439,16 @@ function PerformanceChart({
         return <Line key={`hg${h}`} x1={PX} y1={y} x2={PX2} y2={y} stroke={C.slate200} strokeWidth={0.4} />
       })}
 
-      {/* Watt staircase */}
+      {/* Intensity staircase (watt or speed) */}
       {wattStaircase && (
         <Polyline points={wattStaircase} stroke={C.wattLine} strokeWidth={2.2} fill="none" />
       )}
-      {/* Watt step labels */}
-      {wattLabels.map((p, i) => (
+      {/* Intensity step labels */}
+      {intensityLabels.map((p, i) => (
         <T key={`wl${i}`}
           x={xS(p.min) + 3} y={wY(p.watt) - 4}
           fontSize={6} fill={C.slate600} fontFamily="Helvetica-Bold">
-          {p.watt}W
+          {p.watt}{isSpeed ? 'km/h' : 'W'}
         </T>
       ))}
 
@@ -445,7 +460,7 @@ function PerformanceChart({
           <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={13} fill={C.green} rx={2} />
           <T x={xS(lt1Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT1</T>
           {lt1Watt && (
-            <T x={xS(lt1Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt1Watt}W</T>
+            <T x={xS(lt1Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt1Watt}{isSpeed ? '' : 'W'}</T>
           )}
         </G>
       )}
@@ -458,7 +473,7 @@ function PerformanceChart({
           <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={13} fill={C.purple} rx={2} />
           <T x={xS(lt2Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT2</T>
           {lt2Watt && (
-            <T x={xS(lt2Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt2Watt}W</T>
+            <T x={xS(lt2Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt2Watt}{isSpeed ? '' : 'W'}</T>
           )}
         </G>
       )}
@@ -547,7 +562,7 @@ function PerformanceChart({
         <T x={PX + 59} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Laktat</T>
 
         <Polyline points={`${PX + 90},${CHART_H - 14} ${PX + 102},${CHART_H - 14}`} stroke={C.wattLine} strokeWidth={2} />
-        <T x={PX + 105} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Watt</T>
+        <T x={PX + 105} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>{isSpeed ? 'Hastighet' : 'Watt'}</T>
 
         {lt1Min != null && (
           <G>
@@ -611,26 +626,30 @@ function PageHeader({
 
 // ─── Threshold boxes ──────────────────────────────────────────────────────────
 function ThresholdBoxes({
-  lt1Watt, lt2Watt, lt1HR, lt2HR, bodyWeight,
+  lt1Watt, lt2Watt, lt1HR, lt2HR, bodyWeight, isSpeed,
 }: {
   lt1Watt: number | null
   lt2Watt: number | null
   lt1HR:   number | null
   lt2HR:   number | null
   bodyWeight: number | null
+  isSpeed?: boolean
 }) {
+  const unit = isSpeed ? 'km/h' : 'Watt'
   return (
     <View style={s.boxRow}>
       <View style={[s.threshBox, s.threshBoxGreen]}>
         <Text style={s.threshTitle}>AEROB TRÖSKEL</Text>
         <Text style={s.threshSubtitle}>LT1 2.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt1Watt)}</Text>
-        <Text style={s.threshUnit}>Watt</Text>
+        <Text style={s.threshUnit}>{unit}</Text>
         <View style={s.threshDivider} />
-        <View style={s.threshStatRow}>
-          <Text style={s.threshStatLabel}>Effekt/kg</Text>
-          <Text style={s.threshStatValue}>{fmtWkg(lt1Watt, bodyWeight)}</Text>
-        </View>
+        {!isSpeed && (
+          <View style={s.threshStatRow}>
+            <Text style={s.threshStatLabel}>Effekt/kg</Text>
+            <Text style={s.threshStatValue}>{fmtWkg(lt1Watt, bodyWeight)}</Text>
+          </View>
+        )}
         <View style={s.threshStatRow}>
           <Text style={s.threshStatLabel}>Puls vid LT1</Text>
           <Text style={s.threshStatValue}>{lt1HR ? `${lt1HR} bpm` : '—'}</Text>
@@ -640,12 +659,14 @@ function ThresholdBoxes({
         <Text style={s.threshTitle}>ANAEROB TRÖSKEL</Text>
         <Text style={s.threshSubtitle}>AT / FTP 4.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt2Watt)}</Text>
-        <Text style={s.threshUnit}>Watt</Text>
+        <Text style={s.threshUnit}>{unit}</Text>
         <View style={s.threshDivider} />
-        <View style={s.threshStatRow}>
-          <Text style={s.threshStatLabel}>Effekt/kg</Text>
-          <Text style={s.threshStatValue}>{fmtWkg(lt2Watt, bodyWeight)}</Text>
-        </View>
+        {!isSpeed && (
+          <View style={s.threshStatRow}>
+            <Text style={s.threshStatLabel}>Effekt/kg</Text>
+            <Text style={s.threshStatValue}>{fmtWkg(lt2Watt, bodyWeight)}</Text>
+          </View>
+        )}
         <View style={s.threshStatRow}>
           <Text style={s.threshStatLabel}>Puls vid LT2</Text>
           <Text style={s.threshStatValue}>{lt2HR ? `${lt2HR} bpm` : '—'}</Text>
@@ -657,50 +678,52 @@ function ThresholdBoxes({
 
 // ─── Intensity zone table ─────────────────────────────────────────────────────
 function IntensityZoneTable({
-  lt1Watt, lt2Watt, lt1HR, lt2HR, estMaxHR,
+  lt1Watt, lt2Watt, lt1HR, lt2HR, estMaxHR, isSpeed,
 }: {
   lt1Watt: number | null
   lt2Watt: number | null
   lt1HR:   number | null
   lt2HR:   number | null
   estMaxHR: number | null
+  isSpeed?: boolean
 }) {
+  const u = isSpeed ? 'km/h' : 'W'
   // Split the LT1–LT2 range at the midpoint to create Z2 and Z3
-  const midW  = (lt1Watt && lt2Watt) ? Math.round((lt1Watt + lt2Watt) / 2) : null
+  const midW  = (lt1Watt && lt2Watt) ? (isSpeed ? Math.round((lt1Watt + lt2Watt) * 5) / 10 : Math.round((lt1Watt + lt2Watt) / 2)) : null
   const midHR = (lt1HR   && lt2HR)   ? Math.round((lt1HR   + lt2HR)   / 2) : null
   // Z4 upper = LT2 + half the LT1–LT2 gap
-  const z4UpperW  = (lt1Watt && lt2Watt) ? lt2Watt  + Math.round((lt2Watt  - lt1Watt) / 2) : null
+  const z4UpperW  = (lt1Watt && lt2Watt) ? (isSpeed ? Math.round((lt2Watt + (lt2Watt - lt1Watt) / 2) * 10) / 10 : lt2Watt + Math.round((lt2Watt - lt1Watt) / 2)) : null
   const z4UpperHR = (lt1HR   && lt2HR)   ? lt2HR    + Math.round((lt2HR    - lt1HR)   / 2) : null
 
   const zones: { label: string; hr: string; watt: string; rowStyle: Style; dotStyle: Style }[] = [
     {
       label: 'Zon 1 – Återhämtning',
-      hr:   lt1HR   ? `< ${lt1HR} slag/min`                                          : '—',
-      watt: lt1Watt ? `< ${lt1Watt} W`                                               : '—',
+      hr:   lt1HR   ? `< ${lt1HR} slag/min`                                               : '—',
+      watt: lt1Watt ? `< ${lt1Watt} ${u}`                                                 : '—',
       rowStyle: s.zoneRow1, dotStyle: s.zoneColor1,
     },
     {
       label: 'Zon 2 – Grundkondition',
-      hr:   (lt1HR && midHR)     ? `${lt1HR} – ${midHR - 1} slag/min`               : '—',
-      watt: (lt1Watt && midW)    ? `${lt1Watt} – ${midW - 1} W`                     : '—',
+      hr:   (lt1HR && midHR)     ? `${lt1HR} – ${midHR - 1} slag/min`                    : '—',
+      watt: (lt1Watt && midW)    ? `${lt1Watt} – ${midW} ${u}`                           : '—',
       rowStyle: s.zoneRow2, dotStyle: s.zoneColor2,
     },
     {
       label: 'Zon 3 – Tempo',
-      hr:   (midHR && lt2HR)     ? `${midHR} – ${lt2HR - 1} slag/min`               : '—',
-      watt: (midW && lt2Watt)    ? `${midW} – ${lt2Watt - 1} W`                     : '—',
+      hr:   (midHR && lt2HR)     ? `${midHR} – ${lt2HR - 1} slag/min`                    : '—',
+      watt: (midW && lt2Watt)    ? `${midW} – ${lt2Watt} ${u}`                           : '—',
       rowStyle: s.zoneRow3, dotStyle: s.zoneColor3,
     },
     {
       label: 'Zon 4 – Tröskel',
-      hr:   (lt2HR && z4UpperHR) ? `${lt2HR} – ${z4UpperHR} slag/min`               : '—',
-      watt: (lt2Watt && z4UpperW)? `${lt2Watt} – ${z4UpperW} W`                     : '—',
+      hr:   (lt2HR && z4UpperHR) ? `${lt2HR} – ${z4UpperHR} slag/min`                    : '—',
+      watt: (lt2Watt && z4UpperW)? `${lt2Watt} – ${z4UpperW} ${u}`                       : '—',
       rowStyle: s.zoneRow4, dotStyle: s.zoneColor4,
     },
     {
       label: 'Zon 5 – Maximal',
       hr:   z4UpperHR ? `> ${z4UpperHR} slag/min${estMaxHR ? ` (max ${estMaxHR})` : ''}` : '—',
-      watt: z4UpperW  ? `> ${z4UpperW} W`                                            : '—',
+      watt: z4UpperW  ? `> ${z4UpperW} ${u}`                                              : '—',
       rowStyle: s.zoneRow5, dotStyle: s.zoneColor5,
     },
   ]
@@ -729,17 +752,17 @@ function IntensityZoneTable({
 const TW   = CONTENT_W - 28
 const COL  = { min: 0.10, watt: 0.17, hr: 0.16, lac: 0.19, borg: 0.15, kad: 0.23 }
 
-function DataTable({ rows }: { rows: RawDataPoint[] }) {
+function DataTable({ rows, isSpeed }: { rows: RawDataPoint[]; isSpeed?: boolean }) {
   return (
     <View>
       <View style={s.tblHead}>
         {([
-          ['MIN',    COL.min,  'left'],
-          ['WATT',  COL.watt, 'right'],
-          ['PULS',  COL.hr,   'right'],
-          ['LAKTAT',COL.lac,  'right'],
-          ['BORG',  COL.borg, 'right'],
-          ['KAD.',  COL.kad,  'right'],
+          ['MIN',              COL.min,  'left'],
+          [isSpeed ? 'KM/H' : 'WATT', COL.watt, 'right'],
+          ['PULS',             COL.hr,   'right'],
+          ['LAKTAT',           COL.lac,  'right'],
+          ['BORG',             COL.borg, 'right'],
+          ['KAD.',             COL.kad,  'right'],
         ] as [string, number, string][]).map(([lbl, frac, align]) => (
           <Text key={lbl} style={[s.tblHeadCell, { width: TW * frac, textAlign: align as 'left' | 'right' }]}>
             {lbl}
@@ -748,10 +771,11 @@ function DataTable({ rows }: { rows: RawDataPoint[] }) {
       </View>
       {rows.map((row, i) => {
         const lacColor = row.lac >= 4 ? C.lacRed : row.lac >= 2 ? C.lacOrange : row.lac > 0 ? C.lacLine : C.slate400
+        const intensityVal = isSpeed ? (row.speed ?? 0) : row.watt
         return (
           <View key={i} style={[s.tblRow, i % 2 === 1 ? s.tblAlt : {}]}>
             <Text style={[s.tblCell,     { width: TW * COL.min }]}>{row.min}</Text>
-            <Text style={[s.tblCellBold, { width: TW * COL.watt, textAlign: 'right' }]}>{row.watt || '—'}</Text>
+            <Text style={[s.tblCellBold, { width: TW * COL.watt, textAlign: 'right' }]}>{intensityVal || '—'}</Text>
             <Text style={[s.tblCell,     { width: TW * COL.hr,   textAlign: 'right' }]}>{row.hr   || '—'}</Text>
             <Text style={[s.tblCellBold, { width: TW * COL.lac,  textAlign: 'right', color: lacColor }]}>
               {row.lac || '—'}
@@ -883,6 +907,7 @@ export function AktivitusReport({
   const isTroskel = test.testType === 'troskeltest'
   const isVO2     = test.testType === 'vo2max'
   const isWingate = test.testType === 'wingate'
+  const isSpeed   = isSpeedSport(test.sport)
 
   const lt1Watt  = ca?.atEffektWatt  ?? r.atWatt
   const lt2Watt  = ca?.ltEffektWatt  ?? r.ltWatt
@@ -924,6 +949,7 @@ export function AktivitusReport({
               lt2HR={lt2HR}
               nedreHR={nedreHR}
               estMaxHR={estMaxHR}
+              isSpeed={isSpeed}
             />
           </View>
         )}
@@ -938,6 +964,7 @@ export function AktivitusReport({
               lt1HR={lt1HR}
               lt2HR={lt2HR}
               bodyWeight={bw}
+              isSpeed={isSpeed}
             />
           </View>
         )}
@@ -951,6 +978,7 @@ export function AktivitusReport({
               lt1HR={lt1HR}
               lt2HR={lt2HR}
               estMaxHR={estMaxHR}
+              isSpeed={isSpeed}
             />
           </View>
         )}
@@ -1052,7 +1080,7 @@ export function AktivitusReport({
           />
           <View style={s.box}>
             <Text style={s.sectionLabel}>MINUTDATA PER STEG</Text>
-            <DataTable rows={test.rawData} />
+            <DataTable rows={test.rawData} isSpeed={isSpeed} />
           </View>
 
           {test.settings?.bike && (() => {

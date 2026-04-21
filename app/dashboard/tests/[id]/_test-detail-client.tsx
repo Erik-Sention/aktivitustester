@@ -8,7 +8,7 @@ import { getTest } from "@/lib/tests"
 import { getAthlete } from "@/lib/athletes"
 import { Test, Athlete } from "@/types"
 import Link from "next/link"
-import { fullName, cn } from "@/lib/utils"
+import { fullName, cn, isSpeedSport, thresholdUnit } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
 import { DeleteTestButton } from "@/components/tests/delete-test-button"
@@ -100,6 +100,12 @@ export function TestDetailClient({ id }: { id: string }) {
             {test.testType !== "wingate" && (test.inputParams.startWatt ?? 0) > 0 && (
               <span className="ml-3">{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
             )}
+            {test.testType !== "wingate" && isSpeedSport(test.sport) && (test.inputParams as any).startSpeed && (
+              <span className="ml-3 text-[#86868B]">·</span>
+            )}
+            {test.testType !== "wingate" && isSpeedSport(test.sport) && (test.inputParams as any).startSpeed && (
+              <span className="ml-3">{(test.inputParams as any).startSpeed} km/h +{(test.inputParams as any).speedIncrement} km/h / {test.inputParams.testDuration} min</span>
+            )}
             {test.testType === "wingate" && (test as any).wingateInputParams?.startCadenceRpm && (
               <>
                 <span className="ml-3 text-[#86868B]">·</span>
@@ -140,30 +146,36 @@ export function TestDetailClient({ id }: { id: string }) {
               <span className="text-sm font-black uppercase tracking-[0.15em] text-white">Coachbedömning</span>
               <div className="mt-4 grid grid-cols-2 gap-x-6">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-wider text-white mb-3">Bedömning Effekt</p>
+                  <p className="text-sm font-black uppercase tracking-wider text-white mb-3">
+                    {isSpeedSport(test.sport) ? "Bedömning Hastighet" : "Bedömning Effekt"}
+                  </p>
                   <div className="space-y-3">
                     {test.coachAssessment?.atEffektWatt != null && (
                       <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">Effekt AT</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.atEffektWatt} <span className="text-sm font-normal text-white">W</span></p>
+                        <p className="text-sm uppercase tracking-wider text-white/80">
+                          {isSpeedSport(test.sport) ? "Hastighet AT" : "Effekt AT"}
+                        </p>
+                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.atEffektWatt} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
                       </div>
                     )}
                     {test.coachAssessment?.ltEffektWatt != null && (
                       <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">Effekt LT</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.ltEffektWatt} <span className="text-sm font-normal text-white">W</span></p>
+                        <p className="text-sm uppercase tracking-wider text-white/80">
+                          {isSpeedSport(test.sport) ? "Hastighet LT" : "Effekt LT"}
+                        </p>
+                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.ltEffektWatt} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
                       </div>
                     )}
                     {test.coachAssessment?.granLagMedel != null && (
                       <div>
                         <p className="text-sm uppercase tracking-wider text-white/80">Gräns Låg/Medel</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.granLagMedel} <span className="text-sm font-normal text-white">W</span></p>
+                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.granLagMedel} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
                       </div>
                     )}
                     {test.coachAssessment?.nedreGrans != null && (
                       <div>
                         <p className="text-sm uppercase tracking-wider text-white/80">Nedre Gräns</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.nedreGrans} <span className="text-sm font-normal text-white">W</span></p>
+                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.nedreGrans} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
                       </div>
                     )}
                   </div>
@@ -299,7 +311,7 @@ export function TestDetailClient({ id }: { id: string }) {
                   <thead>
                     <tr className="text-sm font-black uppercase tracking-wider text-primary border-b border-[hsl(var(--border))]/60">
                       <th className="px-4 py-3 text-left">Min</th>
-                      <th className="px-4 py-3 text-right">W</th>
+                      <th className="px-4 py-3 text-right">{isSpeedSport(test.sport) ? "km/h" : "W"}</th>
                       <th className="px-4 py-3 text-right">Puls</th>
                       <th className="px-4 py-3 text-right">Laktat</th>
                       <th className="px-4 py-3 text-right">Borg</th>
@@ -310,7 +322,9 @@ export function TestDetailClient({ id }: { id: string }) {
                     {test.rawData.map((p, i) => (
                       <tr key={i} className={`transition-colors ${isLacRow(p.min) && p.lac > 0 ? "bg-[#007AFF]/[0.04] hover:bg-[#007AFF]/[0.08]" : "hover:bg-[#F5F5F7]/50"}`}>
                         <td className="px-4 py-3 text-primary tabular-nums">{p.min}</td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-primary">{p.watt || "—"}</td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-primary">
+                          {isSpeedSport(test.sport) ? (p.speed ?? 0) || "—" : p.watt || "—"}
+                        </td>
                         <td className="px-4 py-3 text-right font-mono text-primary">{p.hr || "—"}</td>
                         <td className={`px-4 py-3 text-right font-mono font-bold ${p.lac >= 4 ? "text-[hsl(var(--destructive))]" : p.lac >= 2 ? "text-[hsl(var(--warning))]" : "text-primary"}`}>
                           {p.lac || "—"}
