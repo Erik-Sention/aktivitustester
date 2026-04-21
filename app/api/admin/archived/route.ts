@@ -23,9 +23,7 @@ export async function GET(request: NextRequest) {
   const docs = await firestoreQuery(
     type,
     [{ field: 'isArchived', op: 'EQUAL', value: true }],
-    idToken,
-    'archivedAt',
-    'DESCENDING'
+    idToken
   )
 
   return NextResponse.json({ items: docs })

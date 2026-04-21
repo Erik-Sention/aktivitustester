@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { Button } from "@/components/ui/button"
 
-type Tab = 'coaches' | 'athletes' | 'tests' | 'export'
+type Tab = 'coaches' | 'athletes' | 'tests' | 'export' | 'seed'
 
 interface UserDoc {
   _id: string
@@ -60,6 +61,10 @@ export function AdminClient() {
   const [exportTestType, setExportTestType] = useState('')
   const [exportSport, setExportSport] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
+
+  // Seed state
+  const [seedLoading, setSeedLoading] = useState(false)
+  const [seedResult, setSeedResult] = useState<string | null>(null)
 
   // Fetch coaches on mount
   useEffect(() => {
@@ -173,11 +178,30 @@ export function AdminClient() {
     }
   }
 
+  async function handleSeed() {
+    setSeedLoading(true)
+    setSeedResult(null)
+    setError(null)
+    try {
+      const res = await fetch('/api/seed', { method: 'POST' })
+      const text = await res.text()
+      let data: { message?: string; error?: string } = {}
+      try { data = JSON.parse(text) } catch { throw new Error(text.slice(0, 200) || `HTTP ${res.status}`) }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setSeedResult(data.message ?? 'Klart!')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Seed misslyckades')
+    } finally {
+      setSeedLoading(false)
+    }
+  }
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'coaches', label: 'Coacher' },
     { key: 'athletes', label: 'Arkiverade atleter' },
     { key: 'tests', label: 'Arkiverade tester' },
     { key: 'export', label: 'Exportera data' },
+    { key: 'seed', label: 'Demodata' },
   ]
 
   return (
@@ -299,6 +323,23 @@ export function AdminClient() {
               </tbody>
             </table>
           )
+        )}
+
+        {/* ── Demodata ── */}
+        {tab === 'seed' && (
+          <div className="px-8 py-8 space-y-5">
+            <p className="text-sm text-secondary">
+              Skapar två demoatleter (Anna Lindgren och Erik Johansson) med nio tester. Fungerar bara i utvecklingsläge.
+            </p>
+            {seedResult && (
+              <div className="rounded-2xl bg-green-50 border border-green-100 px-5 py-3 text-sm text-green-700">
+                {seedResult}
+              </div>
+            )}
+            <Button size="sm" onClick={handleSeed} disabled={seedLoading}>
+              {seedLoading ? 'Skapar demodata…' : 'Seed demodata'}
+            </Button>
+          </div>
         )}
 
         {/* ── Exportera data ── */}

@@ -42,6 +42,7 @@ const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
 
 const EMPTY_COACH: CoachAssessment = {
   atEffektWatt: null, ltEffektWatt: null, granLagMedel: null, nedreGrans: null,
+  atEffektSpeed: null, ltEffektSpeed: null, granLagMedelSpeed: null, nedreGransSpeed: null,
   estMaxPuls: null, hogstaUpnaddPuls: null, atPuls: null, ltPuls: null,
   granLagMedelPuls: null, nedreGransPuls: null,
 }

@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateCoachAssessmentAction } from "@/app/actions/tests"
 import { CoachAssessment } from "@/types"
+import { isSpeedSport } from "@/lib/utils"
 
 interface CoachAssessmentPanelProps {
   testId: string
   athleteId: string
+  sport: string
   initial?: CoachAssessment | null
 }
 
@@ -18,6 +20,10 @@ const EMPTY: CoachAssessment = {
   ltEffektWatt: null,
   granLagMedel: null,
   nedreGrans: null,
+  atEffektSpeed: null,
+  ltEffektSpeed: null,
+  granLagMedelSpeed: null,
+  nedreGransSpeed: null,
   estMaxPuls: null,
   hogstaUpnaddPuls: null,
   atPuls: null,
@@ -26,7 +32,8 @@ const EMPTY: CoachAssessment = {
   nedreGransPuls: null,
 }
 
-export function CoachAssessmentPanel({ testId, athleteId, initial }: CoachAssessmentPanelProps) {
+export function CoachAssessmentPanel({ testId, athleteId, sport, initial }: CoachAssessmentPanelProps) {
+  const speedSport = isSpeedSport(sport)
   const [assessment, setAssessment] = useState<CoachAssessment>(initial ?? EMPTY)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -81,12 +88,25 @@ export function CoachAssessmentPanel({ testId, athleteId, initial }: CoachAssess
 
       <div className="grid grid-cols-2 gap-8">
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">Effekt</p>
+          <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">
+            {speedSport ? "Hastighet (km/h)" : "Effekt (W)"}
+          </p>
           <div className="space-y-2">
-            {field("AT Effekt (W)", "atEffektWatt")}
-            {field("LT Effekt (W)", "ltEffektWatt")}
-            {field("Gräns Låg/Medel (W)", "granLagMedel")}
-            {field("Nedre gräns (W)", "nedreGrans")}
+            {speedSport ? (
+              <>
+                {field("AT Hastighet (km/h)", "atEffektSpeed")}
+                {field("LT Hastighet (km/h)", "ltEffektSpeed")}
+                {field("Gräns Låg/Medel (km/h)", "granLagMedelSpeed")}
+                {field("Nedre gräns (km/h)", "nedreGransSpeed")}
+              </>
+            ) : (
+              <>
+                {field("AT Effekt (W)", "atEffektWatt")}
+                {field("LT Effekt (W)", "ltEffektWatt")}
+                {field("Gräns Låg/Medel (W)", "granLagMedel")}
+                {field("Nedre gräns (W)", "nedreGrans")}
+              </>
+            )}
           </div>
         </div>
         <div className="space-y-3">

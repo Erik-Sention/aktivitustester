@@ -909,8 +909,8 @@ export function AktivitusReport({
   const isWingate = test.testType === 'wingate'
   const isSpeed   = isSpeedSport(test.sport)
 
-  const lt1Watt  = ca?.atEffektWatt  ?? r.atWatt
-  const lt2Watt  = ca?.ltEffektWatt  ?? r.ltWatt
+  const lt1Watt  = isSpeed ? (ca?.atEffektSpeed  ?? r.atWatt) : (ca?.atEffektWatt  ?? r.atWatt)
+  const lt2Watt  = isSpeed ? (ca?.ltEffektSpeed  ?? r.ltWatt) : (ca?.ltEffektWatt  ?? r.ltWatt)
   const lt1HR    = ca?.atPuls        ?? null
   const lt2HR    = ca?.ltPuls        ?? null
   const nedreHR  = ca?.nedreGransPuls ?? null

@@ -115,6 +115,10 @@ export interface CoachAssessment {
   ltEffektWatt: number | null
   granLagMedel: number | null     // "Gräns Låg/Medel"
   nedreGrans: number | null       // "Nedre gräns"
+  atEffektSpeed: number | null    // km/h — löpning/skidor
+  ltEffektSpeed: number | null
+  granLagMedelSpeed: number | null
+  nedreGransSpeed: number | null
   estMaxPuls: number | null
   hogstaUpnaddPuls: number | null
   atPuls: number | null

@@ -150,34 +150,42 @@ export function TestDetailClient({ id }: { id: string }) {
                     {isSpeedSport(test.sport) ? "Bedömning Hastighet" : "Bedömning Effekt"}
                   </p>
                   <div className="space-y-3">
-                    {test.coachAssessment?.atEffektWatt != null && (
-                      <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">
-                          {isSpeedSport(test.sport) ? "Hastighet AT" : "Effekt AT"}
-                        </p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.atEffektWatt} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
-                      </div>
-                    )}
-                    {test.coachAssessment?.ltEffektWatt != null && (
-                      <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">
-                          {isSpeedSport(test.sport) ? "Hastighet LT" : "Effekt LT"}
-                        </p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.ltEffektWatt} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
-                      </div>
-                    )}
-                    {test.coachAssessment?.granLagMedel != null && (
-                      <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">Gräns Låg/Medel</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.granLagMedel} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
-                      </div>
-                    )}
-                    {test.coachAssessment?.nedreGrans != null && (
-                      <div>
-                        <p className="text-sm uppercase tracking-wider text-white/80">Nedre Gräns</p>
-                        <p className="text-2xl font-black tracking-tighter">{test.coachAssessment.nedreGrans} <span className="text-sm font-normal text-white">{thresholdUnit(test.sport)}</span></p>
-                      </div>
-                    )}
+                    {(() => {
+                      const speedSport = isSpeedSport(test.sport)
+                      const atVal = speedSport ? test.coachAssessment?.atEffektSpeed : test.coachAssessment?.atEffektWatt
+                      const ltVal = speedSport ? test.coachAssessment?.ltEffektSpeed : test.coachAssessment?.ltEffektWatt
+                      const granVal = speedSport ? test.coachAssessment?.granLagMedelSpeed : test.coachAssessment?.granLagMedel
+                      const nedreVal = speedSport ? test.coachAssessment?.nedreGransSpeed : test.coachAssessment?.nedreGrans
+                      const unit = thresholdUnit(test.sport)
+                      return (
+                        <>
+                          {atVal != null && (
+                            <div>
+                              <p className="text-sm uppercase tracking-wider text-white/80">{speedSport ? "Hastighet AT" : "Effekt AT"}</p>
+                              <p className="text-2xl font-black tracking-tighter">{atVal} <span className="text-sm font-normal text-white">{unit}</span></p>
+                            </div>
+                          )}
+                          {ltVal != null && (
+                            <div>
+                              <p className="text-sm uppercase tracking-wider text-white/80">{speedSport ? "Hastighet LT" : "Effekt LT"}</p>
+                              <p className="text-2xl font-black tracking-tighter">{ltVal} <span className="text-sm font-normal text-white">{unit}</span></p>
+                            </div>
+                          )}
+                          {granVal != null && (
+                            <div>
+                              <p className="text-sm uppercase tracking-wider text-white/80">Gräns Låg/Medel</p>
+                              <p className="text-2xl font-black tracking-tighter">{granVal} <span className="text-sm font-normal text-white">{unit}</span></p>
+                            </div>
+                          )}
+                          {nedreVal != null && (
+                            <div>
+                              <p className="text-sm uppercase tracking-wider text-white/80">Nedre Gräns</p>
+                              <p className="text-2xl font-black tracking-tighter">{nedreVal} <span className="text-sm font-normal text-white">{unit}</span></p>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
                 <div>

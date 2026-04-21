@@ -340,6 +340,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [archivingMenuId, setArchivingMenuId] = useState<string | null>(null)
   const [archiveMenuReason, setArchiveMenuReason] = useState("")
   const [archiveMenuLoading, setArchiveMenuLoading] = useState(false)
+  const [archiveMenuError, setArchiveMenuError] = useState<string | null>(null)
 
   async function fetchFiles() {
     const q = query(
@@ -486,6 +487,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   function closeArchiveMenu() {
     setArchivingMenuId(null)
     setArchiveMenuReason("")
+    setArchiveMenuError(null)
     setOpenMenuId(null)
   }
 
@@ -504,10 +506,13 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   async function handleArchiveTest(testId: string) {
     if (!archiveMenuReason.trim()) return
     setArchiveMenuLoading(true)
+    setArchiveMenuError(null)
     try {
       await archiveTestAction(testId, athleteId, archiveMenuReason)
       router.refresh()
       closeArchiveMenu()
+    } catch {
+      setArchiveMenuError("Kunde inte arkivera testet")
     } finally {
       setArchiveMenuLoading(false)
     }
@@ -629,10 +634,11 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           <Button size="sm" variant="destructive" onClick={onConfirm} disabled={archiveMenuLoading || !archiveMenuReason.trim()}>
             {archiveMenuLoading ? "…" : "Bekräfta"}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { setArchivingMenuId(null); setArchiveMenuReason("") }}>
+          <Button size="sm" variant="outline" onClick={() => { setArchivingMenuId(null); setArchiveMenuReason(""); setArchiveMenuError(null) }}>
             Avbryt
           </Button>
         </div>
+        {archiveMenuError && <p className="mt-1.5 text-xs text-red-500">{archiveMenuError}</p>}
       </div>
     )
   }
@@ -1085,7 +1091,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                               </button>
                               <div className="h-px bg-[hsl(var(--border))]" />
                               <button
-                                onClick={() => setArchivingMenuId(`test-${test.id}`)}
+                                onClick={(e) => { e.stopPropagation(); setArchivingMenuId(`test-${test.id}`) }}
                                 className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
                               >
                                 <Trash2 className="h-3.5 w-3.5 flex-shrink-0" /> Arkivera

@@ -177,6 +177,35 @@ const SEED_ROWS: RawDataPoint[] = [
   { min: 15, watt: 200, hr: 133, lac: 7.4, borg: 15, cadence: 90 },
 ]
 
+// Speed-based seed (running/skiing): 4 min stages, 8 km/h start +1 km/h
+const SEED_ROWS_SPEED: RawDataPoint[] = [
+  { min: 0,  watt: 0, speed: 8,  hr: 68,  lac: 0.8, borg: 0,  cadence: 0 },
+  { min: 1,  watt: 0, speed: 8,  hr: 108, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 2,  watt: 0, speed: 8,  hr: 116, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 3,  watt: 0, speed: 8,  hr: 121, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 4,  watt: 0, speed: 8,  hr: 127, lac: 1.1, borg: 10, cadence: 0 },
+  { min: 5,  watt: 0, speed: 9,  hr: 130, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 6,  watt: 0, speed: 9,  hr: 135, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 7,  watt: 0, speed: 9,  hr: 140, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 8,  watt: 0, speed: 9,  hr: 145, lac: 1.4, borg: 11, cadence: 0 },
+  { min: 9,  watt: 0, speed: 10, hr: 148, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 10, watt: 0, speed: 10, hr: 153, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 11, watt: 0, speed: 10, hr: 157, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 12, watt: 0, speed: 10, hr: 162, lac: 2.0, borg: 13, cadence: 0 },
+  { min: 13, watt: 0, speed: 11, hr: 165, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 14, watt: 0, speed: 11, hr: 169, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 15, watt: 0, speed: 11, hr: 173, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 16, watt: 0, speed: 11, hr: 177, lac: 3.3, borg: 14, cadence: 0 },
+  { min: 17, watt: 0, speed: 12, hr: 180, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 18, watt: 0, speed: 12, hr: 183, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 19, watt: 0, speed: 12, hr: 185, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 20, watt: 0, speed: 12, hr: 187, lac: 5.9, borg: 16, cadence: 0 },
+  { min: 21, watt: 0, speed: 13, hr: 189, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 22, watt: 0, speed: 13, hr: 190, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 23, watt: 0, speed: 13, hr: 191, lac: 0,   borg: 0,  cadence: 0 },
+  { min: 24, watt: 0, speed: 13, hr: 192, lac: 9.1, borg: 19, cadence: 0 },
+]
+
 // ── Stage Timer ───────────────────────────────────────────────────────
 
 function StageTimer({
@@ -282,6 +311,10 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
   ltEffektWatt: null,
   granLagMedel: null,
   nedreGrans: null,
+  atEffektSpeed: null,
+  ltEffektSpeed: null,
+  granLagMedelSpeed: null,
+  nedreGransSpeed: null,
   estMaxPuls: null,
   hogstaUpnaddPuls: null,
   atPuls: null,
@@ -1285,10 +1318,30 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   setExhaustionTimeMins("11")
                   setExhaustionTimeSecs("32")
                   setExhaustionWattStr("250")
+                } else if (isSpeedBased(form.sport)) {
+                  setForm((f) => ({ ...f, startSpeed: "8", speedIncrement: "1", incline: "1", testDuration: "4" }))
+                  setRows(SEED_ROWS_SPEED)
+                  setLacStrings({})
+                  setCoachAssessment({
+                    ...EMPTY_COACH_ASSESSMENT,
+                    atEffektSpeed: 10.0, ltEffektSpeed: 12.0,
+                    granLagMedelSpeed: 11.0, nedreGransSpeed: 9.0,
+                    estMaxPuls: 192, hogstaUpnaddPuls: 187,
+                    atPuls: 162, ltPuls: 177,
+                    granLagMedelPuls: 170, nedreGransPuls: 148,
+                  })
                 } else {
                   setForm((f) => ({ ...f, startWatt: "80", stepSize: "30", testDuration: "3" }))
                   setRows(SEED_ROWS)
                   setLacStrings({})
+                  setCoachAssessment({
+                    ...EMPTY_COACH_ASSESSMENT,
+                    atEffektWatt: 140, ltEffektWatt: 170,
+                    granLagMedel: 155, nedreGrans: 115,
+                    estMaxPuls: 190, hogstaUpnaddPuls: 185,
+                    atPuls: 156, ltPuls: 172,
+                    granLagMedelPuls: 164, nedreGransPuls: 140,
+                  })
                 }
               }}
               className="text-sm text-[#007AFF] hover:text-[#0066d6] font-medium"
@@ -1549,50 +1602,99 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           Bedömning (Coach)
         </p>
         <div className="grid grid-cols-2 gap-6">
-          {/* Effekt */}
+          {/* Effekt / Hastighet */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">Effekt</p>
+            <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">
+              {isSpeedBased(form.sport) ? "Hastighet (km/h)" : "Effekt (W)"}
+            </p>
             <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <Label className="w-44 text-sm text-[#515154] shrink-0">AT Effekt (W)</Label>
-                <Input
-                  type="number"
-                  value={coachAssessment.atEffektWatt ?? ""}
-                  onChange={(e) => updateCoach("atEffektWatt", e.target.value)}
-                  className="h-10 text-base"
-                  placeholder="—"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Label className="w-44 text-sm text-[#515154] shrink-0">LT Effekt (W)</Label>
-                <Input
-                  type="number"
-                  value={coachAssessment.ltEffektWatt ?? ""}
-                  onChange={(e) => updateCoach("ltEffektWatt", e.target.value)}
-                  className="h-10 text-base"
-                  placeholder="—"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (W)</Label>
-                <Input
-                  type="number"
-                  value={coachAssessment.granLagMedel ?? ""}
-                  onChange={(e) => updateCoach("granLagMedel", e.target.value)}
-                  className="h-10 text-base"
-                  placeholder="—"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (W)</Label>
-                <Input
-                  type="number"
-                  value={coachAssessment.nedreGrans ?? ""}
-                  onChange={(e) => updateCoach("nedreGrans", e.target.value)}
-                  className="h-10 text-base"
-                  placeholder="—"
-                />
-              </div>
+              {isSpeedBased(form.sport) ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">AT Hastighet (km/h)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.atEffektSpeed ?? ""}
+                      onChange={(e) => updateCoach("atEffektSpeed", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">LT Hastighet (km/h)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.ltEffektSpeed ?? ""}
+                      onChange={(e) => updateCoach("ltEffektSpeed", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (km/h)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.granLagMedelSpeed ?? ""}
+                      onChange={(e) => updateCoach("granLagMedelSpeed", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (km/h)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.nedreGransSpeed ?? ""}
+                      onChange={(e) => updateCoach("nedreGransSpeed", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">AT Effekt (W)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.atEffektWatt ?? ""}
+                      onChange={(e) => updateCoach("atEffektWatt", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">LT Effekt (W)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.ltEffektWatt ?? ""}
+                      onChange={(e) => updateCoach("ltEffektWatt", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (W)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.granLagMedel ?? ""}
+                      onChange={(e) => updateCoach("granLagMedel", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (W)</Label>
+                    <Input
+                      type="number"
+                      value={coachAssessment.nedreGrans ?? ""}
+                      onChange={(e) => updateCoach("nedreGrans", e.target.value)}
+                      className="h-10 text-base"
+                      placeholder="—"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
           {/* Puls */}
