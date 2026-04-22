@@ -342,7 +342,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [archiveMenuReason, setArchiveMenuReason] = useState("")
   const [archiveMenuLoading, setArchiveMenuLoading] = useState(false)
   const [archiveMenuError, setArchiveMenuError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<{ title: string; message: string } | null>(null)
+  const [successMessage, setSuccessMessage] = useState<{ title: string; message: string; reload?: boolean } | null>(null)
 
   async function fetchFiles() {
     const q = query(
@@ -519,13 +519,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setArchiveMenuError(null)
     try {
       await archiveTestAction(testId, athleteId, archiveMenuReason)
-      setSuccessMessage({ 
-  title: "Framgång!", 
-  message: "Testet har arkiverats korrekt." 
-})
-      setTimeout(() => setSuccessMessage(null), 2000)
-      router.refresh()
       closeArchiveMenu()
+      setSuccessMessage({ title: "Arkiverat", message: "Testet har arkiverats.", reload: true })
     } catch {
       setArchiveMenuError("Kunde inte arkivera testet")
     } finally {
@@ -1144,10 +1139,28 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           })}
         </div>
         {successMessage && (
-          <div className="mt-3 rounded-2xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700 font-medium">
-            <div className="flex flex-col gap-0.5">
-              <p className="font-bold text-green-800">{successMessage.title}</p>
-              <p>{successMessage.message}</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <Check className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-[#1D1D1F]">{successMessage.title}</h2>
+                  <p className="text-sm text-[#515154] mt-0.5">{successMessage.message}</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    if (successMessage.reload) window.location.reload()
+                    else setSuccessMessage(null)
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-semibold hover:bg-[#0071e3] transition-colors"
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
         )}

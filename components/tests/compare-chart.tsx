@@ -27,6 +27,7 @@ export interface ChartDataset {
 
 interface CompareChartProps {
   datasets: ChartDataset[]
+  xUnit?: string
 }
 
 const COLORS = [
@@ -48,7 +49,7 @@ function mergeDatasets(datasets: ChartDataset[]) {
   return Array.from(map.values()).sort((a, b) => (a.watt as number) - (b.watt as number))
 }
 
-export function CompareChart({ datasets }: CompareChartProps) {
+export function CompareChart({ datasets, xUnit = "W" }: CompareChartProps) {
   const merged = mergeDatasets(datasets)
 
   return (
@@ -59,7 +60,7 @@ export function CompareChart({ datasets }: CompareChartProps) {
           dataKey="watt"
           type="number"
           domain={["dataMin", "dataMax"]}
-          tickFormatter={(v) => `${v}W`}
+          tickFormatter={(v) => `${v} ${xUnit}`}
           tick={{ fontSize: 12, fill: "#515154" }}
           axisLine={false}
           tickLine={false}
@@ -89,7 +90,7 @@ export function CompareChart({ datasets }: CompareChartProps) {
             if (name.startsWith("Puls")) return [`${value} bpm`, name]
             return [`${value} mmol/L`, name]
           }}
-          labelFormatter={(v) => `${v}W`}
+          labelFormatter={(v) => `${v} ${xUnit}`}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
 

@@ -111,29 +111,37 @@ export async function POST() {
         ],
       },
 
-      // ── 3. Anna · Tröskeltest SkiErg ─────────────────────────────────────────
+      // ── 3. Anna · Tröskeltest Cykel (jun 2024) ───────────────────────────────
       {
-        ...base(a1, '2024-06-12', 'skierg', 'troskeltest', 'standard_3min'),
-        inputParams: { startWatt: 80, stepSize: 20, testDuration: 3, bodyWeight: 62, heightCm: 168 },
-        results: { vo2Max: null, atWatt: 140, ltWatt: 185, maxHR: 175, maxLactate: 5.0 },
+        ...base(a1, '2024-06-12', 'cykel', 'troskeltest', 'standard_3min'),
+        inputParams: { startWatt: 100, stepSize: 20, testDuration: 3, bodyWeight: 62, heightCm: 168 },
+        results: { vo2Max: null, atWatt: 172, ltWatt: 221, maxHR: 181, maxLactate: 5.8 },
+        coachAssessment: {
+          atEffektWatt: 170, ltEffektWatt: 220,
+          granLagMedel: null, nedreGrans: null,
+          atEffektSpeed: null, ltEffektSpeed: null, granLagMedelSpeed: null, nedreGransSpeed: null,
+          estMaxPuls: 192, hogstaUpnaddPuls: 181,
+          atPuls: 154, ltPuls: 169, granLagMedelPuls: null, nedreGransPuls: null,
+        },
         rawData: [
-          wPt(3,  80,  122, 1.2, 9,  35), wPt(6,  100, 133, 1.4, 11, 36),
-          wPt(9,  120, 143, 1.7, 12, 35), wPt(12, 140, 153, 2.0, 13, 35),
-          wPt(15, 160, 161, 2.8, 15, 34), wPt(18, 180, 168, 3.7, 16, 34),
-          wPt(21, 200, 175, 5.0, 18, 33),
+          wPt(3,  100, 117, 1.0, 8,  89), wPt(6,  120, 126, 1.2, 10, 90),
+          wPt(9,  140, 136, 1.5, 11, 91), wPt(12, 160, 146, 1.8, 12, 90),
+          wPt(15, 180, 155, 2.1, 13, 89), wPt(18, 200, 163, 2.9, 15, 88),
+          wPt(21, 220, 171, 3.9, 16, 87), wPt(24, 240, 181, 5.8, 19, 85),
         ],
       },
 
-      // ── 4. Anna · Tröskeltest Kajak ──────────────────────────────────────────
+      // ── 4. Anna · VO₂max Cykel (jul 2024) ────────────────────────────────────
       {
-        ...base(a1, '2024-07-08', 'kajak', 'troskeltest', 'standard_3min'),
-        inputParams: { startWatt: 60, stepSize: 15, testDuration: 3, bodyWeight: 62, heightCm: 168 },
-        results: { vo2Max: null, atWatt: 101, ltWatt: 137, maxHR: 174, maxLactate: 5.3 },
+        ...base(a1, '2024-07-08', 'cykel', 'vo2max', 'ramp_test'),
+        inputParams: { startWatt: 100, stepSize: 20, testDuration: 1, bodyWeight: 62, heightCm: 168 },
+        results: { vo2Max: 54, atWatt: null, ltWatt: null, maxHR: 183, maxLactate: null },
         rawData: [
-          wPt(3,  60,  120, 1.1, 8,  72), wPt(6,  75,  131, 1.4, 10, 73),
-          wPt(9,  90,  142, 1.7, 11, 71), wPt(12, 105, 152, 2.1, 13, 70),
-          wPt(15, 120, 160, 2.9, 14, 69), wPt(18, 135, 167, 3.8, 16, 68),
-          wPt(21, 150, 174, 5.3, 18, 66),
+          wPt(1, 100, 113, 0, 7, 91), wPt(2, 120, 121, 0, 0, 90),
+          wPt(3, 140, 130, 0, 9, 90), wPt(4, 160, 139, 0, 0, 89),
+          wPt(5, 180, 147, 0, 11, 89), wPt(6, 200, 155, 0, 0, 88),
+          wPt(7, 220, 163, 0, 13, 88), wPt(8, 240, 170, 0, 0, 87),
+          wPt(9, 260, 177, 0, 15, 86), wPt(10, 280, 183, 0, 17, 85),
         ],
       },
 
@@ -183,22 +191,22 @@ export async function POST() {
         ],
       },
 
-      // ── 8. Erik · Tröskeltest Skidor Band ────────────────────────────────────
+      // ── 8. Erik · Tröskeltest Löpning (maj 2024) ─────────────────────────────
       {
-        ...base(a2, '2024-05-20', 'skidor_band', 'troskeltest', 'standard_3min'),
-        inputParams: { startSpeed: 6.0, speedIncrement: 1.0, incline: 3.0, testDuration: 3, bodyWeight: 78, heightCm: 182 },
-        results: { vo2Max: null, atWatt: 8.2, ltWatt: 10.7, maxHR: 179, maxLactate: 6.1 },
+        ...base(a2, '2024-05-20', 'lopning', 'troskeltest', 'standard_3min'),
+        inputParams: { startSpeed: 8.0, speedIncrement: 1.0, incline: 1.0, testDuration: 3, bodyWeight: 78, heightCm: 182 },
+        results: { vo2Max: null, atWatt: 10.5, ltWatt: 13.0, maxHR: 179, maxLactate: 6.0 },
         coachAssessment: {
           atEffektWatt: null, ltEffektWatt: null, granLagMedel: null, nedreGrans: null,
-          atEffektSpeed: 8.2, ltEffektSpeed: 10.7, granLagMedelSpeed: 9.4, nedreGransSpeed: 7.5,
-          estMaxPuls: 186, hogstaUpnaddPuls: 179,
-          atPuls: 154, ltPuls: 170, granLagMedelPuls: 162, nedreGransPuls: 144,
+          atEffektSpeed: 10.5, ltEffektSpeed: 13.0, granLagMedelSpeed: 11.7, nedreGransSpeed: 9.5,
+          estMaxPuls: 188, hogstaUpnaddPuls: 179,
+          atPuls: 151, ltPuls: 167, granLagMedelPuls: 159, nedreGransPuls: 141,
         },
         rawData: [
-          sPt(3,  6.0,  133, 1.3, 10), sPt(6,  7.0,  143, 1.5, 11),
-          sPt(9,  8.0,  152, 1.9, 13), sPt(12, 9.0,  161, 2.4, 14),
-          sPt(15, 10.0, 168, 3.2, 16), sPt(18, 11.0, 174, 4.3, 17),
-          sPt(21, 12.0, 179, 6.1, 19),
+          sPt(3,  8.0,  127, 1.2, 9),  sPt(6,  9.0,  136, 1.4, 11),
+          sPt(9,  10.0, 144, 1.8, 12), sPt(12, 11.0, 153, 2.2, 14),
+          sPt(15, 12.0, 161, 3.0, 15), sPt(18, 13.0, 168, 4.1, 17),
+          sPt(21, 14.0, 174, 5.3, 18), sPt(24, 15.0, 179, 6.0, 20),
         ],
       },
 

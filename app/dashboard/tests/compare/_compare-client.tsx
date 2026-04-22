@@ -30,6 +30,8 @@ function serialize(t: Test): SerializedFullTest {
     inputParams: {
       startWatt: t.inputParams.startWatt ?? 0,
       stepSize: t.inputParams.stepSize ?? 0,
+      startSpeed: t.inputParams.startSpeed ?? 0,
+      speedIncrement: t.inputParams.speedIncrement ?? 0,
       testDuration: t.inputParams.testDuration,
       bodyWeight: t.inputParams.bodyWeight,
     },
@@ -40,7 +42,7 @@ function serialize(t: Test): SerializedFullTest {
       maxLactate: t.results.maxLactate,
       vo2Max: t.results.vo2Max,
     },
-    rawData: (t.rawData ?? []).map((p) => ({ watt: p.watt, hr: p.hr, lac: p.lac })),
+    rawData: (t.rawData ?? []).map((p) => ({ watt: p.watt, speed: p.speed ?? 0, hr: p.hr, lac: p.lac })),
   }
 }
 
