@@ -519,7 +519,10 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setArchiveMenuError(null)
     try {
       await archiveTestAction(testId, athleteId, archiveMenuReason)
-      setSuccessMessage("Testet arkiverat")
+      setSuccessMessage({ 
+  title: "Framgång!", 
+  message: "Testet har arkiverats korrekt." 
+})
       setTimeout(() => setSuccessMessage(null), 2000)
       router.refresh()
       closeArchiveMenu()
@@ -1142,11 +1145,14 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
         </div>
         {successMessage && (
           <div className="mt-3 rounded-2xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700 font-medium">
-            {successMessage}
+            <div className="flex flex-col gap-0.5">
+              <p className="font-bold text-green-800">{successMessage.title}</p>
+              <p>{successMessage.message}</p>
+            </div>
           </div>
         )}
-        </>
-      )}
+      </>
+    )}
 
       {showUpload && (
         <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} />
