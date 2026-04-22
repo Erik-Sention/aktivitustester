@@ -396,13 +396,9 @@ export function AdminClient() {
                 </select>
               </label>
             </div>
-            <button
-              onClick={handleExportBulk}
-              disabled={exportLoading || !exportFrom || !exportTo}
-              className="rounded-xl bg-interactive text-white px-6 py-2.5 text-sm font-medium hover:bg-interactive/90 transition-colors disabled:opacity-50"
-            >
+            <Button size="sm" onClick={handleExportBulk} disabled={exportLoading || !exportFrom || !exportTo}>
               {exportLoading ? 'Exporterar…' : 'Ladda ned CSV'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -424,13 +420,9 @@ function Empty({ text }: { text: string }) {
 
 function ActionButton({ onClick, loading, label }: { onClick: () => void; loading: boolean; label: string }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="rounded-xl bg-interactive text-white px-4 py-1.5 text-sm font-medium hover:bg-interactive/90 transition-colors disabled:opacity-50"
-    >
+    <Button size="sm" onClick={onClick} disabled={loading}>
       {loading ? '…' : label}
-    </button>
+    </Button>
   )
 }
 

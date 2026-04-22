@@ -311,6 +311,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [exporting, setExporting] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
+  const openMenuRef = useRef<HTMLDivElement>(null)
   const [fileResults, setFileResults] = useState<SerializedAthleteFile[]>(initialFileResults)
   const [filesLoading, setFilesLoading] = useState(true)
   const [kindFilter, setKindFilter] = useState<"all" | "test" | "file" | "consent">("all")
@@ -341,6 +342,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   const [archiveMenuReason, setArchiveMenuReason] = useState("")
   const [archiveMenuLoading, setArchiveMenuLoading] = useState(false)
   const [archiveMenuError, setArchiveMenuError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<{ title: string; message: string } | null>(null)
 
   async function fetchFiles() {
     const q = query(
@@ -381,11 +383,17 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
   }, [athleteId])
 
   useEffect(() => {
-    if (!openMenuId) return
-    function close() { setOpenMenuId(null) }
+    if (!openMenuId || archivingMenuId) return  // Keep menu open if we're archiving
+    function close(e: MouseEvent) {
+      // Don't close if clicking inside the open menu
+      if (openMenuRef.current && openMenuRef.current.contains(e.target as Node)) {
+        return
+      }
+      setOpenMenuId(null)
+    }
     document.addEventListener("click", close)
     return () => document.removeEventListener("click", close)
-  }, [openMenuId])
+  }, [openMenuId, archivingMenuId])
 
   function toggle(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -497,7 +505,9 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     try {
       await archiveAthleteFilesAction(ids, athleteId, archiveMenuReason)
       handleArchived(ids)
+      setSuccessMessage({ title: "Arkiverat", message: `${ids.length} fil${ids.length > 1 ? "er" : ""} arkiverad` })
       closeArchiveMenu()
+      router.refresh()
     } finally {
       setArchiveMenuLoading(false)
     }
@@ -509,6 +519,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     setArchiveMenuError(null)
     try {
       await archiveTestAction(testId, athleteId, archiveMenuReason)
+      setSuccessMessage("Testet arkiverat")
+      setTimeout(() => setSuccessMessage(null), 2000)
       router.refresh()
       closeArchiveMenu()
     } catch {
@@ -618,7 +630,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
 
   function renderArchiveConfirm(onConfirm: () => void) {
     return (
-      <div className="p-3" onClick={(e) => e.stopPropagation()}>
+      <div className="p-3">
         <div className="relative mb-2">
           <input
             autoFocus
@@ -759,7 +771,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 <MoreHorizontal className="h-4 w-4" />
               </button>
               {openMenuId === `file-${f.id}` && (
-                <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                <div ref={openMenuRef} className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
                   {archivingMenuId === `file-${f.id}` ? renderArchiveConfirm(() => handleArchiveFiles([f.id])) : (
                     <>
                       <button
@@ -860,7 +872,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
                 {openMenuId === `group-${group.groupId}` && (
-                  <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                  <div ref={openMenuRef} className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
                     {archivingMenuId === `group-${group.groupId}` ? renderArchiveConfirm(() => handleArchiveFiles(group.files.map(f => f.id))) : (
                       <>
                         <button
@@ -1020,6 +1032,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             : "Inget matchar filtret."}
         </p>
       ) : (
+        <>
         <div className="space-y-2">
           {items.map((item) => {
             if (item.kind === "test") {
@@ -1036,21 +1049,25 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                       : "border-[hsl(var(--border))] hover:bg-[#F5F5F7]/50 shadow-sm"
                   )}
                 >
-                  {/* Checkbox */}
+                  {/* Checkbox - larger click area around small checkbox */}
                   <div
                     onClick={(e) => toggle(test.id, e)}
-                    className={cn(
-                      "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                      isSelected
-                        ? "bg-[#007AFF] border-[#007AFF]"
-                        : "bg-white border-[#C7C7CC] hover:border-[#007AFF]"
-                    )}
+                    className="flex-shrink-0 p-1.5 rounded cursor-pointer hover:bg-[#F5F5F7] transition-colors -m-1.5"
                   >
-                    {isSelected && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
-                        <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
+                    <div
+                      className={cn(
+                        "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                        isSelected
+                          ? "bg-[#007AFF] border-[#007AFF]"
+                          : "bg-white border-[#C7C7CC] hover:border-[#007AFF]"
+                      )}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                          <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -1080,7 +1097,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openMenuId === `test-${test.id}` && (
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
+                        <div ref={openMenuRef} className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-[hsl(var(--border))] z-20 min-w-[160px] overflow-hidden">
                           {archivingMenuId === `test-${test.id}` ? renderArchiveConfirm(() => handleArchiveTest(test.id)) : (
                             <>
                               <button
@@ -1091,7 +1108,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                               </button>
                               <div className="h-px bg-[hsl(var(--border))]" />
                               <button
-                                onClick={(e) => { e.stopPropagation(); setArchivingMenuId(`test-${test.id}`) }}
+                                onClick={(e) => { setArchivingMenuId(`test-${test.id}`) }}
                                 className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
                               >
                                 <Trash2 className="h-3.5 w-3.5 flex-shrink-0" /> Arkivera
@@ -1123,6 +1140,12 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             return renderSingleFileRow(fd.file)
           })}
         </div>
+        {successMessage && (
+          <div className="mt-3 rounded-2xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700 font-medium">
+            {successMessage}
+          </div>
+        )}
+        </>
       )}
 
       {showUpload && (
