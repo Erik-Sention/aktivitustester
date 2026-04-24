@@ -458,7 +458,7 @@ function PerformanceChart({
           <Line x1={xS(lt1Min)} y1={PY} x2={xS(lt1Min)} y2={PY2}
             stroke={C.green} strokeWidth={1.4} strokeDasharray="5 3" />
           <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={13} fill={C.green} rx={2} />
-          <T x={xS(lt1Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT1</T>
+          <T x={xS(lt1Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">AT</T>
           {lt1Watt && (
             <T x={xS(lt1Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt1Watt}{isSpeed ? '' : 'W'}</T>
           )}
@@ -471,7 +471,7 @@ function PerformanceChart({
           <Line x1={xS(lt2Min)} y1={PY} x2={xS(lt2Min)} y2={PY2}
             stroke={C.purple} strokeWidth={1.4} strokeDasharray="5 3" />
           <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={13} fill={C.purple} rx={2} />
-          <T x={xS(lt2Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT2</T>
+          <T x={xS(lt2Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT</T>
           {lt2Watt && (
             <T x={xS(lt2Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt2Watt}{isSpeed ? '' : 'W'}</T>
           )}
@@ -567,16 +567,69 @@ function PerformanceChart({
         {lt1Min != null && (
           <G>
             <Line x1={PX + 128} y1={CHART_H - 14} x2={PX + 140} y2={CHART_H - 14} stroke={C.green} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 143} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT1</T>
+            <T x={PX + 143} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>AT</T>
           </G>
         )}
         {lt2Min != null && (
           <G>
             <Line x1={PX + 163} y1={CHART_H - 14} x2={PX + 175} y2={CHART_H - 14} stroke={C.purple} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 178} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT2</T>
+            <T x={PX + 178} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT</T>
           </G>
         )}
       </G>
+    </Svg>
+  )
+}
+
+// ─── Wingate bar chart ────────────────────────────────────────────────────────
+const BAR_W = CONTENT_W - 28
+const BAR_H = 100
+const BAR_LABEL_W = 70
+const BAR_PLOT_W = BAR_W - BAR_LABEL_W - 10
+
+function WingateBarChart({
+  peakPower, meanPower, minPower,
+}: {
+  peakPower: number | null | undefined
+  meanPower: number | null | undefined
+  minPower:  number | null | undefined
+}) {
+  const maxVal = Math.max(peakPower ?? 0, meanPower ?? 0, minPower ?? 0)
+  if (!maxVal) return null
+
+  const bars = [
+    { label: 'Peak Power', value: peakPower, color: C.green },
+    { label: 'Mean Power', value: meanPower, color: C.blue },
+    { label: 'Min Power',  value: minPower,  color: C.purple },
+  ]
+  const rowH = BAR_H / bars.length
+  const barH = rowH * 0.55
+
+  return (
+    <Svg width={BAR_W} height={BAR_H}>
+      {bars.map((b, i) => {
+        const y = i * rowH + (rowH - barH) / 2
+        const w = b.value ? (b.value / maxVal) * BAR_PLOT_W : 0
+        const label = b.value != null ? `${b.value} W` : '—'
+        const outsideX = BAR_LABEL_W + w + 4
+        const fitsOutside = outsideX + 38 < BAR_W
+        return (
+          <G key={b.label}>
+            <T x={0} y={y + barH * 0.72} fontSize={7} fill={C.slate500}>{b.label}</T>
+            <Rect x={BAR_LABEL_W} y={y} width={BAR_PLOT_W} height={barH} fill={C.slate100} rx={3} />
+            <Rect x={BAR_LABEL_W} y={y} width={w} height={barH} fill={b.color} rx={3} />
+            {fitsOutside ? (
+              <T x={outsideX} y={y + barH * 0.72} fontSize={7.5} fontFamily="Helvetica-Bold" fill={C.slate700}>
+                {label}
+              </T>
+            ) : (
+              <T x={BAR_LABEL_W + w - 5} y={y + barH * 0.72} fontSize={7.5} fontFamily="Helvetica-Bold" fill={C.white} textAnchor="end">
+                {label}
+              </T>
+            )}
+          </G>
+        )
+      })}
     </Svg>
   )
 }
@@ -624,6 +677,24 @@ function PageHeader({
   )
 }
 
+// ─── Page footer ──────────────────────────────────────────────────────────────
+function PageFooter() {
+  return (
+    <View style={{
+      position: 'absolute', bottom: 10, left: PAD, right: PAD,
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      borderTopWidth: 0.5, borderTopColor: C.slate200, paddingTop: 4,
+    }}>
+      <Text style={{ fontSize: 6, color: C.slate400 }}>
+        Aktivitus Testklinik &amp; Coaching  ·  www.aktivitus.se  ·  info@aktivitus.se  ·  Tel: 0732 448248
+      </Text>
+      <Text style={{ fontSize: 6, color: C.slate400 }}>
+        Instagram &amp; Facebook: @Aktivitus
+      </Text>
+    </View>
+  )
+}
+
 // ─── Threshold boxes ──────────────────────────────────────────────────────────
 function ThresholdBoxes({
   lt1Watt, lt2Watt, lt1HR, lt2HR, bodyWeight, isSpeed,
@@ -640,7 +711,7 @@ function ThresholdBoxes({
     <View style={s.boxRow}>
       <View style={[s.threshBox, s.threshBoxGreen]}>
         <Text style={s.threshTitle}>AT</Text>
-        <Text style={s.threshSubtitle}>Aerob tröskel — LT1 2.0 mmol</Text>
+        <Text style={s.threshSubtitle}>Aerob tröskel — 2.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt1Watt)}</Text>
         <Text style={s.threshUnit}>{unit}</Text>
         <View style={s.threshDivider} />
@@ -651,7 +722,7 @@ function ThresholdBoxes({
           </View>
         )}
         <View style={s.threshStatRow}>
-          <Text style={s.threshStatLabel}>Puls vid LT1</Text>
+          <Text style={s.threshStatLabel}>Puls vid AT</Text>
           <Text style={s.threshStatValue}>{lt1HR ? `${lt1HR} bpm` : '—'}</Text>
         </View>
       </View>
@@ -668,7 +739,7 @@ function ThresholdBoxes({
           </View>
         )}
         <View style={s.threshStatRow}>
-          <Text style={s.threshStatLabel}>Puls vid LT2</Text>
+          <Text style={s.threshStatLabel}>Puls vid LT</Text>
           <Text style={s.threshStatValue}>{lt2HR ? `${lt2HR} bpm` : '—'}</Text>
         </View>
       </View>
@@ -709,48 +780,7 @@ function NineZoneTable({
   )
 }
 
-// ─── Raw data table ───────────────────────────────────────────────────────────
-const TW   = CONTENT_W - 28
-const COL  = { min: 0.10, watt: 0.17, hr: 0.16, lac: 0.19, borg: 0.15, kad: 0.23 }
-
-function DataTable({ rows, isSpeed }: { rows: RawDataPoint[]; isSpeed?: boolean }) {
-  return (
-    <View>
-      <View style={s.tblHead}>
-        {([
-          ['MIN',              COL.min,  'left'],
-          [isSpeed ? 'KM/H' : 'WATT', COL.watt, 'right'],
-          ['PULS',             COL.hr,   'right'],
-          ['LAKTAT',           COL.lac,  'right'],
-          ['BORG',             COL.borg, 'right'],
-          ['KAD.',             COL.kad,  'right'],
-        ] as [string, number, string][]).map(([lbl, frac, align]) => (
-          <Text key={lbl} style={[s.tblHeadCell, { width: TW * frac, textAlign: align as 'left' | 'right' }]}>
-            {lbl}
-          </Text>
-        ))}
-      </View>
-      {rows.map((row, i) => {
-        const lacColor = row.lac >= 4 ? C.lacRed : row.lac >= 2 ? C.lacOrange : row.lac > 0 ? C.lacLine : C.slate400
-        const intensityVal = isSpeed ? (row.speed ?? 0) : row.watt
-        return (
-          <View key={i} style={[s.tblRow, i % 2 === 1 ? s.tblAlt : {}]}>
-            <Text style={[s.tblCell,     { width: TW * COL.min }]}>{row.min}</Text>
-            <Text style={[s.tblCellBold, { width: TW * COL.watt, textAlign: 'right' }]}>{intensityVal || '—'}</Text>
-            <Text style={[s.tblCell,     { width: TW * COL.hr,   textAlign: 'right' }]}>{row.hr   || '—'}</Text>
-            <Text style={[s.tblCellBold, { width: TW * COL.lac,  textAlign: 'right', color: lacColor }]}>
-              {row.lac || '—'}
-            </Text>
-            <Text style={[s.tblCell,     { width: TW * COL.borg, textAlign: 'right', color: C.slate500 }]}>{row.borg    || '—'}</Text>
-            <Text style={[s.tblCell,     { width: TW * COL.kad,  textAlign: 'right', color: C.slate500 }]}>{row.cadence || '—'}</Text>
-          </View>
-        )
-      })}
-    </View>
-  )
-}
-
-// ─── Knowledge page ───────────────────────────────────────────────────────────
+// ─── Knowledge pages ──────────────────────────────────────────────────────────
 function KnowledgePage({
   athleteName, testDate, sport, testType, coachName, testLeader, coachAvatarUrl,
 }: {
@@ -762,86 +792,159 @@ function KnowledgePage({
   testLeader?: string
   coachAvatarUrl?: string
 }) {
+  const isCykel = sport === 'cykel'
   return (
     <Page size="A4" style={s.page}>
       <PageHeader
-        athleteName={athleteName}
-        testDate={testDate}
-        sport={sport}
-        testType={testType}
-        subtitle="Bakgrundsinformation"
-        coachName={coachName}
-        testLeader={testLeader}
-        coachAvatarUrl={coachAvatarUrl}
+        athleteName={athleteName} testDate={testDate} sport={sport} testType={testType}
+        subtitle="Bakgrundsinformation" coachName={coachName}
+        testLeader={testLeader} coachAvatarUrl={coachAvatarUrl}
       />
+
       <View style={s.box}>
         <Text style={s.kwTitle}>Dina laktattrösklar</Text>
-        <Text style={s.kwLead}>
-          Vad ditt test mäter — och hur du använder resultaten i din träning
-        </Text>
+        <Text style={[s.kwLead, { marginBottom: 8 }]}>Vad ditt test mäter — och hur du använder resultaten i din träning</Text>
         <View style={s.kwDivider} />
 
-        <Text style={s.kwHeading}>Vad är laktat?</Text>
         <Text style={s.kwBody}>
-          Laktat (mjölksyra) bildas naturligt i musklerna när du tränar. Vid låg intensitet hinner kroppen
-          eliminera laktat lika snabbt som det bildas. Ju hårdare du arbetar, desto mer laktat produceras —
-          och vid en viss belastning börjar det ackumuleras snabbare än kroppen kan hantera det.
-          Det är just dessa brytpunkter — dina trösklar — som vi mäter i det här testet.
+          Till vänster finner du dina uppmätta trösklar, Aerob (AT) respektive Anaerob tröskel (LT). Dina individuellt uppmätta trösklar ger dig dina övergripande intensitetszoner i 3-zonsskalan — låg-, medel- respektive högintensiv pulszon. För mer detaljerad intensitetsindelning se nedan.
         </Text>
 
-        <Text style={s.kwHeading}>AT — Aerob tröskel (LT1, ≈ 2.0 mmol/L)</Text>
+        <Text style={[s.kwHeading, { marginTop: 8 }]}>Aerob tröskel (AT) — FatMax</Text>
         <Text style={s.kwBody}>
-          Din aeroba tröskel är den intensitet där laktathalten börjar stiga mätbart över vilovärdet.
-          Under LT1 förbränner kroppen primärt fett och kan arbeta länge utan att anhopa mjölksyra.
-          Träning i denna zon bygger din aeroba bas — den viktigaste faktorn för uthållighet på lång sikt.
-          De flesta uthållighetsidrottare bör lägga 70–80 % av sin träningsvolym i denna zon.
+          Den första fysiologiska tröskeln bestäms där blodlaktatet ökar väsentligt från basnivå. Denna förändring markerar vid vilken intensitet som fettförbränningen börjar avta och därmed påverkar uthållighet på sub-maximal arbetsintensitet. Vid högre intensitet påverkas möjlig träningstid starkt av tillgången på kolhydrater medan fettförbränningen i sammanhanget utgör en obegränsad resurs. Detta är därmed en lämplig intensitet för långdistansträning.
         </Text>
 
-        <Text style={s.kwHeading}>LT — Anaerob tröskel (LT2 / FTP / MLSS, ≈ 4.0 mmol/L)</Text>
+        <Text style={[s.kwHeading, { marginTop: 8 }]}>Anaerob tröskel (LT) — FTP / MLSS</Text>
         <Text style={s.kwBody}>
-          Vid LT2 börjar laktat ackumuleras snabbare än kroppen kan eliminera det. LT2 motsvarar ungefär
-          din FTP (Functional Threshold Power) — den högsta effekt du kan hålla stabilt under ca 60 minuter.
-          Att höja LT2 är ett av de viktigaste målen för de flesta uthållighetsidrottare.
-          Intervallträning strax under och runt LT2 är det effektivaste sättet att förbättra detta värde.
+          Den andra fysiologiska tröskeln markerar den högsta möjliga intensiteten där kroppen arbetar med tillgång av syre och där bildningen av mjölksyra inte överstiger vad kroppen kan ta hand om och jämnvikt råder. Vid AT-intensitet kan musklerna arbeta under lång tid förutsatt att kolhydrater finns som bränsle och din prestationsförmåga vid tränings- och tävlingstider över 30 minuter styrs i hög grad av din AT.
         </Text>
 
-        <Text style={s.kwHeading}>3-zon träningsmodell</Text>
+        <View style={[s.kwDivider, { marginTop: 10 }]} />
+        <Text style={[s.sectionLabel, { marginTop: 8 }]}>TRÄNINGSINTENSITETSZONER</Text>
         <Text style={[s.kwBody, { marginBottom: 8 }]}>
-          Dina personliga tröskelvärden delar in all träning i tre meningsfulla zoner:
+          I din träningsklocka använder du Zon 1 till Zon 5. Z4- och Z4+ utgör tillsammans Zon 4. Förtydligande av respektive zon finner du i Aktivitus kompendium för passbeskrivningar. Är du intresserad av coaching och detaljerat individuellt anpassat träningsprogram? — se www.aktivitus.se/membership
         </Text>
+
         <View style={s.kwBulletRow}>
           <View style={[s.kwDot, { backgroundColor: '#1d4ed8' }]} />
           <Text style={s.kwBulletText}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Lågintensiv (under LT1): </Text>
-            Återhämtning och aerob basträning. Hög volym, låg fysiologisk stress.
-            Viktigaste zonen för långsiktig kapacitetsutveckling.
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Lågintensiv (Z1–Z3, under AT) — </Text>
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Vad: </Text>
+            {'Träning i bekvämt tempo, något ansträngande. Här kan du träna >180 minuter. Trötthet kommer av arbetstid snarare än intensitet. '}
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Träningseffekt: </Text>
+            Bra effekt på anpassning av muskler, senor, leder och skelett till långvarigt arbete samt för generell uthållighet och fettförbränning. Lågintensiv träning behövs för att balansera mot den högintensiva träningen och kan genomföras som längre distanspass och kortare återhämtningspass.
           </Text>
         </View>
         <View style={s.kwBulletRow}>
           <View style={[s.kwDot, { backgroundColor: '#059669' }]} />
           <Text style={s.kwBulletText}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Medelintensiv (LT1 till LT2): </Text>
-            Tröskeltempo och "sweet spot"-träning. Effektiv men kräver återhämtningstid.
-            Håll volymen begränsad — ca 10–15 % av träningen.
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Medelintensiv (Z4–Z6, AT–LT) — </Text>
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Vad: </Text>
+            {'Hård träning i jämn fart i långa intervaller eller som kontinuerligt arbete i 30–180 minuter beroende på intensitet. Denna träning är ansträngande till mycket ansträngande och det är i denna zon du kan prestera under längre tävlings- och träningspass. '}
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Träningseffekt: </Text>
+            Övre delen av den medelintensiva zonen ger tillvänjning och träningseffekt i din tävlingsfart. Detta är mycket värdefullt. Träning i den nedre delen av zonen innebär ofta en för hög belastning för att träna uthållighet, och en för låg belastning för att träna i tävlingsfart. Tiden för återhämtning är i regel kortare än för träning i den högintensiva zonen.
           </Text>
         </View>
         <View style={s.kwBulletRow}>
           <View style={[s.kwDot, { backgroundColor: '#dc2626' }]} />
           <Text style={s.kwBulletText}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Högintensiv (över LT2): </Text>
-            Intervaller och kapacitetshöjning. Hög fysiologisk stress — begränsa till
-            ca 10–20 % av träningen och säkerställ god återhämtning mellan passen.
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Högintensiv (Z7–Z8, över LT) — </Text>
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Vad: </Text>
+            {'Intervallträning bestående av kortare perioder av träning (maximalt ca 8 minuter) ovanför AT. Träningen i denna zon är mycket till maximalt ansträngande. Ett effektivt intervallpass kan bestå av 15–40 minuter effektiv intervalltid, viloperioder borträknade. '}
+            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Träningseffekt: </Text>
+            Mycket hög träningseffekt på syreupptagningsförmåga men relativt lång återhämtningstid.
           </Text>
         </View>
 
-        <View style={[s.kwDivider, { marginTop: 12 }]} />
-        <Text style={s.kwHeading}>Nästa steg</Text>
+        <View style={[s.kwDivider, { marginTop: 8, marginBottom: 6 }]} />
+        <Text style={{ fontSize: 7.5, color: C.slate500, lineHeight: 1.5 }}>
+          *MAX Acceleration/Sprint. **Anaeroba/explosiva zoner. Om du genomfört Wingatetest kommer dessa zoner att vara bra anpassade för dig. Om du inte genomförde Wingatetestet ska du se zonindelningen för Z6–Z8 som riktvärden.
+        </Text>
+
+        {isCykel && (
+          <>
+            <View style={[s.kwDivider, { marginTop: 8, marginBottom: 6 }]} />
+            <Text style={{ fontSize: 7.5, color: C.slate500, lineHeight: 1.5 }}>
+              <Text style={{ fontFamily: 'Helvetica-Bold', color: C.slate600 }}>Watt-notering (Monark): </Text>
+              Nedan finner du dina intensitetszoner med watt och puls. När du blir bättre kommer din uteffekt att öka. När ett pass eller en belastning i watt känns lättare än vanligt och pulsen är låg är det dags att öka med 5–10 W över hela intensitetsskalan. Dina watt är uppmätta i drivhjulet på en Monark. Pga transmissionsförlust i kedja och drev får du lägga på 4 % för att dina uppmätta watt ska motsvara watt uppmätta i pedal, trainer, vevarm eller vevparti. Beroende på wattmätare kan ibland diffen vara än större.
+            </Text>
+          </>
+        )}
+
+        <View style={[s.kwDivider, { marginTop: 10, marginBottom: 4 }]} />
+        <Text style={[s.kwHeading, { marginTop: 0 }]}>Nästa steg</Text>
         <Text style={s.kwBody}>
-          Diskutera gärna dina träningszoner, upplägg och mål med din coach.
-          Testet rekommenderas upprepas var 3–6 månad för att följa din utveckling
-          och justera träningen efter aktuell form. Välkommen tillbaka!
+          Diskutera gärna dina träningszoner, upplägg och mål med din coach. Testet rekommenderas upprepas var 3–6 månad för att följa din utveckling och justera träningen efter aktuell form. Välkommen tillbaka!
         </Text>
       </View>
+
+      <PageFooter />
+    </Page>
+  )
+}
+
+function VO2KnowledgePage({
+  athleteName, testDate, sport, testType, coachName, testLeader, coachAvatarUrl, gender,
+}: {
+  athleteName: string; testDate: string; sport: string; testType: string
+  coachName?: string; testLeader?: string; coachAvatarUrl?: string
+  gender?: 'M' | 'K' | ''
+}) {
+  return (
+    <Page size="A4" style={s.page}>
+      <PageHeader
+        athleteName={athleteName} testDate={testDate} sport={sport} testType={testType}
+        subtitle="Om ditt VO₂max" coachName={coachName}
+        testLeader={testLeader} coachAvatarUrl={coachAvatarUrl}
+      />
+
+      <View style={s.box}>
+        <Text style={s.kwTitle}>Syreupptagningsförmåga</Text>
+        <Text style={[s.kwLead, { marginBottom: 8 }]}>Vad VO₂max-testet mäter — och vad ditt resultat innebär</Text>
+        <View style={s.kwDivider} />
+
+        <Text style={s.kwBody}>
+          Vid test av VO₂max mäts den maximala mängd syre som kroppen kan använda vid aerob förbränning. Vid VO₂max är de anaeroba energiprocesserna också i full gång och den effekt eller löpfart som nås vid VO₂max är därför högre än vad som teoretiskt krävs för att motsvara den aeroba förbränningen.
+        </Text>
+        <Text style={[s.kwBody, { marginTop: 6 }]}>
+          Maximal syreupptagningsförmåga anges ofta som absolut kapacitet (l/min), men då de flesta uthållighetsidrotter innebär uppbärande av den egna kroppsvikten används ofta ett relativt värde, det så kallade testvärdet (ml/kg·min⁻¹). Framgång inom uthållighetsidrott kräver i de flesta fall en hög maximal syreupptagningsförmåga och VO₂max för kvinnor och män tävlandes på elitnivå är oftast inom 60–75 respektive 65–85 ml/kg·min⁻¹.
+        </Text>
+
+        <Text style={[s.kwHeading, { marginTop: 8 }]}>Central kapacitet</Text>
+        <Text style={s.kwBody}>
+          Utgörs av hjärtats pumpförmåga samt blodets förmåga att transportera syre. Den centrala kapaciteten bestämmer till största del VO₂max.
+        </Text>
+
+        <Text style={[s.kwHeading, { marginTop: 8 }]}>Lokal kapacitet</Text>
+        <Text style={s.kwBody}>
+          Utgörs av hur syret tas upp och används vid energiomsättning i den arbetande muskulaturen. Musklerna har i regel en överkapacitet att använda syre och begränsar inte VO₂max vid helkroppsarbete. En hög lokal kapacitet medför därmed en god uthållighet.
+        </Text>
+
+        <View style={[s.kwDivider, { marginTop: 10 }]} />
+        <Text style={[s.sectionLabel, { marginTop: 8 }]}>REFERENSVÄRDEN</Text>
+        <Text style={[s.kwBody, { marginBottom: 4 }]}>Medelvärden för test av VO₂max på Aktivitus (alla åldrar):</Text>
+        {(gender === 'K' || !gender) && (
+          <View style={s.threshStatRow}>
+            <Text style={{ fontSize: 8.5, color: C.slate600 }}>Kvinnor</Text>
+            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.slate800 }}>45 ml/kg</Text>
+          </View>
+        )}
+        {(gender === 'M' || !gender) && (
+          <View style={s.threshStatRow}>
+            <Text style={{ fontSize: 8.5, color: C.slate600 }}>Män</Text>
+            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.slate800 }}>54 ml/kg</Text>
+          </View>
+        )}
+
+        <View style={[s.kwDivider, { marginTop: 10, marginBottom: 4 }]} />
+        <Text style={[s.kwHeading, { marginTop: 0 }]}>Nästa steg</Text>
+        <Text style={s.kwBody}>
+          Diskutera dina resultat och träningsupplägg med din coach. VO₂max-testet rekommenderas upprepas var 3–6 månad för att följa din konditionsutveckling. Välkommen tillbaka!
+        </Text>
+      </View>
+
+      <PageFooter />
     </Page>
   )
 }
@@ -850,6 +953,7 @@ function KnowledgePage({
 export function AktivitusReport({
   test,
   athleteName,
+  gender,
   coachName,
   coachAvatarUrl,
 }: {
@@ -915,8 +1019,8 @@ export function AktivitusReport({
           </View>
         )}
 
-        {/* Threshold boxes + zone table */}
-        {isTroskel && (lt1Watt || lt2Watt) && (
+        {/* Threshold boxes + zone table — single box to ensure both fit on page 1 */}
+        {isTroskel && (lt1Watt || lt2Watt || lt1HR || lt2HR) && (
           <View style={s.box}>
             <Text style={s.sectionLabel}>TRÖSKLAR</Text>
             <ThresholdBoxes
@@ -927,20 +1031,19 @@ export function AktivitusReport({
               bodyWeight={bw}
               isSpeed={isSpeed}
             />
-          </View>
-        )}
-
-        {isTroskel && (lt1HR || lt2HR || lt1Watt || lt2Watt) && (
-          <View style={s.box}>
-            <Text style={s.sectionLabel}>INTENSITETSZONER</Text>
-            <NineZoneTable
-              atHR={lt1HR}
-              ltHR={lt2HR}
-              maxHR={estMaxHR}
-              atWatt={lt1Watt}
-              ltWatt={lt2Watt}
-              isSpeed={isSpeed}
-            />
+            {(lt1HR || lt2HR || lt1Watt || lt2Watt) && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={[s.sectionLabel, { marginBottom: 6 }]}>INTENSITETSZONER</Text>
+                <NineZoneTable
+                  atHR={lt1HR}
+                  ltHR={lt2HR}
+                  maxHR={estMaxHR}
+                  atWatt={lt1Watt}
+                  ltWatt={lt2Watt}
+                  isSpeed={isSpeed}
+                />
+              </View>
+            )}
           </View>
         )}
 
@@ -994,11 +1097,23 @@ export function AktivitusReport({
                   <Text style={s.threshStatLabel}>Peak W/kg</Text>
                   <Text style={s.threshStatValue}>{fmtWkg(test.wingateData.peakPower, bw)}</Text>
                 </View>
+                <View style={s.threshStatRow}>
+                  <Text style={s.threshStatLabel}>Mean power</Text>
+                  <Text style={s.threshStatValue}>{fmt(test.wingateData.meanPower, 'W')}</Text>
+                </View>
+                <View style={s.threshStatRow}>
+                  <Text style={s.threshStatLabel}>Mean W/kg</Text>
+                  <Text style={s.threshStatValue}>{fmtWkg(test.wingateData.meanPower, bw)}</Text>
+                </View>
               </View>
               <View style={[s.threshBox, s.threshBoxPurple]}>
-                <Text style={s.threshTitle}>MEAN / MIN POWER</Text>
-                <Text style={[s.threshValue, { fontSize: 32 }]}>{fmt(test.wingateData.meanPower)}</Text>
-                <Text style={s.threshUnit}>Watt (medel)</Text>
+                <Text style={s.threshTitle}>POWER DROP</Text>
+                <Text style={[s.threshValue, { fontSize: 32 }]}>
+                  {test.wingateData.peakPower != null && test.wingateData.minPower != null
+                    ? String(test.wingateData.peakPower - test.wingateData.minPower)
+                    : '—'}
+                </Text>
+                <Text style={s.threshUnit}>Watt (tappat)</Text>
                 <View style={s.threshDivider} />
                 <View style={s.threshStatRow}>
                   <Text style={s.threshStatLabel}>Min power</Text>
@@ -1013,6 +1128,70 @@ export function AktivitusReport({
                   </Text>
                 </View>
               </View>
+              <View style={[s.threshBox, s.threshBoxBlue]}>
+                <Text style={s.threshTitle}>PROTOKOLL</Text>
+                <Text style={s.threshSubtitle}>Wingate 30 sek</Text>
+                <View style={s.threshDivider} />
+                <View style={s.threshStatRow}>
+                  <Text style={s.threshStatLabel}>Startkadence</Text>
+                  <Text style={s.threshStatValue}>
+                    {test.wingateInputParams?.startCadenceRpm != null
+                      ? `${test.wingateInputParams.startCadenceRpm} rpm` : '—'}
+                  </Text>
+                </View>
+                <View style={s.threshStatRow}>
+                  <Text style={s.threshStatLabel}>Bromsbelastning</Text>
+                  <Text style={s.threshStatValue}>
+                    {test.wingateInputParams?.bodyWeightPercent != null
+                      ? `${test.wingateInputParams.bodyWeightPercent} %` : '—'}
+                  </Text>
+                </View>
+                <View style={s.threshStatRow}>
+                  <Text style={s.threshStatLabel}>Kroppsvikt</Text>
+                  <Text style={s.threshStatValue}>{fmt(bw, 'kg')}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={{ marginTop: 12 }}>
+              <Text style={[s.sectionLabel, { marginBottom: 6 }]}>EFFEKTUTVECKLING</Text>
+              <WingateBarChart
+                peakPower={test.wingateData.peakPower}
+                meanPower={test.wingateData.meanPower}
+                minPower={test.wingateData.minPower}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Wingate inline explanations */}
+        {isWingate && (
+          <View style={s.box}>
+            <Text style={s.sectionLabel}>OM DINA RESULTAT</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.green, marginBottom: 3 }}>
+                  PEAK POWER
+                </Text>
+                <Text style={{ fontSize: 7.5, color: C.slate600, lineHeight: 1.5 }}>
+                  Den högsta effekten under testet — din explosiva toppkapacitet, vanligtvis uppnådd inom de första 5–10 sekunderna.
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.purple, marginBottom: 3 }}>
+                  POWER DROP
+                </Text>
+                <Text style={{ fontSize: 7.5, color: C.slate600, lineHeight: 1.5 }}>
+                  {`Skillnaden mellan toppeffekt och lägsta effekt (Peak − Min). Mäter absolut trötthet. Lägre värde = bättre anaerob uthållighet.`}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.blue, marginBottom: 3 }}>
+                  FATIGUE INDEX
+                </Text>
+                <Text style={{ fontSize: 7.5, color: C.slate600, lineHeight: 1.5 }}>
+                  {`(Peak − Min) / Peak × 100. Relativ trötthet i %. Vältränade atleter: 30–50 %. Högt FI = explosiv profil. Lågt FI = uthållighetskapacitet.`}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -1024,53 +1203,11 @@ export function AktivitusReport({
             <Text style={s.notesText}>{test.notes}</Text>
           </View>
         ) : null}
+
+        <PageFooter />
       </Page>
 
-      {/* ── Page 2: Raw data ────────────────────────────────────────────────── */}
-      {test.rawData.length > 0 && (
-        <Page size="A4" style={s.page}>
-          <PageHeader
-            athleteName={athleteName}
-            testDate={testDate}
-            sport={test.sport}
-            testType={test.testType}
-            subtitle="Minutdata"
-            coachName={coachName}
-            testLeader={test.testLeader}
-            coachAvatarUrl={coachAvatarUrl}
-          />
-          <View style={s.box}>
-            <Text style={s.sectionLabel}>MINUTDATA PER STEG</Text>
-            <DataTable rows={test.rawData} isSpeed={isSpeed} />
-          </View>
-
-          {test.settings?.bike && (() => {
-            const bike = test.settings!.bike!
-            return (
-              <View style={s.box}>
-                <Text style={s.sectionLabel}>CYKELINSTÄLLNINGAR</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                  {([
-                    ['Cykeltyp',            bike.bikeType],
-                    ['Pedaltyp',            bike.pedalType],
-                    ['Sadel vertikalt',     bike.saddleVerticalMm    != null ? `${bike.saddleVerticalMm} mm`    : '—'],
-                    ['Sadel horisontellt',  bike.saddleHorizontalMm  != null ? `${bike.saddleHorizontalMm} mm`  : '—'],
-                    ['Styre vertikalt',     bike.handlebarVerticalMm != null ? `${bike.handlebarVerticalMm} mm` : '—'],
-                    ['Styre horisontellt',  bike.handlebarHorizontalMm != null ? `${bike.handlebarHorizontalMm} mm` : '—'],
-                  ] as [string, string][]).map(([label, val]) => (
-                    <View key={label} style={{ width: '47%' }}>
-                      <Text style={{ fontSize: 6.5, color: C.slate400, letterSpacing: 0.5, marginBottom: 2 }}>{label}</Text>
-                      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.slate700 }}>{val || '—'}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )
-          })()}
-        </Page>
-      )}
-
-      {/* ── Page 3: Knowledge (threshold tests only) ─────────────────────── */}
+      {/* ── Page 2: Knowledge ────────────────────────────────────────────── */}
       {isTroskel && (
         <KnowledgePage
           athleteName={athleteName}
@@ -1080,6 +1217,18 @@ export function AktivitusReport({
           coachName={coachName}
           testLeader={test.testLeader}
           coachAvatarUrl={coachAvatarUrl}
+        />
+      )}
+      {isVO2 && (
+        <VO2KnowledgePage
+          athleteName={athleteName}
+          testDate={testDate}
+          sport={test.sport}
+          testType={test.testType}
+          coachName={coachName}
+          testLeader={test.testLeader}
+          coachAvatarUrl={coachAvatarUrl}
+          gender={gender}
         />
       )}
     </Document>

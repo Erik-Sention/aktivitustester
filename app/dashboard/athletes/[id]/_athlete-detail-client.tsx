@@ -34,6 +34,7 @@ export function AthleteDetailClient({ id, isAdmin }: { id: string; isAdmin?: boo
   const [showConsentModal, setShowConsentModal] = useState(false)
   const [showTrend, setShowTrend] = useState(false)
   const [coaches, setCoaches] = useState<{ uid: string; displayName: string }[]>([])
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -42,6 +43,7 @@ export function AthleteDetailClient({ id, isAdmin }: { id: string; isAdmin?: boo
     const unsub = onAuthStateChanged(auth, async (user) => {
       unsub()
       if (!user) { router.push("/login"); return }
+      setCurrentUserUid(user.uid)
       const [a, t, cs] = await Promise.all([getAthlete(id), getTests(id), getCoachProfilesClient()])
       setAthlete(a)
       setTests(t)
@@ -74,11 +76,15 @@ export function AthleteDetailClient({ id, isAdmin }: { id: string; isAdmin?: boo
     id: t.id,
     testType: t.testType,
     sport: t.sport,
+    protocol: t.protocol,
     testDateStr: new Date(t.testDate.seconds * 1000).toLocaleDateString("sv-SE"),
     inputParams: {
       startWatt: t.inputParams.startWatt ?? 0,
       stepSize: t.inputParams.stepSize ?? 0,
       testDuration: t.inputParams.testDuration,
+      startSpeed: t.inputParams.startSpeed ?? undefined,
+      speedIncrement: t.inputParams.speedIncrement ?? undefined,
+      incline: t.inputParams.incline ?? undefined,
     },
     results: {
       atWatt: t.results.atWatt,
@@ -251,6 +257,7 @@ export function AthleteDetailClient({ id, isAdmin }: { id: string; isAdmin?: boo
           athleteName={fullName(athlete.firstName, athlete.lastName)}
           athleteEmail={athlete.email ?? ""}
           coaches={coaches}
+          defaultCoachUid={currentUserUid ?? undefined}
           onConsent={async (data) => {
             await grantConsentAction(id, data)
             setShowConsentModal(false)

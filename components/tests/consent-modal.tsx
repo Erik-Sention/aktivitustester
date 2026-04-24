@@ -24,6 +24,7 @@ interface ConsentModalProps {
   athleteName: string
   athleteEmail: string
   coaches: { uid: string; displayName: string }[]
+  defaultCoachUid?: string
   onConsent: (data: ConsentData) => Promise<void>
   onGuest: () => void | Promise<void>
   onGuestLabel?: string
@@ -34,14 +35,14 @@ function isValidPersonnummer(pnr: string): boolean {
   return digits.length === 10 || digits.length === 12
 }
 
-export function ConsentModal({ athleteName, athleteEmail, coaches, onConsent, onGuest, onGuestLabel }: ConsentModalProps) {
-  const [form, setForm] = useState<ConsentData>({
+export function ConsentModal({ athleteName, athleteEmail, coaches, defaultCoachUid, onConsent, onGuest, onGuestLabel }: ConsentModalProps) {
+  const [form, setForm] = useState<ConsentData>(() => ({
     personnummer: "",
     gender: "",
     phone: "",
-    mainCoach: "",
+    mainCoach: coaches.find(c => c.uid === defaultCoachUid)?.displayName ?? "",
     email: athleteEmail,
-  })
+  }))
   const [saving, setSaving] = useState(false)
   const [guestLoading, setGuestLoading] = useState(false)
   const [pnrError, setPnrError] = useState<string | null>(null)

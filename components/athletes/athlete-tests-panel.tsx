@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, createElement } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { cn, isSpeedSport, thresholdUnit } from "@/lib/utils"
+import { cn, isSpeedSport, thresholdUnit, protocolLabel } from "@/lib/utils"
 import { buttonVariants, Button } from "@/components/ui/button"
 import {
   Plus, GitCompareArrows, FileText, Upload, Pencil, Eye, MoreHorizontal,
@@ -35,8 +35,12 @@ export interface SerializedTest {
   id: string
   testType: string
   sport: string
+  protocol?: string
   testDateStr: string
-  inputParams: { startWatt: number; stepSize: number; testDuration: number }
+  inputParams: {
+    startWatt: number; stepSize: number; testDuration: number
+    startSpeed?: number; speedIncrement?: number; incline?: number
+  }
   results: { atWatt: number | null; ltWatt: number | null; maxHR: number | null; maxLactate: number | null }
 }
 
@@ -1086,13 +1090,17 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                       <SportBadge sport={test.sport} />
                     </div>
                     <p className="text-sm text-[#515154] mt-0.5">
-                      {test.inputParams.startWatt > 0 && (
-                        <span>{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
-                      )}
-                      {(test.results.atWatt || test.results.ltWatt) && (test.inputParams.startWatt > 0 || isSpeedSport(test.sport)) && <span> · </span>}
-                      {test.results.atWatt ? `LT1: ${test.results.atWatt} ${thresholdUnit(test.sport)}` : ""}
-                      {test.results.atWatt && test.results.ltWatt ? " · " : ""}
-                      {test.results.ltWatt ? `LT2: ${test.results.ltWatt} ${thresholdUnit(test.sport)}` : ""}
+                      {(() => {
+                        const parts: string[] = []
+                        if (!isSpeedSport(test.sport) && test.inputParams.startWatt > 0)
+                          parts.push(`${test.inputParams.startWatt}W +${test.inputParams.stepSize}W / ${test.inputParams.testDuration} min`)
+                        if (isSpeedSport(test.sport) && test.inputParams.startSpeed && test.inputParams.startSpeed > 0)
+                          parts.push(`${test.inputParams.startSpeed} +${test.inputParams.speedIncrement ?? 0} km/h / ${test.inputParams.testDuration} min${test.inputParams.incline ? ` · ${test.inputParams.incline}% lutning` : ''}`)
+                        if (test.protocol) parts.push(protocolLabel(test.protocol))
+                        if (test.results.atWatt) parts.push(`LT1: ${test.results.atWatt} ${thresholdUnit(test.sport)}`)
+                        if (test.results.ltWatt) parts.push(`LT2: ${test.results.ltWatt} ${thresholdUnit(test.sport)}`)
+                        return parts.join(' · ')
+                      })()}
                     </p>
                   </div>
 

@@ -29,6 +29,14 @@ export function thresholdUnit(sport: string): string {
   return isSpeedSport(sport) ? 'km/h' : 'W'
 }
 
+export function protocolLabel(protocol: string): string {
+  switch (protocol) {
+    case 'standard_3min': return 'Standard 3 min-steg'
+    case 'ramp_test': return 'Ramp-test'
+    default: return protocol
+  }
+}
+
 export function testTypeLabel(type: string): string {
   switch (type.toUpperCase()) {
     case "VO2MAX":

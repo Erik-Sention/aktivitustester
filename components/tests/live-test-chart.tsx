@@ -44,9 +44,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
     cadence: lacEnabledCheck(r, dur) && r.cadence > 0 ? r.cadence : null,
   }))
 
-  const hasHr = data.some((d) => d.hr != null)
-  const hasLac = data.some((d) => d.lac != null)
-  const hasBorg = data.some((d) => d.borg != null)
+  const hasHr      = data.some((d) => d.hr != null)
+  const hasLac     = data.some((d) => d.lac != null)
+  const hasBorg    = data.some((d) => d.borg != null)
   const hasCadence = data.some((d) => d.cadence != null)
 
   if (!hasHr && !hasLac) {
@@ -57,7 +57,6 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
     )
   }
 
-  // Compute which minutes are watt step-change points (for labels)
   const stepMins = new Set(
     rows.reduce<number[]>((acc, r, i) => {
       if (r.watt > 0 && (i === 0 || r.watt !== rows[i - 1].watt)) acc.push(r.min)
@@ -65,7 +64,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
     }, [])
   )
 
-  const rightMargin = hasLac && hasBorg ? 100 : hasLac ? 56 : hasBorg ? 52 : 16
+  const rightMargin = 48 + (hasLac ? 52 : 0)
 
   const chartContent = (
     <ComposedChart data={data} margin={{ top: 28, right: rightMargin, left: 0, bottom: 20 }}>
@@ -81,14 +80,30 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         height={48}
       />
 
+      {/* Left: HR only */}
       <YAxis
-        yAxisId="left"
+        yAxisId="hr"
         orientation="left"
-        label={{ value: "Puls / Watt", angle: -90, position: "insideLeft", offset: 16, fontSize: 13 }}
+        label={{ value: "Puls (bpm)", angle: -90, position: "insideLeft", offset: 16, fontSize: 13 }}
         tick={{ fontSize: 13 }}
         width={56}
       />
 
+      {/* Right 1: Watt */}
+      <YAxis
+        yAxisId="watt"
+        orientation="right"
+        label={{ value: "Watt", angle: 90, position: "insideRight", offset: 16, fontSize: 13 }}
+        tick={{ fontSize: 13 }}
+        width={48}
+      />
+
+      {/* Cadence — hidden axis, large domain pushes values into bottom quarter */}
+      {hasCadence && (
+        <YAxis yAxisId="cadence" orientation="left" domain={[0, 360]} hide />
+      )}
+
+      {/* Right 3: Lactate */}
       {hasLac && (
         <YAxis
           yAxisId="lac"
@@ -100,35 +115,28 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         />
       )}
 
+      {/* Borg — hidden axis, legend is sufficient */}
       {hasBorg && (
-        <YAxis
-          yAxisId="borg"
-          orientation="right"
-          domain={[6, 20]}
-          ticks={[6, 9, 11, 13, 15, 17, 19]}
-          label={{ value: "Borg", angle: 90, position: "insideRight", offset: 16, fontSize: 13 }}
-          tick={{ fontSize: 13 }}
-          width={44}
-        />
+        <YAxis yAxisId="borg" orientation="right" domain={[6, 20]} hide />
       )}
 
       <Tooltip
         contentStyle={{ fontSize: 13 }}
         formatter={(value: number, name: string) => {
-          if (name === "Puls") return [`${value} bpm`, "Puls"]
+          if (name === "Puls")   return [`${value} bpm`, "Puls"]
           if (name === "Laktat") return [`${value} mmol/L`, "Laktat"]
-          if (name === "Watt") return [`${value} W`, "Watt"]
+          if (name === "Watt")   return [`${value} W`, "Watt"]
           if (name === "Kadans") return [`${value} rpm`, "Kadans"]
-          if (name === "Borg") return [`${value} (Borg)`, "Borg"]
+          if (name === "Borg")   return [`${value} (Borg)`, "Borg"]
           return [value, name]
         }}
         labelFormatter={(v) => `Minut ${v}`}
       />
       <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 16 }} />
 
-      {/* Watt staircase with step labels */}
+      {/* Watt staircase */}
       <Line
-        yAxisId="left"
+        yAxisId="watt"
         type="stepAfter"
         dataKey="watt"
         name="Watt"
@@ -139,9 +147,10 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         connectNulls
       />
 
+      {/* HR */}
       {hasHr && (
         <Line
-          yAxisId="left"
+          yAxisId="hr"
           type="monotone"
           dataKey="hr"
           name="Puls"
@@ -155,6 +164,24 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         </Line>
       )}
 
+      {/* Cadence */}
+      {hasCadence && (
+        <Line
+          yAxisId="cadence"
+          type="monotone"
+          dataKey="cadence"
+          name="Kadans"
+          stroke="#8b5cf6"
+          strokeWidth={2}
+          dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 0 }}
+          activeDot={{ r: 6 }}
+          connectNulls
+        >
+          <LabelList dataKey="cadence" position="bottom" offset={7} style={{ fontSize: 13, fill: "#8b5cf6", fontWeight: 700 }} />
+        </Line>
+      )}
+
+      {/* Lactate */}
       {hasLac && (
         <Line
           yAxisId="lac"
@@ -171,22 +198,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         </Line>
       )}
 
-      {hasCadence && (
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="cadence"
-          name="Kadans"
-          stroke="#8b5cf6"
-          strokeWidth={2}
-          dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 0 }}
-          activeDot={{ r: 6 }}
-          connectNulls
-        >
-          <LabelList dataKey="cadence" position="bottom" offset={7} style={{ fontSize: 13, fill: "#8b5cf6", fontWeight: 700 }} />
-        </Line>
-      )}
-
+      {/* Borg */}
       {hasBorg && (
         <Line
           yAxisId="borg"
@@ -203,7 +215,6 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           <LabelList dataKey="borg" position="top" offset={7} style={{ fontSize: 13, fill: "#f59e0b", fontWeight: 700 }} />
         </Line>
       )}
-
     </ComposedChart>
   )
 

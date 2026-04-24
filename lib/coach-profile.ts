@@ -15,8 +15,21 @@ export async function getCoachProfileClient(uid: string): Promise<CoachProfile |
 }
 
 export async function getCoachProfilesClient(): Promise<CoachProfile[]> {
-  const snap = await getDocs(collection(db, "coach_profiles"))
-  return snap.docs.map((d) => d.data() as CoachProfile)
+  const [usersSnap, profilesSnap] = await Promise.all([
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "coach_profiles")),
+  ])
+  const profileMap = new Map(profilesSnap.docs.map((d) => [d.id, d.data() as CoachProfile]))
+  return usersSnap.docs.map((d) => {
+    const userData = d.data()
+    const profile = profileMap.get(d.id)
+    return {
+      uid: d.id,
+      email: (userData.email as string) ?? '',
+      displayName: profile?.displayName || (userData.email as string) || d.id,
+      avatarUrl: profile?.avatarUrl ?? '',
+    }
+  })
 }
 
 export async function upsertCoachProfileClient(

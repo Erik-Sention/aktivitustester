@@ -59,10 +59,7 @@ function DeltaCell({ oldVal, newVal, unit }: { oldVal: number | null; newVal: nu
 const SPEED_SPORTS = new Set(["lopning", "skidor_band"])
 
 export function CompareView({ tests }: CompareViewProps) {
-  const sorted = tests.length === 2
-    ? [...tests].sort((a, b) => a.testDateStr.localeCompare(b.testDateStr))
-    : tests
-  const showDelta = tests.length === 2
+  const sorted = [...tests].sort((a, b) => a.testDateStr.localeCompare(b.testDateStr))
 
   const isSpeedBased = sorted.length > 0 && SPEED_SPORTS.has(sorted[0].sport)
   const xUnit = isSpeedBased ? "km/h" : "W"
@@ -116,43 +113,40 @@ export function CompareView({ tests }: CompareViewProps) {
           <thead>
             <tr>
               <th className="px-5 py-3 text-left text-xs font-black uppercase tracking-wider text-[#515154] whitespace-nowrap">Mätvärde</th>
-              {sorted.map((t, i) => (
+              {sorted.flatMap((t, i) => [
                 <th key={t.id} className="px-5 py-3 text-left border-l border-black/[0.06]">
                   <div className="flex items-center gap-1.5">
                     <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: TEST_COLORS[i] }} />
                     <span className="text-sm font-semibold text-[#1D1D1F] whitespace-nowrap">Test {i + 1}</span>
                   </div>
                   <span className="block text-xs text-[#515154] mt-0.5 font-normal whitespace-nowrap">{t.testDateStr}</span>
-                </th>
-              ))}
-              {showDelta && (
-                <th className="px-5 py-3 text-left text-xs font-black uppercase tracking-wider text-[#515154] border-l border-black/[0.06] whitespace-nowrap">
-                  Förändring
-                </th>
-              )}
+                </th>,
+                ...(i < sorted.length - 1 ? [
+                  <th key={`delta-${i}`} className="px-3 py-3 text-left text-xs font-black uppercase tracking-wider text-[#515154] border-l border-black/[0.06] whitespace-nowrap bg-[#F5F5F7]">
+                    Δ
+                  </th>
+                ] : [])
+              ])}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
                 <td className={`${tdBase} text-[#515154] whitespace-nowrap`}>{row.label}</td>
-                {row.values.map((v, j) => (
-                  <td key={j} className={`${tdBase} font-medium text-[#1D1D1F] border-l border-black/[0.06]`}>
+                {row.values.flatMap((v, j) => [
+                  <td key={`v${j}`} className={`${tdBase} font-medium text-[#1D1D1F] border-l border-black/[0.06]`}>
                     {row.isStart
                       ? isSpeedBased
                         ? `${sorted[j].inputParams.startSpeed} / ${sorted[j].inputParams.speedIncrement} km/h`
                         : `${sorted[j].inputParams.startWatt} / ${sorted[j].inputParams.stepSize} W`
                       : stat(v, row.unit)}
-                  </td>
-                ))}
-                {showDelta && !row.isStart && (
-                  <td className={`${tdBase} border-l border-black/[0.06]`}>
-                    <DeltaCell oldVal={row.values[0]} newVal={row.values[1]} unit={row.unit} />
-                  </td>
-                )}
-                {showDelta && row.isStart && (
-                  <td className={`${tdBase} border-l border-black/[0.06]`} />
-                )}
+                  </td>,
+                  ...(j < row.values.length - 1 ? [
+                    <td key={`d${j}`} className={`${tdBase} border-l border-black/[0.06] bg-[#F5F5F7]`}>
+                      {!row.isStart && <DeltaCell oldVal={row.values[j]} newVal={row.values[j + 1]} unit={row.unit} />}
+                    </td>
+                  ] : [])
+                ])}
               </tr>
             ))}
           </tbody>
