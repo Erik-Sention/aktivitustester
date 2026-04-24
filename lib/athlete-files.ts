@@ -9,21 +9,24 @@ export async function getAthleteFiles(athleteId: string): Promise<AthleteFile[]>
     .orderBy('testDate', 'desc')
     .get()
 
-  return snapshot.docs.map((doc) => {
-    const data = doc.data()
-    return {
-      id: doc.id,
-      athleteId: data.athleteId,
-      clinicId: data.clinicId,
-      coachId: data.coachId,
-      resultType: data.resultType,
-      testDate: data.testDate,
-      testDateEnd: data.testDateEnd ?? undefined,
-      fileName: data.fileName,
-      storageUrl: data.storageUrl,
-      createdAt: data.createdAt,
-    } as AthleteFile
-  })
+  return snapshot.docs
+    .filter((doc) => !doc.data().isArchived)
+    .map((doc) => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        athleteId: data.athleteId,
+        clinicId: data.clinicId,
+        coachId: data.coachId,
+        resultType: data.resultType,
+        testDate: data.testDate,
+        testDateEnd: data.testDateEnd ?? undefined,
+        fileName: data.fileName,
+        storageUrl: data.storageUrl,
+        createdAt: data.createdAt,
+        isArchived: data.isArchived ?? false,
+      } as AthleteFile
+    })
 }
 
 export async function createAthleteFile(

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 
-type Tab = 'coaches' | 'athletes' | 'tests' | 'export' | 'seed'
+type Tab = 'coaches' | 'athletes' | 'tests' | 'files' | 'export' | 'seed'
 
 interface UserDoc {
   _id: string
@@ -17,17 +17,36 @@ interface ArchivedAthlete {
   firstName?: string
   lastName?: string
   email?: string
+  personnummer?: string
   archivedAt?: string
+  archivedBy?: string
   archivedReason?: string
 }
 
 interface ArchivedTest {
   _id: string
   athleteId?: string
+  athleteName?: string
+  athleteEmail?: string
+  athletePersonnummer?: string
   sport?: string
   testType?: string
   testDate?: { _seconds?: number }
   archivedAt?: string
+  archivedBy?: string
+  archivedReason?: string
+}
+
+interface ArchivedFile {
+  _id: string
+  athleteId?: string
+  athleteName?: string
+  athleteEmail?: string
+  athletePersonnummer?: string
+  fileName?: string
+  resultType?: string
+  archivedAt?: string
+  archivedBy?: string
   archivedReason?: string
 }
 
@@ -49,6 +68,11 @@ export function AdminClient() {
   const [archivedTests, setArchivedTests] = useState<ArchivedTest[]>([])
   const [testsLoading, setTestsLoading] = useState(false)
   const [testsFetched, setTestsFetched] = useState(false)
+
+  // Archived files state
+  const [archivedFiles, setArchivedFiles] = useState<ArchivedFile[]>([])
+  const [filesLoading, setFilesLoading] = useState(false)
+  const [filesFetched, setFilesFetched] = useState(false)
 
   const [restoring, setRestoring] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -101,10 +125,21 @@ export function AdminClient() {
       .finally(() => setTestsLoading(false))
   }, [testsFetched])
 
+  const fetchArchivedFiles = useCallback(() => {
+    if (filesFetched) return
+    setFilesLoading(true)
+    fetch('/api/admin/archived?type=files')
+      .then(r => r.json())
+      .then((data: { items?: ArchivedFile[] }) => { setArchivedFiles(data.items ?? []); setFilesFetched(true) })
+      .catch(() => setError('Kunde inte hämta arkiverade filer'))
+      .finally(() => setFilesLoading(false))
+  }, [filesFetched])
+
   useEffect(() => {
     if (tab === 'athletes') fetchArchivedAthletes()
     if (tab === 'tests') fetchArchivedTests()
-  }, [tab, fetchArchivedAthletes, fetchArchivedTests])
+    if (tab === 'files') fetchArchivedFiles()
+  }, [tab, fetchArchivedAthletes, fetchArchivedTests, fetchArchivedFiles])
 
   async function saveRole(uid: string) {
     setSaving(uid)
@@ -124,6 +159,10 @@ export function AdminClient() {
     }
   }
 
+  function archivedByLabel(uid?: string) {
+    return users.find(u => u._id === uid)?.email ?? uid ?? '—'
+  }
+
   async function restore(type: 'athletes' | 'tests', id: string) {
     setRestoring(id)
     setError(null)
@@ -136,6 +175,24 @@ export function AdminClient() {
       if (!res.ok) throw new Error()
       if (type === 'athletes') setArchivedAthletes(prev => prev.filter(a => a._id !== id))
       if (type === 'tests') setArchivedTests(prev => prev.filter(t => t._id !== id))
+    } catch {
+      setError('Kunde inte återställa')
+    } finally {
+      setRestoring(null)
+    }
+  }
+
+  async function restoreFile(id: string) {
+    setRestoring(id)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/restore', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'files', id }),
+      })
+      if (!res.ok) throw new Error()
+      setArchivedFiles(prev => prev.filter(f => f._id !== id))
     } catch {
       setError('Kunde inte återställa')
     } finally {
@@ -200,6 +257,7 @@ export function AdminClient() {
     { key: 'coaches', label: 'Coacher' },
     { key: 'athletes', label: 'Arkiverade atleter' },
     { key: 'tests', label: 'Arkiverade tester' },
+    { key: 'files', label: 'Arkiverade filer' },
     { key: 'export', label: 'Exportera data' },
     { key: 'seed', label: 'Demodata' },
   ]
@@ -276,7 +334,7 @@ export function AdminClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
-                  <Th>Namn</Th><Th>E-post</Th><Th>Arkiverad</Th><Th>Anledning</Th><th className="px-6 py-4" />
+                  <Th>Namn</Th><Th>E-post</Th><Th>Personnummer</Th><Th>Arkiverad</Th><Th>Arkiverad av</Th><Th>Anledning</Th><th className="px-6 py-4" />
                 </tr>
               </thead>
               <tbody>
@@ -286,7 +344,9 @@ export function AdminClient() {
                       {[a.firstName, a.lastName].filter(Boolean).join(' ') || <span className="text-secondary">—</span>}
                     </td>
                     <td className="px-6 py-4 text-secondary">{a.email || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{a.personnummer || '—'}</td>
                     <td className="px-6 py-4 text-secondary">{formatDate(a.archivedAt)}</td>
+                    <td className="px-6 py-4 text-secondary">{archivedByLabel(a.archivedBy)}</td>
                     <td className="px-6 py-4 text-secondary max-w-[200px] truncate">{a.archivedReason || '—'}</td>
                     <td className="px-6 py-4 text-right">
                       <ActionButton onClick={() => restore('athletes', a._id)} loading={restoring === a._id} label="Återställ" />
@@ -304,19 +364,53 @@ export function AdminClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
-                  <Th>Testdatum</Th><Th>Sport</Th><Th>Typ</Th><Th>Arkiverad</Th><Th>Anledning</Th><th className="px-6 py-4" />
+                  <Th>Atlet</Th><Th>E-post</Th><Th>Personnummer</Th><Th>Testdatum</Th><Th>Sport</Th><Th>Typ</Th><Th>Arkiverad</Th><Th>Arkiverad av</Th><Th>Anledning</Th><th className="px-6 py-4" />
                 </tr>
               </thead>
               <tbody>
                 {archivedTests.map((t, i) => (
                   <tr key={t._id} className={i < archivedTests.length - 1 ? 'border-b border-black/[0.04]' : ''}>
+                    <td className="px-6 py-4 text-primary">{t.athleteName || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{t.athleteEmail || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{t.athletePersonnummer || '—'}</td>
                     <td className="px-6 py-4 text-primary">{formatFirestoreDate(t.testDate)}</td>
                     <td className="px-6 py-4 text-secondary capitalize">{t.sport || '—'}</td>
                     <td className="px-6 py-4 text-secondary">{testTypeLabel(t.testType)}</td>
                     <td className="px-6 py-4 text-secondary">{formatDate(t.archivedAt)}</td>
+                    <td className="px-6 py-4 text-secondary">{archivedByLabel(t.archivedBy)}</td>
                     <td className="px-6 py-4 text-secondary max-w-[180px] truncate">{t.archivedReason || '—'}</td>
                     <td className="px-6 py-4 text-right">
                       <ActionButton onClick={() => restore('tests', t._id)} loading={restoring === t._id} label="Återställ" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        )}
+
+        {/* ── Arkiverade filer ── */}
+        {tab === 'files' && (
+          filesLoading ? <Loading /> : archivedFiles.length === 0 && filesFetched ? <Empty text="Inga arkiverade filer" /> : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-black/[0.06]">
+                  <Th>Atlet</Th><Th>E-post</Th><Th>Personnummer</Th><Th>Filnamn</Th><Th>Typ</Th><Th>Arkiverad</Th><Th>Arkiverad av</Th><Th>Anledning</Th><th className="px-6 py-4" />
+                </tr>
+              </thead>
+              <tbody>
+                {archivedFiles.map((f, i) => (
+                  <tr key={f._id} className={i < archivedFiles.length - 1 ? 'border-b border-black/[0.04]' : ''}>
+                    <td className="px-6 py-4 text-primary">{f.athleteName || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{f.athleteEmail || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{f.athletePersonnummer || '—'}</td>
+                    <td className="px-6 py-4 text-primary">{f.fileName || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{f.resultType || '—'}</td>
+                    <td className="px-6 py-4 text-secondary">{formatDate(f.archivedAt)}</td>
+                    <td className="px-6 py-4 text-secondary">{archivedByLabel(f.archivedBy)}</td>
+                    <td className="px-6 py-4 text-secondary max-w-[180px] truncate">{f.archivedReason || '—'}</td>
+                    <td className="px-6 py-4 text-right">
+                      <ActionButton onClick={() => restoreFile(f._id)} loading={restoring === f._id} label="Återställ" />
                     </td>
                   </tr>
                 ))}

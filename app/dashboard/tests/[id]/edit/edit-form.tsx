@@ -129,8 +129,6 @@ export function EditTestForm({
   const [wingateParams, setWingateParams] = useState({
     bodyWeightPercent: initialWingateParams?.bodyWeightPercent?.toString() ?? "10",
     bodyWeight: initialWingateParams?.bodyWeight?.toString() ?? "",
-    saddleVerticalMm: initialWingateParams?.saddleVerticalMm?.toString() ?? "",
-    saddleHorizontalMm: initialWingateParams?.saddleHorizontalMm?.toString() ?? "",
     startCadenceRpm: initialWingateParams?.startCadenceRpm?.toString() ?? "",
   })
 
@@ -203,8 +201,6 @@ export function EditTestForm({
           wingateInputParams: {
             bodyWeightPercent: parseFloat(wingateParams.bodyWeightPercent) || 10,
             bodyWeight: parseFloat(wingateParams.bodyWeight) || null,
-            saddleVerticalMm: parseInt(wingateParams.saddleVerticalMm) || null,
-            saddleHorizontalMm: parseInt(wingateParams.saddleHorizontalMm) || null,
             startCadenceRpm: parseInt(wingateParams.startCadenceRpm) || null,
           },
         } : {}),
@@ -393,20 +389,6 @@ export function EditTestForm({
                 value={wingateParams.startCadenceRpm}
                 onChange={(e) => setWingateParams((p) => ({ ...p, startCadenceRpm: e.target.value }))}
                 placeholder="t.ex. 110" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="wgSaddleV">Sadel vertikal (mm)</Label>
-              <Input id="wgSaddleV" type="text" inputMode="numeric"
-                value={wingateParams.saddleVerticalMm}
-                onChange={(e) => setWingateParams((p) => ({ ...p, saddleVerticalMm: e.target.value }))}
-                placeholder="t.ex. 720" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="wgSaddleH">Sadel horisontell (mm)</Label>
-              <Input id="wgSaddleH" type="text" inputMode="numeric"
-                value={wingateParams.saddleHorizontalMm}
-                onChange={(e) => setWingateParams((p) => ({ ...p, saddleHorizontalMm: e.target.value }))}
-                placeholder="t.ex. 3" />
             </div>
           </div>
         </div>

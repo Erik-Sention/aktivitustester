@@ -15,11 +15,12 @@ export async function PATCH(request: NextRequest) {
   if (!idToken) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { type, id } = await request.json()
-  if (!id || (type !== 'athletes' && type !== 'tests')) {
+  if (!id || (type !== 'athletes' && type !== 'tests' && type !== 'files')) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  await firestoreSet(type, id, {
+  const collection = type === 'files' ? 'athlete_files' : type
+  await firestoreSet(collection, id, {
     isArchived: false,
     archivedAt: null,
     archivedBy: null,

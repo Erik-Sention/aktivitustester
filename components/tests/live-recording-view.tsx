@@ -402,7 +402,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   // ── Wingate-specific state ────────────────────────────────────────
   const [wingateResults, setWingateResults] = useState({ peakPower: "", meanPower: "", minPower: "" })
   const [wingateParams, setWingateParams] = useState({
-    saddleVerticalMm: "", saddleHorizontalMm: "", startCadenceRpm: "", bodyWeightPercent: "10",
+    startCadenceRpm: "", bodyWeightPercent: "10",
   })
 
   async function handleWingateSave() {
@@ -422,8 +422,6 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         notes: form.notes,
         wingateData: { peakPower: peak, meanPower: mean, minPower: min },
         wingateInputParams: {
-          saddleVerticalMm: parseInt(wingateParams.saddleVerticalMm) || null,
-          saddleHorizontalMm: parseInt(wingateParams.saddleHorizontalMm) || null,
           startCadenceRpm: parseInt(wingateParams.startCadenceRpm) || null,
           bodyWeightPercent: parseFloat(wingateParams.bodyWeightPercent) || 10,
           bodyWeight: parseFloat(form.bodyWeight) || null,
@@ -1036,18 +1034,6 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             {/* Wingate-inställningar */}
             {form.testType === "wingate" && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="wingatesSaddleV">Sadel vertikal (mm)</Label>
-                  <Input id="wingatesSaddleV" type="text" inputMode="numeric" placeholder="t.ex. 720"
-                    value={wingateParams.saddleVerticalMm}
-                    onChange={(e) => setWingateParams((p) => ({ ...p, saddleVerticalMm: e.target.value }))} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="wingatesSaddleH">Sadel horisontell (mm)</Label>
-                  <Input id="wingatesSaddleH" type="text" inputMode="numeric" placeholder="t.ex. 3"
-                    value={wingateParams.saddleHorizontalMm}
-                    onChange={(e) => setWingateParams((p) => ({ ...p, saddleHorizontalMm: e.target.value }))} />
-                </div>
                 <div className="space-y-1">
                   <Label htmlFor="wingatesCadence">Startkadens (rpm)</Label>
                   <Input id="wingatesCadence" type="text" inputMode="numeric" placeholder="t.ex. 110"

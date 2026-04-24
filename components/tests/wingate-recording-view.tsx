@@ -97,8 +97,6 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
     testLeader: defaultTestLeader ?? "",
     testDate: new Date().toISOString().split("T")[0],
     notes: "",
-    saddleVerticalMm: "",
-    saddleHorizontalMm: "",
     startCadenceRpm: "",
     bodyWeightPercent: "10",
     bodyWeight: "",
@@ -147,8 +145,6 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
         notes: form.notes,
         wingateData: { peakPower: peak, meanPower: mean, minPower: min },
         wingateInputParams: {
-          saddleVerticalMm: parseInt(form.saddleVerticalMm) || null,
-          saddleHorizontalMm: parseInt(form.saddleHorizontalMm) || null,
           startCadenceRpm: parseInt(form.startCadenceRpm) || null,
           bodyWeightPercent: parseFloat(form.bodyWeightPercent) || 10,
           bodyWeight: parseFloat(form.bodyWeight) || null,
@@ -240,33 +236,6 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
 
         <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-5">
           <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Cykelinställningar</p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="saddleVerticalMm">Sadel vertikal (mm)</Label>
-              <Input
-                id="saddleVerticalMm"
-                type="text"
-                inputMode="numeric"
-                placeholder="t.ex. 720"
-                value={form.saddleVerticalMm}
-                onChange={(e) => setField("saddleVerticalMm", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="saddleHorizontalMm">Sadel horisontell (mm)</Label>
-              <Input
-                id="saddleHorizontalMm"
-                type="text"
-                inputMode="numeric"
-                placeholder="t.ex. 3"
-                value={form.saddleHorizontalMm}
-                onChange={(e) => setField("saddleHorizontalMm", e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>

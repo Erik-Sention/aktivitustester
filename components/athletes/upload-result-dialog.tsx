@@ -29,6 +29,8 @@ interface UploadResultDialogProps {
   initialResultType?: string
   /** Pre-fill the date field */
   initialDate?: string
+  /** Locks category to "Arkiv" and pre-fills date to 2000-01-01 (used for pre-consent athletes) */
+  archiveOnly?: boolean
 }
 
 function formatBytes(bytes: number) {
@@ -37,15 +39,20 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGroupId, initialResultType, initialDate }: UploadResultDialogProps) {
+export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGroupId, initialResultType, initialDate, archiveOnly }: UploadResultDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customTypeRef = useRef<HTMLInputElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
   const isKnownType = initialResultType ? RESULT_TYPES.includes(initialResultType) : false
-  const [resultType, setResultType] = useState(isKnownType ? initialResultType! : initialResultType ? "Annan" : "Glukosanalys")
+  const [resultType, setResultType] = useState(
+    archiveOnly ? "Arkiv"
+    : isKnownType ? initialResultType!
+    : initialResultType ? "Annan"
+    : "Glukosanalys"
+  )
   const [customResultType, setCustomResultType] = useState(!isKnownType && initialResultType ? initialResultType : "")
-  const [testDate, setTestDate] = useState(initialDate ?? "")
+  const [testDate, setTestDate] = useState(initialDate ?? (archiveOnly ? "2000-01-01" : ""))
   const [testDateEnd, setTestDateEnd] = useState("")
   const [files, setFiles] = useState<File[]>([])
   const [fileDisplayNames, setFileDisplayNames] = useState<string[]>([])
@@ -148,6 +155,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
           storageUrl: url,
           uploadGroupId,
           createdAt: serverTimestamp(),
+          isArchived: false,
         }
         if (testDateEnd) docData.testDateEnd = new Date(testDateEnd)
         await addDoc(collection(db, "athlete_files"), docData)
@@ -185,41 +193,43 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Result type */}
-          <div className="space-y-1.5">
-            <Label>Typ av resultat</Label>
-            <div className="flex flex-wrap gap-2">
-              {RESULT_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setResultType(type)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
-                    resultType === type
-                      ? "bg-[#007AFF] border-[#007AFF] text-white"
-                      : "bg-white border-[#C7C7CC] text-[#1D1D1F] hover:border-[#007AFF]"
-                  )}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-
-            {/* "Annan" custom name field */}
-            {isAnnan && (
-              <div className="pt-1">
-                <input
-                  ref={customTypeRef}
-                  type="text"
-                  placeholder="Ange eget namn på kategorin…"
-                  value={customResultType}
-                  onChange={(e) => setCustomResultType(e.target.value)}
-                  required
-                  className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
-                />
+          {!archiveOnly && (
+            <div className="space-y-1.5">
+              <Label>Typ av resultat</Label>
+              <div className="flex flex-wrap gap-2">
+                {RESULT_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setResultType(type)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
+                      resultType === type
+                        ? "bg-[#007AFF] border-[#007AFF] text-white"
+                        : "bg-white border-[#C7C7CC] text-[#1D1D1F] hover:border-[#007AFF]"
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+
+              {/* "Annan" custom name field */}
+              {isAnnan && (
+                <div className="pt-1">
+                  <input
+                    ref={customTypeRef}
+                    type="text"
+                    placeholder="Ange eget namn på kategorin…"
+                    value={customResultType}
+                    onChange={(e) => setCustomResultType(e.target.value)}
+                    required
+                    className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
@@ -231,6 +241,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                 value={testDate}
                 onChange={(e) => setTestDate(e.target.value)}
                 required
+                min={archiveOnly ? "2000-01-01" : undefined}
                 className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
               />
             </div>

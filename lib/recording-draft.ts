@@ -35,7 +35,7 @@ export interface RecordingDraft {
   manualAbsVo2Str: string
   bikeSettings: Partial<BikeSettings>
   wingateResults: { peakPower: string; meanPower: string; minPower: string }
-  wingateParams: { saddleVerticalMm: string; saddleHorizontalMm: string; startCadenceRpm: string; bodyWeightPercent: string }
+  wingateParams: { startCadenceRpm: string; bodyWeightPercent: string }
 }
 
 export function saveDraft(d: RecordingDraft): void {

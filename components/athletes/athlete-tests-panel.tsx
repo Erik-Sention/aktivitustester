@@ -996,19 +996,31 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             </div>
           )}
           <button
-            onClick={() => requiresConsent && onConsentRequired ? onConsentRequired() : setShowUpload(true)}
+            onClick={() => setShowUpload(true)}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <Upload className="h-4 w-4" />
             Ladda upp
           </button>
-          <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
-            <Plus className="h-4 w-4" />
-            Nytt test
-          </Link>
+          {requiresConsent ? (
+            <span className={cn(buttonVariants({ size: "sm" }), "opacity-40 cursor-not-allowed pointer-events-none")}>
+              <Plus className="h-4 w-4" />
+              Nytt test
+            </span>
+          ) : (
+            <Link href={`/dashboard/tests/new?athlete=${athleteId}`} className={cn(buttonVariants({ size: "sm" }))}>
+              <Plus className="h-4 w-4" />
+              Nytt test
+            </Link>
+          )}
         </div>
       </div>
 
+      {requiresConsent && (
+        <div className="mb-2 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          Innan samtycke inhämtas kan du endast lägga till filer i atletens arkiv.
+        </div>
+      )}
 
       {filesLoading ? (
         <div className="space-y-2">
@@ -1168,7 +1180,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     )}
 
       {showUpload && (
-        <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} />
+        <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} archiveOnly={requiresConsent} />
       )}
 
       {addToGroup && (

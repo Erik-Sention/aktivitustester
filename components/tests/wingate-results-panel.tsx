@@ -56,12 +56,21 @@ export function WingateResultsPanel({ test }: WingateResultsPanelProps) {
             </div>
           )}
           {wd?.peakPower != null && wd?.minPower != null && wd.peakPower > 0 && (
-            <div className="mt-2 border-t border-white/30 pt-3">
-              <p className="text-sm uppercase tracking-wider text-white/80">Fatigue Index</p>
-              <p className="text-xl font-black tracking-tighter">
-                {(((wd.peakPower - wd.minPower) / wd.peakPower) * 100).toFixed(1)}
-                <span className="text-base font-normal text-white ml-1">%</span>
-              </p>
+            <div className="mt-2 border-t border-white/30 pt-3 space-y-3">
+              <div>
+                <p className="text-sm uppercase tracking-wider text-white/80">Fatigue Index</p>
+                <p className="text-xl font-black tracking-tighter">
+                  {(((wd.peakPower - wd.minPower) / wd.peakPower) * 100).toFixed(1)}
+                  <span className="text-base font-normal text-white ml-1">%</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-sm uppercase tracking-wider text-white/80">Power Drop</p>
+                <p className="text-xl font-black tracking-tighter">
+                  {wd.peakPower - wd.minPower}
+                  <span className="text-base font-normal text-white ml-1">W</span>
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -72,18 +81,6 @@ export function WingateResultsPanel({ test }: WingateResultsPanelProps) {
         <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-sm">
           <p className="mb-3 text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Protokoll</p>
           <dl className="space-y-2 text-base">
-            {wp.saddleVerticalMm != null && (
-              <div className="flex justify-between">
-                <dt className="text-[#515154]">Sadel vertikal</dt>
-                <dd className="font-semibold">{wp.saddleVerticalMm} mm</dd>
-              </div>
-            )}
-            {wp.saddleHorizontalMm != null && (
-              <div className="flex justify-between">
-                <dt className="text-[#515154]">Sadel horisontell</dt>
-                <dd className="font-semibold">{wp.saddleHorizontalMm} mm</dd>
-              </div>
-            )}
             {wp.startCadenceRpm != null && (
               <div className="flex justify-between">
                 <dt className="text-[#515154]">Startkadens</dt>

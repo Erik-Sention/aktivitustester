@@ -91,8 +91,6 @@ export interface WingateData {
 }
 
 export interface WingateInputParams {
-  saddleVerticalMm: number | null
-  saddleHorizontalMm: number | null
   startCadenceRpm: number | null
   bodyWeightPercent: number
   bodyWeight: number | null
