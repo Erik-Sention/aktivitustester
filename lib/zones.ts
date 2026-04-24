@@ -271,6 +271,77 @@ export function dMaxLt1Speed(stages: StagePoint[]): number | null {
   return dMaxSpeed(subStages);
 }
 
+// ─── Aktivitus 9-Zone Intensity Matrix ───────────────────────────────────────
+
+export interface NineZone {
+  id: string
+  label: string
+  color: string
+  textColor: "dark" | "white"
+  hrRange: string | null
+  wattRange: string | null
+}
+
+export function calculateNineZones(params: {
+  atHR?: number | null    // AT pulse (aerobic/lower threshold)
+  ltHR?: number | null    // LT pulse (lactate/higher threshold)
+  maxHR?: number | null
+  atWatt?: number | null  // AT watt (aerobic/lower)
+  ltWatt?: number | null  // LT watt (lactate/higher)
+  isSpeed?: boolean
+}): NineZone[] {
+  const atHR   = params.atHR   ?? null
+  const ltHR   = params.ltHR   ?? null
+  const maxHR  = params.maxHR  ?? null
+  const atWatt = params.atWatt ?? null
+  const ltWatt = params.ltWatt ?? null
+  const unit   = params.isSpeed ? 'km/h' : 'W'
+
+  const atHR75   = atHR ? Math.round(atHR * 0.75) : null
+  const mid3_4hr = (atHR && ltHR) ? Math.round(ltHR * 0.67 + atHR * 0.33) : null
+  const mid4_5hr = (ltHR && maxHR) ? Math.round(ltHR + (maxHR - ltHR) * 0.33) : null
+
+  const atW75   = atWatt ? Math.round(atWatt * 0.75) : null
+  const mid3_4w = (atWatt && ltWatt) ? Math.round(ltWatt * 0.67 + atWatt * 0.33) : null
+  const lt107   = ltWatt ? Math.round(ltWatt * 1.07) : null
+  const lt114   = ltWatt ? Math.round(ltWatt * 1.14) : null
+  const lt121   = ltWatt ? Math.round(ltWatt * 1.21) : null
+
+  function hr(lo: number | null, hi: number | null): string | null {
+    if (!lo && !hi) return null
+    if (!lo) return `< ${hi} bpm`
+    if (!hi) return `${lo}+ bpm`
+    return `${lo} – ${hi} bpm`
+  }
+  function w(lo: number | null, hi: number | null): string | null {
+    if (!lo && !hi) return null
+    if (!lo) return `< ${hi} ${unit}`
+    if (!hi) return `${lo}+ ${unit}`
+    return `${lo} – ${hi} ${unit}`
+  }
+
+  return [
+    { id: "Z1",  label: "Z1 Å — Återhämtning",       color: "#D5DBDB", textColor: "dark",
+      hrRange: atHR75 ? `< ${atHR75} bpm` : null,    wattRange: atW75 ? `< ${atW75} ${unit}` : null },
+    { id: "Z2",  label: "Z2 LSD — Grundkondition",    color: "#5DADE2", textColor: "dark",
+      hrRange: hr(atHR75, atHR),                      wattRange: w(atW75, atWatt) },
+    { id: "Z3",  label: "Z3 D — Utveckling",          color: "#82C341", textColor: "dark",
+      hrRange: hr(atHR, mid3_4hr),                    wattRange: w(atWatt, mid3_4w) },
+    { id: "Z4-", label: "Z4– T– — Tröskel lägre",    color: "#F1C40F", textColor: "dark",
+      hrRange: hr(mid3_4hr, ltHR),                    wattRange: w(mid3_4w, ltWatt) },
+    { id: "Z4+", label: "Z4+ T+ — Tröskel högre",    color: "#E67E22", textColor: "white",
+      hrRange: hr(ltHR, mid4_5hr),                    wattRange: w(ltWatt, lt107) },
+    { id: "Z5",  label: "Z5 KI — Kapacitetsintervall", color: "#E74C3C", textColor: "white",
+      hrRange: hr(mid4_5hr, maxHR),                   wattRange: w(lt107, lt114) },
+    { id: "Z6",  label: "Z6 TO — Tröskelöver",        color: "#C0392B", textColor: "white",
+      hrRange: "Ej applicerbar",                       wattRange: w(lt114, lt121) },
+    { id: "Z7",  label: "Z7 PR — Personligt rekord",  color: "#7B0F0F", textColor: "white",
+      hrRange: "Ej applicerbar",                       wattRange: lt121 ? `${lt121}+ ${unit}` : null },
+    { id: "Z8",  label: "Z8 MAX — Sprint",             color: "#1A1A1A", textColor: "white",
+      hrRange: "Ej applicerbar",                       wattRange: "Ej applicerbar" },
+  ]
+}
+
 /** Linear interpolation of HR at a given speed (km/h) */
 export function interpolateHrAtSpeed(
   stages: StagePoint[],

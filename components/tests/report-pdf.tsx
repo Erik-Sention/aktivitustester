@@ -3,10 +3,10 @@ import {
   Line, Polyline, Rect, Circle, G, Path,
   StyleSheet,
 } from '@react-pdf/renderer'
-import type { Style } from '@react-pdf/types'
 import type { RawDataPoint } from '@/types'
 import type { SerializedTest } from './report-download-button'
 import { isSpeedSport } from '@/lib/utils'
+import { calculateNineZones } from '@/lib/zones'
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const C = {
@@ -639,8 +639,8 @@ function ThresholdBoxes({
   return (
     <View style={s.boxRow}>
       <View style={[s.threshBox, s.threshBoxGreen]}>
-        <Text style={s.threshTitle}>AEROB TRÖSKEL</Text>
-        <Text style={s.threshSubtitle}>LT1 2.0 mmol</Text>
+        <Text style={s.threshTitle}>AT</Text>
+        <Text style={s.threshSubtitle}>Aerob tröskel — LT1 2.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt1Watt)}</Text>
         <Text style={s.threshUnit}>{unit}</Text>
         <View style={s.threshDivider} />
@@ -656,8 +656,8 @@ function ThresholdBoxes({
         </View>
       </View>
       <View style={[s.threshBox, s.threshBoxPurple]}>
-        <Text style={s.threshTitle}>ANAEROB TRÖSKEL</Text>
-        <Text style={s.threshSubtitle}>AT / FTP 4.0 mmol</Text>
+        <Text style={s.threshTitle}>LT</Text>
+        <Text style={s.threshSubtitle}>Anaerob tröskel — FTP / MLSS 4.0 mmol</Text>
         <Text style={s.threshValue}>{fmt(lt2Watt)}</Text>
         <Text style={s.threshUnit}>{unit}</Text>
         <View style={s.threshDivider} />
@@ -676,74 +676,35 @@ function ThresholdBoxes({
   )
 }
 
-// ─── Intensity zone table ─────────────────────────────────────────────────────
-function IntensityZoneTable({
-  lt1Watt, lt2Watt, lt1HR, lt2HR, estMaxHR, isSpeed,
+// ─── Nine-zone intensity table (Aktivitus model) ─────────────────────────────
+function NineZoneTable({
+  atHR, ltHR, maxHR, atWatt, ltWatt, isSpeed,
 }: {
-  lt1Watt: number | null
-  lt2Watt: number | null
-  lt1HR:   number | null
-  lt2HR:   number | null
-  estMaxHR: number | null
-  isSpeed?: boolean
+  atHR: number | null; ltHR: number | null; maxHR: number | null
+  atWatt: number | null; ltWatt: number | null; isSpeed?: boolean
 }) {
-  const u = isSpeed ? 'km/h' : 'W'
-  // Split the LT1–LT2 range at the midpoint to create Z2 and Z3
-  const midW  = (lt1Watt && lt2Watt) ? (isSpeed ? Math.round((lt1Watt + lt2Watt) * 5) / 10 : Math.round((lt1Watt + lt2Watt) / 2)) : null
-  const midHR = (lt1HR   && lt2HR)   ? Math.round((lt1HR   + lt2HR)   / 2) : null
-  // Z4 upper = LT2 + half the LT1–LT2 gap
-  const z4UpperW  = (lt1Watt && lt2Watt) ? (isSpeed ? Math.round((lt2Watt + (lt2Watt - lt1Watt) / 2) * 10) / 10 : lt2Watt + Math.round((lt2Watt - lt1Watt) / 2)) : null
-  const z4UpperHR = (lt1HR   && lt2HR)   ? lt2HR    + Math.round((lt2HR    - lt1HR)   / 2) : null
-
-  const zones: { label: string; hr: string; watt: string; rowStyle: Style; dotStyle: Style }[] = [
-    {
-      label: 'Zon 1 – Återhämtning',
-      hr:   lt1HR   ? `< ${lt1HR} slag/min`                                               : '—',
-      watt: lt1Watt ? `< ${lt1Watt} ${u}`                                                 : '—',
-      rowStyle: s.zoneRow1, dotStyle: s.zoneColor1,
-    },
-    {
-      label: 'Zon 2 – Grundkondition',
-      hr:   (lt1HR && midHR)     ? `${lt1HR} – ${midHR - 1} slag/min`                    : '—',
-      watt: (lt1Watt && midW)    ? `${lt1Watt} – ${midW} ${u}`                           : '—',
-      rowStyle: s.zoneRow2, dotStyle: s.zoneColor2,
-    },
-    {
-      label: 'Zon 3 – Tempo',
-      hr:   (midHR && lt2HR)     ? `${midHR} – ${lt2HR - 1} slag/min`                    : '—',
-      watt: (midW && lt2Watt)    ? `${midW} – ${lt2Watt} ${u}`                           : '—',
-      rowStyle: s.zoneRow3, dotStyle: s.zoneColor3,
-    },
-    {
-      label: 'Zon 4 – Tröskel',
-      hr:   (lt2HR && z4UpperHR) ? `${lt2HR} – ${z4UpperHR} slag/min`                    : '—',
-      watt: (lt2Watt && z4UpperW)? `${lt2Watt} – ${z4UpperW} ${u}`                       : '—',
-      rowStyle: s.zoneRow4, dotStyle: s.zoneColor4,
-    },
-    {
-      label: 'Zon 5 – Maximal',
-      hr:   z4UpperHR ? `> ${z4UpperHR} slag/min${estMaxHR ? ` (max ${estMaxHR})` : ''}` : '—',
-      watt: z4UpperW  ? `> ${z4UpperW} ${u}`                                              : '—',
-      rowStyle: s.zoneRow5, dotStyle: s.zoneColor5,
-    },
-  ]
+  const zones = calculateNineZones({ atHR, ltHR, maxHR, atWatt, ltWatt, isSpeed })
+  const hasHR   = atHR != null || ltHR != null || maxHR != null
+  const hasWatt = atWatt != null || ltWatt != null
+  if (!hasHR && !hasWatt) return null
 
   return (
     <View>
       <View style={[s.zoneRow, s.zoneRowHead]}>
-        <View style={{ width: 16 }} />
         <Text style={[s.zoneName, { color: C.slate400, fontSize: 6.5, letterSpacing: 1 }]}>INTENSITETSZON</Text>
-        <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>PULS</Text>
-        <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>EFFEKT</Text>
+        {hasHR   && <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>PULS</Text>}
+        {hasWatt && <Text style={[s.zoneHeadText, { letterSpacing: 1 }]}>{isSpeed ? 'FART' : 'EFFEKT'}</Text>}
       </View>
-      {zones.map((z) => (
-        <View key={z.label} style={[s.zoneRow, z.rowStyle]}>
-          <View style={[s.zoneColor, z.dotStyle]} />
-          <Text style={s.zoneName}>{z.label}</Text>
-          <Text style={s.zoneValBold}>{z.hr}</Text>
-          <Text style={s.zoneVal}>{z.watt}</Text>
-        </View>
-      ))}
+      {[...zones].reverse().map((z) => {
+        const txtColor = z.textColor === 'white' ? C.white : C.slate800
+        return (
+          <View key={z.id} style={[s.zoneRow, { backgroundColor: z.color, marginBottom: 1 }]}>
+            <Text style={[s.zoneName, { color: txtColor }]}>{z.label}</Text>
+            {hasHR   && <Text style={[s.zoneVal, { color: txtColor }]}>{z.hrRange ?? '—'}</Text>}
+            {hasWatt && <Text style={[s.zoneVal, { color: txtColor }]}>{z.wattRange ?? '—'}</Text>}
+          </View>
+        )
+      })}
     </View>
   )
 }
@@ -828,7 +789,7 @@ function KnowledgePage({
           Det är just dessa brytpunkter — dina trösklar — som vi mäter i det här testet.
         </Text>
 
-        <Text style={s.kwHeading}>Aerob tröskel — LT1 (≈ 2.0 mmol/L)</Text>
+        <Text style={s.kwHeading}>AT — Aerob tröskel (LT1, ≈ 2.0 mmol/L)</Text>
         <Text style={s.kwBody}>
           Din aeroba tröskel är den intensitet där laktathalten börjar stiga mätbart över vilovärdet.
           Under LT1 förbränner kroppen primärt fett och kan arbeta länge utan att anhopa mjölksyra.
@@ -836,7 +797,7 @@ function KnowledgePage({
           De flesta uthållighetsidrottare bör lägga 70–80 % av sin träningsvolym i denna zon.
         </Text>
 
-        <Text style={s.kwHeading}>Anaerob tröskel — AT / LT2 (≈ 4.0 mmol/L)</Text>
+        <Text style={s.kwHeading}>LT — Anaerob tröskel (LT2 / FTP / MLSS, ≈ 4.0 mmol/L)</Text>
         <Text style={s.kwBody}>
           Vid LT2 börjar laktat ackumuleras snabbare än kroppen kan eliminera det. LT2 motsvarar ungefär
           din FTP (Functional Threshold Power) — den högsta effekt du kan hålla stabilt under ca 60 minuter.
@@ -972,12 +933,12 @@ export function AktivitusReport({
         {isTroskel && (lt1HR || lt2HR || lt1Watt || lt2Watt) && (
           <View style={s.box}>
             <Text style={s.sectionLabel}>INTENSITETSZONER</Text>
-            <IntensityZoneTable
-              lt1Watt={lt1Watt}
-              lt2Watt={lt2Watt}
-              lt1HR={lt1HR}
-              lt2HR={lt2HR}
-              estMaxHR={estMaxHR}
+            <NineZoneTable
+              atHR={lt1HR}
+              ltHR={lt2HR}
+              maxHR={estMaxHR}
+              atWatt={lt1Watt}
+              ltWatt={lt2Watt}
               isSpeed={isSpeed}
             />
           </View>

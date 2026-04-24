@@ -11,12 +11,13 @@ import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { fullName } from "@/lib/utils"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
-import { Play, Pause, RotateCcw } from "lucide-react"
+import { Play, Pause, RotateCcw, Download } from "lucide-react"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
 import { calculateVo2Max, interpolateLactateThreshold } from "@/lib/calculations"
 import { generatePDF, SerializedTest as ReportSerializedTest } from "@/components/tests/report-download-button"
 import { getCoachProfileClient } from "@/lib/coach-profile"
+import { saveDraft, loadDraft, clearDraft, draftRelativeTime, type RecordingDraft } from "@/lib/recording-draft"
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ const SPORT_STEP_DURATION: Partial<Record<SportType, number>> = {
 }
 
 // Steg-presets för VO2 max på löpband
-const SPEED_VO2_STEP_SIZES = [0.5, 1, 1.5, 2]
+const SPEED_VO2_STEP_SIZES = [0.5, 1]
 
 // Steg-presets för VO2 max på wattbaserade sporter
 const WATT_VO2_STEP_SIZES = [10, 15, 20]
@@ -317,6 +318,7 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
   nedreGransSpeed: null,
   estMaxPuls: null,
   hogstaUpnaddPuls: null,
+  vilopuls: null,
   atPuls: null,
   ltPuls: null,
   granLagMedelPuls: null,
@@ -331,6 +333,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [error, setError] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const pendingBack = useRef<(() => void) | null>(null)
+  const [draftToRestore, setDraftToRestore] = useState<RecordingDraft | null>(null)
 
   // ── Load coach display name for testLeader pre-fill ──────────────
   useEffect(() => {
@@ -344,6 +347,14 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       }
     }).catch(() => {})
   }, [coachUid]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Draft recovery: check localStorage on mount ───────────────────
+  useEffect(() => {
+    if (guestMode) return
+    const d = loadDraft()
+    if (d && (d.rows.some((r) => r.hr > 0 || r.lac > 0) || d.step === "recording"))
+      setDraftToRestore(d)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Setup form ────────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -363,7 +374,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     // Fartbaserade parametrar (löpning, skidor)
     startSpeed: "8",
     speedIncrement: "1",
-    incline: "2",
+    incline: "0",
   })
 
   // ── Bike settings ─────────────────────────────────────────────────
@@ -381,7 +392,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
   // ── VO2max exhaustion inputs ──────────────────────────────────────
   const [exhaustionLacStr, setExhaustionLacStr] = useState("")
-  const [exhaustionBorg, setExhaustionBorg] = useState("")
+  const [exhaustionMaxHR, setExhaustionMaxHR] = useState("")
   const [exhaustionTimeMins, setExhaustionTimeMins] = useState("")
   const [exhaustionTimeSecs, setExhaustionTimeSecs] = useState("")
   const [exhaustionWattStr, setExhaustionWattStr] = useState("")
@@ -419,7 +430,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         },
       })
     } catch (e: unknown) {
-      if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e
+      if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) { clearDraft(); throw e }
       setError("Något gick fel. Försök igen.")
       setSaving(false)
     }
@@ -429,10 +440,14 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [coachAssessment, setCoachAssessment] = useState<CoachAssessment>(EMPTY_COACH_ASSESSMENT)
 
   function updateCoach(field: keyof CoachAssessment, value: string) {
-    setCoachAssessment((prev) => ({
-      ...prev,
-      [field]: value === "" ? null : (parseFloat(value) || null),
-    }))
+    setCoachAssessment((prev) => {
+      const num = value === "" ? null : (parseFloat(value) || null)
+      const extra: Partial<CoachAssessment> = {}
+      if (field === "ltEffektWatt") extra.granLagMedel = num
+      if (field === "ltEffektSpeed") extra.granLagMedelSpeed = num
+      if (field === "ltPuls") extra.granLagMedelPuls = num
+      return { ...prev, [field]: num, ...extra }
+    })
   }
 
   function update(field: string, value: string) {
@@ -514,7 +529,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     step === "recording" && (
       rows.some((r) => r.hr > 0 || r.lac > 0) ||
       Object.values(wingateResults).some((v) => v !== "") ||
-      exhaustionLacStr !== "" || exhaustionBorg !== "" || exhaustionWattStr !== ""
+      exhaustionLacStr !== "" || exhaustionMaxHR !== "" || exhaustionWattStr !== ""
     )
 
   useEffect(() => {
@@ -548,6 +563,26 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     return () => window.removeEventListener("popstate", handler)
   }, [step, isDirty])
 
+  // ── Auto-save draft to localStorage (debounced 1 s) ─────────────
+  useEffect(() => {
+    if (guestMode) return
+    if (!isDirty && step !== "recording") return
+    const t = setTimeout(() => {
+      saveDraft({
+        savedAt: Date.now(), step, form, rows, lacStrings, coachAssessment,
+        exhaustionLacStr, exhaustionMaxHR, exhaustionTimeMins, exhaustionTimeSecs,
+        exhaustionWattStr, manualVo2MaxStr, manualAbsVo2Str,
+        bikeSettings, wingateResults, wingateParams,
+      })
+    }, 1000)
+    return () => clearTimeout(t)
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
+    isDirty, step, form, rows, lacStrings, coachAssessment,
+    exhaustionLacStr, exhaustionMaxHR, exhaustionTimeMins, exhaustionTimeSecs,
+    exhaustionWattStr, manualVo2MaxStr, manualAbsVo2Str,
+    bikeSettings, wingateResults, wingateParams,
+  ])
+
   function requestBack(onConfirmed: () => void) {
     if (isDirty) {
       pendingBack.current = onConfirmed
@@ -555,6 +590,40 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     } else {
       onConfirmed()
     }
+  }
+
+  function applyDraft(d: RecordingDraft) {
+    setForm(d.form)
+    setStep(d.step)
+    setRows(d.rows)
+    setLacStrings(d.lacStrings)
+    setCoachAssessment(d.coachAssessment)
+    setExhaustionLacStr(d.exhaustionLacStr)
+    setExhaustionMaxHR(d.exhaustionMaxHR)
+    setExhaustionTimeMins(d.exhaustionTimeMins)
+    setExhaustionTimeSecs(d.exhaustionTimeSecs)
+    setExhaustionWattStr(d.exhaustionWattStr)
+    setManualVo2MaxStr(d.manualVo2MaxStr)
+    setManualAbsVo2Str(d.manualAbsVo2Str)
+    setBikeSettings(d.bikeSettings)
+    setWingateResults(d.wingateResults)
+    setWingateParams(d.wingateParams)
+    setDraftToRestore(null)
+  }
+
+  function handleEmergencyDownload() {
+    const payload = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      form, rows, lacStrings, coachAssessment,
+      exhaustionLacStr, exhaustionMaxHR, exhaustionTimeMins, exhaustionTimeSecs,
+      exhaustionWattStr, manualVo2MaxStr, manualAbsVo2Str,
+      bikeSettings, wingateResults, wingateParams,
+    }, null, 2)
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([payload], { type: "application/json" })),
+      download: `test_backup_${form.athleteId || "okand"}_${form.testDate}.json`,
+    })
+    a.click()
   }
 
   function getEditableFields(row: RawDataPoint, dur: number): string[] {
@@ -712,7 +781,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       let finalRows = rows.filter(p => p.hr > 0 || p.lac > 0 || p.watt > 0)
       if (isVo2) {
         const exhaustionLac = parseFloat(exhaustionLacStr.replace(",", "."))
-        const exhaustionBorgNum = parseInt(exhaustionBorg) || 0
+        const exhaustionMaxHRNum = parseInt(exhaustionMaxHR) || 0
         if (!isNaN(exhaustionLac) && exhaustionLac > 0) {
           const lastRow = finalRows[finalRows.length - 1]
           finalRows = [
@@ -720,9 +789,9 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             {
               min: (lastRow?.min ?? 0) + 1,
               watt: lastRow?.watt ?? 0,
-              hr: lastRow?.hr ?? 0,
+              hr: exhaustionMaxHRNum > 0 ? exhaustionMaxHRNum : (lastRow?.hr ?? 0),
               lac: exhaustionLac,
-              borg: exhaustionBorgNum,
+              borg: 0,
               cadence: 0,
             },
           ]
@@ -731,15 +800,17 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
       // Calculate VO2max — manual override takes priority over formula
       let vo2Max: number | undefined
+      let vo2AbsoluteMlMin: number | undefined
       if (isVo2) {
         const bodyWeightNum = parseFloat(form.bodyWeight)
         const manualRel = parseFloat(manualVo2MaxStr)
         if (manualRel > 0) {
           vo2Max = manualRel
         } else {
-          const manualAbs = parseFloat(manualAbsVo2Str)
-          if (manualAbs > 0 && bodyWeightNum > 0) {
-            vo2Max = Math.round(manualAbs / bodyWeightNum)
+          const manualAbsLmin = parseFloat(manualAbsVo2Str)  // L/min
+          if (manualAbsLmin > 0 && bodyWeightNum > 0) {
+            vo2AbsoluteMlMin = Math.round(manualAbsLmin * 1000)
+            vo2Max = Math.round(manualAbsLmin * 1000 / bodyWeightNum)
           } else if (bodyWeightNum > 0) {
             const overrideWatt = parseFloat(exhaustionWattStr)
             const derivedWatt = Math.max(...finalRows.filter(r => r.hr > 0).map(r => r.watt), 0)
@@ -781,13 +852,14 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         notes: notesValue,
         rawData: finalRows,
         vo2Max,
+        vo2AbsoluteMlMin,
         settings: showBikeSettings && Object.keys(bikeSettings).length > 0
           ? { bike: bikeSettings as BikeSettings }
           : undefined,
         coachAssessment: !isVo2 && hasCoachData ? coachAssessment : undefined,
       })
     } catch (e: unknown) {
-      if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e
+      if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) { clearDraft(); throw e }
       setError("Något gick fel. Försök igen.")
       setSaving(false)
     }
@@ -805,6 +877,20 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <h1 className="text-2xl font-bold">Nytt test</h1>
           <p className="text-secondary text-base">Fyll i uppgifterna nedan innan du startar.</p>
         </div>
+
+        {/* Draft recovery banner */}
+        {draftToRestore && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">Osparad inspelning hittades</span>
+              {" "}({draftRelativeTime(draftToRestore.savedAt)}). Vill du återuppta?
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <Button size="sm" onClick={() => applyDraft(draftToRestore)}>Återuppta</Button>
+              <Button size="sm" variant="outline" onClick={() => { clearDraft(); setDraftToRestore(null) }}>Ignorera</Button>
+            </div>
+          </div>
+        )}
 
         <Card>
           <CardContent className="pt-5 space-y-4">
@@ -1019,19 +1105,27 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label>Startfart (km/h)</Label>
-                        <div className="flex gap-2">
-                          {[6, 8, 10, 12].map((s) => (
+                        <div className="flex gap-2 items-center">
+                          {[8, 9, 10].map((s) => (
                             <button key={s} type="button" onClick={() => update("startSpeed", String(s))}
-                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startSpeed === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startSpeed === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                               {s}
                             </button>
                           ))}
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="Annan"
+                            value={[8, 9, 10].includes(Number(form.startSpeed)) ? "" : form.startSpeed}
+                            onChange={(e) => update("startSpeed", e.target.value)}
+                            className="w-20 text-center"
+                          />
                         </div>
                       </div>
                       <div className="space-y-1.5">
                         <Label>Ökning/steg (km/h)</Label>
                         <div className="flex gap-2">
-                          {[0.5, 1, 1.5, 2].map((s) => (
+                          {[0.5, 1.0].map((s) => (
                             <button key={s} type="button" onClick={() => update("speedIncrement", String(s))}
                               className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.speedIncrement === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                               +{s}
@@ -1062,8 +1156,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     <Input id="startWatt" type="number" value={form.startWatt} onChange={(e) => update("startWatt", e.target.value)} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="testDuration">Min/steg</Label>
-                    <Input id="testDuration" type="number" value={form.testDuration} onChange={(e) => update("testDuration", e.target.value)} />
+                    <Label>Min/steg</Label>
+                    <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B]">1 min (fast)</div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -1263,7 +1357,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <span className="font-semibold">Gästläge:</span> Inga data sparas. Ladda ned resultaten som PDF när testet är klart.
         </div>
       )}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
             {SPORT_LABELS[form.sport]} — {TESTTYPE_LABELS[form.testType]}
@@ -1291,6 +1385,14 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             </>
           ) : (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEmergencyDownload}
+                title="Ladda ner säkerhetskopia"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? "Sparar…" : "Spara test"}
               </Button>
@@ -1302,7 +1404,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_2fr] items-stretch h-[calc(100vh-180px)]">
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_2fr] lg:items-stretch lg:h-[calc(100vh-180px)]">
         {/* Left column: Data table */}
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
           <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3 flex items-center justify-between">
@@ -1314,7 +1416,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   setForm((f) => ({ ...f, startWatt: "50", stepSize: "20", testDuration: "1" }))
                   setRows(VO2MAX_SEED_ROWS)
                   setExhaustionLacStr("13.2")
-                  setExhaustionBorg("20")
+                  setExhaustionMaxHR("184")
                   setExhaustionTimeMins("11")
                   setExhaustionTimeSecs("32")
                   setExhaustionWattStr("250")
@@ -1349,7 +1451,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               Fyll i exempeldata
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="overflow-y-auto max-h-[420px] lg:flex-1 lg:max-h-none lg:min-h-0">
             <div className="overflow-x-auto -mx-1 px-1">
             <table className="w-full text-base table-fixed min-w-[420px]">
               <thead>
@@ -1483,7 +1585,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         </div>
 
         {/* Right column: Chart + Coach Assessment */}
-        <div className="flex flex-col gap-6 h-full">
+        <div className="flex flex-col gap-6 lg:h-full">
           {/* Chart */}
           <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
             <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Kurva (live)</p>
@@ -1495,7 +1597,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
 
           {/* VO2max exhaustion panel — replaces coach assessment */}
           {form.testType === "vo2max" ? (
-            <div className="flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto space-y-5">
+            <div className="lg:flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto space-y-5">
               {/* Utmattning */}
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-3">Utmattning</p>
@@ -1543,32 +1645,37 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     const overrideW = parseFloat(exhaustionWattStr)
                     const derivedW = Math.max(...rows.filter(r => r.hr > 0).map(r => r.watt), 0)
                     const maxW = overrideW > 0 ? overrideW : derivedW
-                    const vo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
-                    const absVo2 = vo2 != null && bw > 0 ? Math.round(vo2 * bw) : null
+                    const formulaVo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
+                    const absLmin = parseFloat(manualAbsVo2Str)
+                    const liveVo2FromAbs = absLmin > 0 && bw > 0 ? Math.round(absLmin * 1000 / bw) : null
+                    const vo2Placeholder = liveVo2FromAbs ?? formulaVo2
                     return (
                       <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">Syreupptag (L/min)</Label>
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={manualAbsVo2Str}
+                              onChange={(e) => setManualAbsVo2Str(e.target.value)}
+                              placeholder="t.ex. 3.2"
+                              className="h-10 text-base"
+                            />
+                            {liveVo2FromAbs != null && (
+                              <span className="text-sm text-[#515154] shrink-0">→ {liveVo2FromAbs} ml/kg/min</span>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-3">
                           <Label className="w-36 text-sm text-[#515154] shrink-0">VO₂ max (ml/kg/min)</Label>
                           <Input
                             type="number"
                             value={manualVo2MaxStr}
                             onChange={(e) => setManualVo2MaxStr(e.target.value)}
-                            placeholder={vo2 != null ? String(vo2) : "—"}
+                            placeholder={vo2Placeholder != null ? String(vo2Placeholder) : "—"}
                             className="h-10 text-base"
                           />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Label className="w-36 text-sm text-[#515154] shrink-0">Syreupptag</Label>
-                          <div className="flex items-center gap-2 flex-1">
-                            <Input
-                              type="number"
-                              value={manualAbsVo2Str}
-                              onChange={(e) => setManualAbsVo2Str(e.target.value)}
-                              placeholder={absVo2 != null ? String(absVo2) : "—"}
-                              className="h-10 text-base"
-                            />
-                            <span className="text-sm text-[#515154] shrink-0">ml O₂/min</span>
-                          </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <Label className="w-36 text-sm text-[#515154] shrink-0">Maxlaktat (mmol/L)</Label>
@@ -1582,12 +1689,12 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                           />
                         </div>
                         <div className="flex items-center gap-3">
-                          <Label className="w-36 text-sm text-[#515154] shrink-0">Borg vid utmattning</Label>
+                          <Label className="w-36 text-sm text-[#515154] shrink-0">Mätt max puls</Label>
                           <Input
                             type="number"
-                            value={exhaustionBorg}
-                            onChange={(e) => setExhaustionBorg(e.target.value)}
-                            placeholder="6–20"
+                            value={exhaustionMaxHR}
+                            onChange={(e) => setExhaustionMaxHR(e.target.value)}
+                            placeholder="bpm"
                             className="h-10 text-base"
                           />
                         </div>
@@ -1597,7 +1704,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               </div>
             </div>
           ) : (
-          <div className="flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto">
+          <div className="lg:flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">
           Bedömning (Coach)
         </p>
@@ -1632,13 +1739,9 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   </div>
                   <div className="flex items-center gap-3">
                     <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (km/h)</Label>
-                    <Input
-                      type="number"
-                      value={coachAssessment.granLagMedelSpeed ?? ""}
-                      onChange={(e) => updateCoach("granLagMedelSpeed", e.target.value)}
-                      className="h-10 text-base"
-                      placeholder="—"
-                    />
+                    <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B] flex-1">
+                      {coachAssessment.granLagMedelSpeed != null ? String(coachAssessment.granLagMedelSpeed) : "—"}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (km/h)</Label>
@@ -1675,13 +1778,9 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   </div>
                   <div className="flex items-center gap-3">
                     <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel (W)</Label>
-                    <Input
-                      type="number"
-                      value={coachAssessment.granLagMedel ?? ""}
-                      onChange={(e) => updateCoach("granLagMedel", e.target.value)}
-                      className="h-10 text-base"
-                      placeholder="—"
-                    />
+                    <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B] flex-1">
+                      {coachAssessment.granLagMedel != null ? String(coachAssessment.granLagMedel) : "—"}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns (W)</Label>
@@ -1722,6 +1821,16 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 />
               </div>
               <div className="flex items-center gap-3">
+                <Label className="w-44 text-sm text-[#515154] shrink-0">Vilopuls</Label>
+                <Input
+                  type="number"
+                  value={coachAssessment.vilopuls ?? ""}
+                  onChange={(e) => updateCoach("vilopuls", e.target.value)}
+                  className="h-10 text-base"
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex items-center gap-3">
                 <Label className="w-44 text-sm text-[#515154] shrink-0">AT-puls</Label>
                 <Input
                   type="number"
@@ -1743,13 +1852,9 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               </div>
               <div className="flex items-center gap-3">
                 <Label className="w-44 text-sm text-[#515154] shrink-0">Gräns Låg/Medel</Label>
-                <Input
-                  type="number"
-                  value={coachAssessment.granLagMedelPuls ?? ""}
-                  onChange={(e) => updateCoach("granLagMedelPuls", e.target.value)}
-                  className="h-10 text-base"
-                  placeholder="—"
-                />
+                <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B] flex-1">
+                  {coachAssessment.granLagMedelPuls != null ? String(coachAssessment.granLagMedelPuls) : "—"}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <Label className="w-44 text-sm text-[#515154] shrink-0">Nedre gräns</Label>

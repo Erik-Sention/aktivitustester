@@ -16,6 +16,7 @@ import { ReportDownloadButton } from "@/components/tests/report-download-button"
 import { Vo2MaxResultsPanel } from "@/components/tests/vo2max-results-panel"
 import { WingateResultsPanel } from "@/components/tests/wingate-results-panel"
 import { WingatePowerChart } from "@/components/tests/wingate-power-chart"
+import { ZoneTable } from "@/components/tests/zone-table"
 import { Pencil, ChevronRight } from "lucide-react"
 
 function PageSpinner() {
@@ -144,7 +145,7 @@ export function TestDetailClient({ id }: { id: string }) {
           {test.testType !== "vo2max" && test.testType !== "wingate" && (
             <div className="rounded-2xl bg-[#007AFF] p-6 text-white shadow-xl shadow-[#007AFF]/20">
               <span className="text-sm font-black uppercase tracking-[0.15em] text-white">Coachbedömning</span>
-              <div className="mt-4 grid grid-cols-2 gap-x-6">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                 <div>
                   <p className="text-sm font-black uppercase tracking-wider text-white mb-3">
                     {isSpeedSport(test.sport) ? "Bedömning Hastighet" : "Bedömning Effekt"}
@@ -240,6 +241,17 @@ export function TestDetailClient({ id }: { id: string }) {
             </div>
           )}
 
+          {test.testType !== "vo2max" && test.testType !== "wingate" && test.coachAssessment && (
+            <ZoneTable
+              atHR={test.coachAssessment.atPuls}
+              ltHR={test.coachAssessment.ltPuls}
+              maxHR={test.coachAssessment.estMaxPuls ?? test.coachAssessment.hogstaUpnaddPuls}
+              atWatt={isSpeedSport(test.sport) ? test.coachAssessment.atEffektSpeed : test.coachAssessment.atEffektWatt}
+              ltWatt={isSpeedSport(test.sport) ? test.coachAssessment.ltEffektSpeed : test.coachAssessment.ltEffektWatt}
+              isSpeed={isSpeedSport(test.sport)}
+            />
+          )}
+
           {test.settings?.bike && (
             <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple">
               <p className="mb-3 text-sm font-black uppercase tracking-widest text-primary">Cykelinställningar</p>
@@ -254,12 +266,15 @@ export function TestDetailClient({ id }: { id: string }) {
             </div>
           )}
 
-          {test.notes && (
-            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple overflow-hidden">
-              <p className="mb-2 text-sm font-black uppercase tracking-widest text-primary">Anteckningar</p>
-              <p className="text-base leading-relaxed text-primary italic whitespace-pre-wrap break-all">{test.notes}</p>
-            </div>
-          )}
+          {(() => {
+            const displayNotes = test.notes?.replace(/^Utmattning tid: \d+:\d+\n?/, '').trim()
+            return displayNotes ? (
+              <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple overflow-hidden">
+                <p className="mb-2 text-sm font-black uppercase tracking-widest text-primary">Anteckningar</p>
+                <p className="text-base leading-relaxed text-primary italic whitespace-pre-wrap break-all">{displayNotes}</p>
+              </div>
+            ) : null
+          })()}
         </div>
 
         {/* Left column — 70% */}

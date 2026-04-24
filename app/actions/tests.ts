@@ -33,6 +33,7 @@ export async function createTestAction(data: {
   notes?: string
   rawData: RawDataPoint[]
   vo2Max?: number
+  vo2AbsoluteMlMin?: number | null
   settings?: SportSettings
   coachAssessment?: CoachAssessment
 }) {
@@ -64,9 +65,11 @@ export async function createTestAction(data: {
     ...(data.coachAssessment ? { coachAssessment: data.coachAssessment } : {}),
   })
 
-  // Patch only vo2Max so auto-calculated maxHR / maxLactate are preserved
-  if (data.vo2Max) {
-    await updateDoc(doc(db, 'tests', id), { 'results.vo2Max': data.vo2Max })
+  const resultPatch: Record<string, unknown> = {}
+  if (data.vo2Max) resultPatch['results.vo2Max'] = data.vo2Max
+  if (data.vo2AbsoluteMlMin) resultPatch['results.vo2AbsoluteMlMin'] = data.vo2AbsoluteMlMin
+  if (Object.keys(resultPatch).length > 0) {
+    await updateDoc(doc(db, 'tests', id), resultPatch)
   }
 
   revalidatePath(`/dashboard/athletes/${data.athleteId}`)
@@ -97,6 +100,10 @@ export async function updateTestAction(
     settings?: SportSettings
     wingateData?: WingateData
     wingateInputParams?: WingateInputParams
+    vo2Max?: number | null
+    vo2AbsoluteMlMin?: number | null
+    maxHR?: number | null
+    maxWatt?: number | null
   }
 ) {
   await requireSession()
@@ -131,7 +138,7 @@ export async function updateTestAction(
     ...(data.settings ? { settings: data.settings } : {}),
     ...(data.wingateData ? { wingateData: data.wingateData } : {}),
     ...(data.wingateInputParams ? { wingateInputParams: data.wingateInputParams } : {}),
-  })
+  }, data.vo2Max, data.vo2AbsoluteMlMin, data.maxHR, data.maxWatt)
 
   revalidatePath(`/dashboard/tests/${id}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
@@ -192,46 +199,14 @@ export async function updateCoachAssessmentAction(
   assessment: CoachAssessment
 ) {
   await requireSession()
-  await updateDoc(doc(db, 'tests', testId), { coachAssessment: assessment })
+  const normalized: CoachAssessment = {
+    ...assessment,
+    granLagMedel: assessment.ltEffektWatt,
+    granLagMedelSpeed: assessment.ltEffektSpeed,
+    granLagMedelPuls: assessment.ltPuls,
+  }
+  await updateDoc(doc(db, 'tests', testId), { coachAssessment: normalized })
   revalidatePath(`/dashboard/tests/${testId}`)
   revalidatePath(`/dashboard/athletes/${athleteId}`)
 }
 
-// Wrapper function for EditTestView component
-export async function updateTestFromView(
-  testId: string,
-  testData: {
-    testDate: string
-    protocol?: string
-    sportProtocol?: string
-    testFacility?: string
-    testLeader?: string
-    temperature?: number
-    humidity?: number
-    notes?: string
-    terminationReason?: string
-    calculationsMethod?: string
-    functionalCapacity?: string
-    vo2TestType?: string
-    ergometerType?: string
-    bpSystolic?: number
-    bpDiastolic?: number
-  },
-  stages: any[],
-  summary: any
-) {
-  // This is a placeholder that prevents build errors
-  // The actual update logic should be implemented based on your data model
-  console.warn('updateTestFromView called with:', { testId, testData, stages, summary })
-}
-
-// Wrapper function for TestForm component
-export async function createTest(
-  testData: any,
-  stages: any[],
-  summary: any
-) {
-  // This is a placeholder that prevents build errors
-  // The actual create logic should be implemented based on your data model
-  console.warn('createTest called with:', { testData, stages, summary })
-}

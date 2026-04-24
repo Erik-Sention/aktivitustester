@@ -79,8 +79,8 @@ export function CompareView({ tests }: CompareViewProps) {
   }))
 
   const rows: { label: string; unit: string; values: (number | null)[]; isStart?: boolean }[] = [
-    { label: "LT1 (Aerob tröskel)", unit: thresholdUnit, values: sorted.map((t) => t.results.atWatt) },
-    { label: "LT2 (Anaerob tröskel)", unit: thresholdUnit, values: sorted.map((t) => t.results.ltWatt) },
+    { label: "AT (Aerob tröskel)", unit: thresholdUnit, values: sorted.map((t) => t.results.atWatt) },
+    { label: "LT (Anaerob tröskel)", unit: thresholdUnit, values: sorted.map((t) => t.results.ltWatt) },
     { label: "Max puls", unit: "bpm", values: sorted.map((t) => t.results.maxHR) },
     { label: "Max laktat", unit: "mmol/L", values: sorted.map((t) => t.results.maxLactate) },
     { label: "VO₂ max", unit: "ml/kg/min", values: sorted.map((t) => t.results.vo2Max) },

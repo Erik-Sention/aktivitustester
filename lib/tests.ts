@@ -44,9 +44,18 @@ export async function createTest(input: TestInput): Promise<string> {
   return ref.id
 }
 
-export async function updateTest(id: string, input: Partial<TestInput>): Promise<void> {
+export async function updateTest(id: string, input: Partial<TestInput>, vo2Max?: number | null, vo2AbsoluteMlMin?: number | null, maxHROverride?: number | null, maxWatt?: number | null): Promise<void> {
   const update: Record<string, unknown> = { ...input }
-  if (input.rawData) update.results = calculateResults(input.rawData)
+  if (input.rawData) {
+    const results = calculateResults(input.rawData)
+    update.results = {
+      ...results,
+      vo2Max: vo2Max !== undefined ? vo2Max : null,
+      vo2AbsoluteMlMin: vo2AbsoluteMlMin !== undefined ? vo2AbsoluteMlMin : null,
+      ...(maxHROverride !== undefined ? { maxHR: maxHROverride } : {}),
+      ...(maxWatt !== undefined ? { maxWatt } : {}),
+    }
+  }
   await updateDoc(doc(db, COL, id), update)
 }
 

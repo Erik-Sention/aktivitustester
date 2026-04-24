@@ -1,37 +1,36 @@
 import { Test } from "@/types"
-import { VO2MAX_ZONES, VO2MAX_BREAKPOINTS_MEN, VO2MAX_BREAKPOINTS_WOMEN } from "@/lib/calculations"
 
 interface Vo2MaxResultsPanelProps {
   test: Test
   gender: "M" | "K" | ""
 }
 
-function findZoneIndex(vo2: number, breakpoints: number[]): number {
-  let zone = 0
-  for (let i = 0; i < breakpoints.length; i++) {
-    if (vo2 >= breakpoints[i]) zone = i
-  }
-  return zone
+function parseExhaustionTime(notes: string): string | null {
+  const m = notes?.match(/^Utmattning tid: (\d+:\d+)/)
+  return m ? m[1] : null
 }
 
-export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
+export function Vo2MaxResultsPanel({ test }: Vo2MaxResultsPanelProps) {
   const vo2 = test.results.vo2Max
   const maxHR = test.results.maxHR
   const maxLactate = test.results.maxLactate
   const bodyWeight = test.inputParams.bodyWeight
+  const exhaustionTime = parseExhaustionTime(test.notes ?? "")
 
-  const breakpoints = gender === "K" ? VO2MAX_BREAKPOINTS_WOMEN : VO2MAX_BREAKPOINTS_MEN
-  const activeZone = vo2 != null ? findZoneIndex(vo2, breakpoints) : -1
+  // Prefer explicitly stored maxWatt, fall back to rawData derivation
+  const maxWatt = (test.results.maxWatt ?? 0) > 0
+    ? test.results.maxWatt!
+    : (test.rawData.length > 0
+        ? Math.max(...test.rawData.filter(r => r.hr > 0).map(r => r.watt), 0) || null
+        : null)
 
-  // Derive max watt from rawData (highest watt where hr > 0)
-  const maxWatt = test.rawData.length > 0
-    ? Math.max(...test.rawData.filter(r => r.hr > 0).map(r => r.watt), 0) || null
-    : null
+  // Absolute VO2: use stored value if available, fall back to reverse-calc
+  const absVo2 = test.results.vo2AbsoluteMlMin != null
+    ? test.results.vo2AbsoluteMlMin
+    : (vo2 != null && bodyWeight != null && bodyWeight > 0 ? Math.round(vo2 * bodyWeight) : null)
 
   return (
     <div className="space-y-5">
-
-      {/* Protocol summary */}
       <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
         <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">VO₂MAX</p>
 
@@ -68,6 +67,12 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
           <div className="py-3">
             <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Utmattning</p>
             <dl className="space-y-1.5">
+              {exhaustionTime && (
+                <div className="flex justify-between text-base">
+                  <dt className="text-secondary">Utmattningstid</dt>
+                  <dd className="font-semibold text-primary">{exhaustionTime}</dd>
+                </div>
+              )}
               <div className="flex justify-between text-base">
                 <dt className="text-secondary">Max effekt</dt>
                 <dd className="font-semibold text-primary">
@@ -87,10 +92,10 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
           <div className="py-3">
             <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Resultat</p>
             <dl className="space-y-1.5">
-              {vo2 != null && bodyWeight != null && bodyWeight > 0 && (
+              {absVo2 != null && absVo2 > 0 && (
                 <div className="flex justify-between text-base">
                   <dt className="text-secondary">Syreupptag (abs.)</dt>
-                  <dd className="font-semibold text-primary">{Math.round(vo2 * bodyWeight)} ml/min</dd>
+                  <dd className="font-semibold text-primary">{absVo2} ml/min</dd>
                 </div>
               )}
               {maxHR != null && maxHR > 0 && (
@@ -104,81 +109,6 @@ export function Vo2MaxResultsPanel({ test, gender }: Vo2MaxResultsPanelProps) {
 
         </div>
       </div>
-
-      {/* Classification bar — ruler design */}
-      {vo2 != null && (
-        <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
-          <p className="text-sm font-black uppercase tracking-widest text-primary mb-5">
-            Konditionsklass {gender === "K" ? "— Kvinna" : gender === "M" ? "— Man" : ""}
-          </p>
-          {(() => {
-            const maxDisplay = breakpoints[breakpoints.length - 1] + 14
-            const clampedVo2 = Math.min(Math.max(vo2, 0), maxDisplay)
-            const markerPct = (clampedVo2 / maxDisplay) * 100
-            return (
-              <div className="px-1">
-                {/* Marker + caret */}
-                <div className="relative h-9 mb-0.5 overflow-visible">
-                  <div
-                    className="absolute flex flex-col items-center"
-                    style={{ left: `${markerPct}%`, transform: "translateX(-50%)" }}
-                  >
-                    <span className="text-xs font-black text-primary tabular-nums whitespace-nowrap">
-                      {vo2} ml/kg/min
-                    </span>
-                    <span className="text-[10px] text-secondary whitespace-nowrap">
-                      {activeZone >= 0 ? VO2MAX_ZONES[activeZone].label : ""}
-                    </span>
-                    <div className="mt-0.5 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#1D1D1F]" />
-                  </div>
-                </div>
-
-                {/* Colored bar */}
-                <div className="flex h-6 rounded-xl overflow-hidden gap-px bg-[#E5E5EA]">
-                  {VO2MAX_ZONES.map((zone, i) => {
-                    const start = breakpoints[i]
-                    const end = i + 1 < breakpoints.length ? breakpoints[i + 1] : maxDisplay
-                    const widthPct = ((end - start) / maxDisplay) * 100
-                    const isActive = i === activeZone
-                    return (
-                      <div
-                        key={zone.label}
-                        className={`${zone.colorBg} transition-all ${isActive ? "opacity-100" : "opacity-35"}`}
-                        style={{ width: `${widthPct}%` }}
-                      />
-                    )
-                  })}
-                </div>
-
-                {/* Zone labels */}
-                <div className="flex mt-1.5">
-                  {VO2MAX_ZONES.map((zone, i) => {
-                    const start = breakpoints[i]
-                    const end = i + 1 < breakpoints.length ? breakpoints[i + 1] : maxDisplay
-                    const widthPct = ((end - start) / maxDisplay) * 100
-                    const isActive = i === activeZone
-                    return (
-                      <div
-                        key={zone.label}
-                        className="flex flex-col items-center overflow-hidden"
-                        style={{ width: `${widthPct}%` }}
-                      >
-                        <span className={`text-[9px] uppercase leading-tight text-center w-full px-0.5 truncate ${isActive ? "font-black text-primary" : "font-medium text-[#86868B]"}`}>
-                          {zone.label}
-                        </span>
-                        <span className={`text-[9px] tabular-nums ${isActive ? "text-secondary" : "text-[#86868B]/50"}`}>
-                          {start > 0 ? start : "—"}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })()}
-        </div>
-      )}
-
     </div>
   )
 }

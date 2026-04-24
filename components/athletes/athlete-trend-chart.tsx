@@ -37,8 +37,8 @@ export function AthleteTrendChart({ tests }: { tests: SerializedTest[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F7" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} />
         <YAxis unit=" W" tick={{ fontSize: 11 }} width={52} />
-        <Tooltip formatter={(v: number, name: string) => [`${v} W`, name === "lt1" ? "LT1" : "LT2"]} />
-        <Legend formatter={(v) => (v === "lt1" ? "LT1" : "LT2")} />
+        <Tooltip formatter={(v: number, name: string) => [`${v} W`, name === "lt1" ? "AT" : "LT"]} />
+        <Legend formatter={(v) => (v === "lt1" ? "AT" : "LT")} />
         <Line type="monotone" dataKey="lt1" name="lt1" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
         <Line type="monotone" dataKey="lt2" name="lt2" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
       </LineChart>

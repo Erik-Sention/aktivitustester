@@ -43,7 +43,7 @@ const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
 const EMPTY_COACH: CoachAssessment = {
   atEffektWatt: null, ltEffektWatt: null, granLagMedel: null, nedreGrans: null,
   atEffektSpeed: null, ltEffektSpeed: null, granLagMedelSpeed: null, nedreGransSpeed: null,
-  estMaxPuls: null, hogstaUpnaddPuls: null, atPuls: null, ltPuls: null,
+  estMaxPuls: null, hogstaUpnaddPuls: null, vilopuls: null, atPuls: null, ltPuls: null,
   granLagMedelPuls: null, nedreGransPuls: null,
 }
 
@@ -63,6 +63,11 @@ interface EditFormProps {
   settings: SportSettings | null
   wingateData: WingateData | null
   wingateInputParams: WingateInputParams | null
+  vo2Max: number | null
+  vo2AbsoluteMlMin: number | null
+  exhaustionTime: string
+  maxHR: number | null
+  maxWatt: number | null
 }
 
 export function EditTestForm({
@@ -71,6 +76,8 @@ export function EditTestForm({
   testLocation: initialLocation, testLeader: initialLeader,
   inputParams, coachAssessment: initialCoach, settings: initialSettings,
   wingateData: initialWingateData, wingateInputParams: initialWingateParams,
+  vo2Max: initialVo2Max, vo2AbsoluteMlMin: initialVo2AbsoluteMlMin,
+  exhaustionTime: initialExhaustionTime, maxHR: initialMaxHR, maxWatt: initialMaxWatt,
 }: EditFormProps) {
   const router = useRouter()
 
@@ -93,7 +100,25 @@ export function EditTestForm({
   const [coach, setCoach] = useState<CoachAssessment>(initialCoach ?? EMPTY_COACH)
 
   function updateCoach(field: keyof CoachAssessment, value: string) {
-    setCoach((prev) => ({ ...prev, [field]: value === "" ? null : (parseFloat(value) || null) }))
+    setCoach((prev) => {
+      const num = value === "" ? null : (parseFloat(value) || null)
+      const extra: Partial<CoachAssessment> = {}
+      if (field === "ltEffektWatt") extra.granLagMedel = num
+      if (field === "ltEffektSpeed") extra.granLagMedelSpeed = num
+      if (field === "ltPuls") extra.granLagMedelPuls = num
+      return { ...prev, [field]: num, ...extra }
+    })
+  }
+
+  function readOnlyCoachField(label: string, value: number | null | undefined) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="w-48 text-sm text-[#515154] shrink-0">{label}</span>
+        <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B] flex-1">
+          {value != null ? String(value) : "—"}
+        </div>
+      </div>
+    )
   }
 
   const [wingateData, setWingateData] = useState({
@@ -108,6 +133,14 @@ export function EditTestForm({
     saddleHorizontalMm: initialWingateParams?.saddleHorizontalMm?.toString() ?? "",
     startCadenceRpm: initialWingateParams?.startCadenceRpm?.toString() ?? "",
   })
+
+  const [vo2MaxValue, setVo2MaxValue] = useState(initialVo2Max?.toString() ?? "")
+  const [vo2AbsoluteLiters, setVo2AbsoluteLiters] = useState(
+    initialVo2AbsoluteMlMin != null ? String(initialVo2AbsoluteMlMin / 1000) : ""
+  )
+  const [exhaustionTimeValue, setExhaustionTimeValue] = useState(initialExhaustionTime)
+  const [maxHRValue, setMaxHRValue] = useState(initialMaxHR?.toString() ?? "")
+  const [maxWattValue, setMaxWattValue] = useState(initialMaxWatt?.toString() ?? "")
 
   const [rows, setRows] = useState<RawDataPoint[]>(initialRows)
   const [lacStrings, setLacStrings] = useState<Record<number, string>>({})
@@ -130,12 +163,16 @@ export function EditTestForm({
       const speedBased = sport === "lopning" || sport === "skidor_band"
       const hasCoach = Object.values(coach).some((v) => v !== null)
       const isWingate = testType === "wingate"
+      const isVo2 = testType === "vo2max"
       const peak = parseFloat(wingateData.peakPower)
       const mean = parseFloat(wingateData.meanPower)
       const min = parseFloat(wingateData.minPower)
+      const finalNotes = isVo2 && exhaustionTimeValue.trim()
+        ? `Utmattning tid: ${exhaustionTimeValue.trim()}\n${noteText}`
+        : noteText
       await updateTestAction(testId, athleteId, {
         testDate: date,
-        notes: noteText,
+        notes: finalNotes,
         rawData: rows.filter((r) => r.hr > 0 || r.lac > 0 || r.watt > 0 || (r.speed ?? 0) > 0),
         sport,
         testType,
@@ -155,6 +192,12 @@ export function EditTestForm({
         heightCm: parseFloat(heightCm) || null,
         coachAssessment: hasCoach ? coach : undefined,
         settings: initialSettings ?? undefined,
+        vo2Max: isVo2 ? (parseFloat(vo2MaxValue) || null) : undefined,
+        vo2AbsoluteMlMin: isVo2
+          ? (parseFloat(vo2AbsoluteLiters) > 0 ? Math.round(parseFloat(vo2AbsoluteLiters) * 1000) : null)
+          : undefined,
+        maxHR: isVo2 ? (parseInt(maxHRValue) || null) : undefined,
+        maxWatt: isVo2 ? (parseInt(maxWattValue) || null) : undefined,
         ...(isWingate && peak && mean && min ? {
           wingateData: { peakPower: peak, meanPower: mean, minPower: min },
           wingateInputParams: {
@@ -271,8 +314,12 @@ export function EditTestForm({
             </div>
           </>)}
           <div className="space-y-1">
-            <Label htmlFor="testDuration">Tid/steg (min)</Label>
-            <Input id="testDuration" type="number" value={testDuration} onChange={(e) => setTestDuration(e.target.value)} placeholder="3" />
+            <Label>Tid/steg (min)</Label>
+            {testType === "vo2max" ? (
+              <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B]">1 min (fast)</div>
+            ) : (
+              <Input id="testDuration" type="number" value={testDuration} onChange={(e) => setTestDuration(e.target.value)} placeholder="3" />
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="bodyWeight">Vikt (kg)</Label>
@@ -365,6 +412,67 @@ export function EditTestForm({
         </div>
       )}
 
+      {/* Section: VO2 Max result (only for vo2max tests) */}
+      {testType === "vo2max" && (
+        <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
+          <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">VO₂ max-resultat</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="absVo2">Syreupptag (L/min)</Label>
+              <Input
+                id="absVo2"
+                type="text"
+                inputMode="decimal"
+                value={vo2AbsoluteLiters}
+                onChange={(e) => setVo2AbsoluteLiters(e.target.value)}
+                placeholder="t.ex. 3.2"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="vo2max">VO₂ max (ml/kg/min)</Label>
+              <Input
+                id="vo2max"
+                type="text"
+                inputMode="decimal"
+                value={vo2MaxValue}
+                onChange={(e) => setVo2MaxValue(e.target.value)}
+                placeholder="t.ex. 58.4"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="exhaustionTime">Utmattningstid (MM:SS)</Label>
+              <Input
+                id="exhaustionTime"
+                type="text"
+                value={exhaustionTimeValue}
+                onChange={(e) => setExhaustionTimeValue(e.target.value)}
+                placeholder="t.ex. 11:32"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="maxWatt">Max effekt (W)</Label>
+              <Input
+                id="maxWatt"
+                type="number"
+                value={maxWattValue}
+                onChange={(e) => setMaxWattValue(e.target.value)}
+                placeholder="t.ex. 250"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="maxHR">Max puls (bpm)</Label>
+              <Input
+                id="maxHR"
+                type="number"
+                value={maxHRValue}
+                onChange={(e) => setMaxHRValue(e.target.value)}
+                placeholder="t.ex. 184"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Coachbedömning */}
       <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Coachbedömning</p>
@@ -376,7 +484,7 @@ export function EditTestForm({
             <div className="space-y-2">
               {coachField(isSpeedSport(sport) ? "AT Hastighet (km/h)" : "AT Effekt (W)", "atEffektWatt")}
               {coachField(isSpeedSport(sport) ? "LT Hastighet (km/h)" : "LT Effekt (W)", "ltEffektWatt")}
-              {coachField(isSpeedSport(sport) ? "Gräns Låg/Medel (km/h)" : "Gräns Låg/Medel (W)", "granLagMedel")}
+              {readOnlyCoachField(isSpeedSport(sport) ? "Gräns Låg/Medel (km/h)" : "Gräns Låg/Medel (W)", isSpeedSport(sport) ? coach.granLagMedelSpeed : coach.granLagMedel)}
               {coachField(isSpeedSport(sport) ? "Nedre gräns (km/h)" : "Nedre gräns (W)", "nedreGrans")}
             </div>
           </div>
@@ -385,9 +493,10 @@ export function EditTestForm({
             <div className="space-y-2">
               {coachField("Est. maxpuls", "estMaxPuls")}
               {coachField("Högsta uppnådda puls", "hogstaUpnaddPuls")}
+              {coachField("Vilopuls", "vilopuls")}
               {coachField("AT-puls", "atPuls")}
               {coachField("LT-puls", "ltPuls")}
-              {coachField("Gräns Låg/Medel (bpm)", "granLagMedelPuls")}
+              {readOnlyCoachField("Gräns Låg/Medel (bpm)", coach.granLagMedelPuls)}
               {coachField("Nedre gräns (bpm)", "nedreGransPuls")}
             </div>
           </div>

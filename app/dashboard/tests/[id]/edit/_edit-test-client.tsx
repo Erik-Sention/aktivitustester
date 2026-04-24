@@ -43,6 +43,11 @@ export function EditTestClient({ id }: { id: string }) {
 
   const testDateStr = new Date(test.testDate.seconds * 1000).toISOString().split("T")[0]
 
+  const rawNotes = test.notes ?? ""
+  const exhaustionTimeMatch = rawNotes.match(/^Utmattning tid: (\d+:\d+)\n?/)
+  const exhaustionTime = exhaustionTimeMatch ? exhaustionTimeMatch[1] : ""
+  const cleanedNotes = rawNotes.replace(/^Utmattning tid: \d+:\d+\n?/, "")
+
   return (
     <div className="space-y-6 py-6">
       <div>
@@ -55,7 +60,7 @@ export function EditTestClient({ id }: { id: string }) {
         testId={test.id}
         athleteId={test.athleteId}
         testDate={testDateStr}
-        notes={test.notes ?? ""}
+        notes={cleanedNotes}
         rawData={test.rawData}
         sport={test.sport}
         testType={test.testType}
@@ -67,6 +72,11 @@ export function EditTestClient({ id }: { id: string }) {
         settings={test.settings ?? null}
         wingateData={test.wingateData ?? null}
         wingateInputParams={test.wingateInputParams ?? null}
+        vo2Max={test.results?.vo2Max ?? null}
+        vo2AbsoluteMlMin={test.results?.vo2AbsoluteMlMin ?? null}
+        exhaustionTime={exhaustionTime}
+        maxHR={test.results?.maxHR ?? null}
+        maxWatt={test.results?.maxWatt ?? null}
       />
     </div>
   )

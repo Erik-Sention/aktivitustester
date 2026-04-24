@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { updateCoachAssessmentAction } from "@/app/actions/tests"
 import { CoachAssessment } from "@/types"
 import { isSpeedSport } from "@/lib/utils"
+import { ZoneTable } from "@/components/tests/zone-table"
 
 interface CoachAssessmentPanelProps {
   testId: string
@@ -26,6 +27,7 @@ const EMPTY: CoachAssessment = {
   nedreGransSpeed: null,
   estMaxPuls: null,
   hogstaUpnaddPuls: null,
+  vilopuls: null,
   atPuls: null,
   ltPuls: null,
   granLagMedelPuls: null,
@@ -40,10 +42,25 @@ export function CoachAssessmentPanel({ testId, athleteId, sport, initial }: Coac
 
   function updateField(field: keyof CoachAssessment, value: string) {
     setSaved(false)
-    setAssessment((prev) => ({
-      ...prev,
-      [field]: value === "" ? null : (parseFloat(value) || null),
-    }))
+    setAssessment((prev) => {
+      const num = value === "" ? null : (parseFloat(value) || null)
+      const extra: Partial<CoachAssessment> = {}
+      if (field === "ltEffektWatt") extra.granLagMedel = num
+      if (field === "ltEffektSpeed") extra.granLagMedelSpeed = num
+      if (field === "ltPuls") extra.granLagMedelPuls = num
+      return { ...prev, [field]: num, ...extra }
+    })
+  }
+
+  function readOnly(label: string, value: number | null | undefined) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="w-48 text-sm text-[#515154] shrink-0">{label}</span>
+        <div className="h-10 flex items-center px-3 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B] flex-1">
+          {value != null ? String(value) : "—"}
+        </div>
+      </div>
+    )
   }
 
   async function handleSave() {
@@ -86,7 +103,7 @@ export function CoachAssessmentPanel({ testId, athleteId, sport, initial }: Coac
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         <div className="space-y-3">
           <p className="text-sm font-semibold text-[#515154] uppercase tracking-wider">
             {speedSport ? "Hastighet (km/h)" : "Effekt (W)"}
@@ -96,14 +113,14 @@ export function CoachAssessmentPanel({ testId, athleteId, sport, initial }: Coac
               <>
                 {field("AT Hastighet (km/h)", "atEffektSpeed")}
                 {field("LT Hastighet (km/h)", "ltEffektSpeed")}
-                {field("Gräns Låg/Medel (km/h)", "granLagMedelSpeed")}
+                {readOnly("Gräns Låg/Medel (km/h)", assessment.granLagMedelSpeed)}
                 {field("Nedre gräns (km/h)", "nedreGransSpeed")}
               </>
             ) : (
               <>
                 {field("AT Effekt (W)", "atEffektWatt")}
                 {field("LT Effekt (W)", "ltEffektWatt")}
-                {field("Gräns Låg/Medel (W)", "granLagMedel")}
+                {readOnly("Gräns Låg/Medel (W)", assessment.granLagMedel)}
                 {field("Nedre gräns (W)", "nedreGrans")}
               </>
             )}
@@ -114,12 +131,25 @@ export function CoachAssessmentPanel({ testId, athleteId, sport, initial }: Coac
           <div className="space-y-2">
             {field("Est. maxpuls", "estMaxPuls")}
             {field("Högsta uppnådda puls", "hogstaUpnaddPuls")}
+            {field("Vilopuls", "vilopuls")}
             {field("AT-puls", "atPuls")}
             {field("LT-puls", "ltPuls")}
-            {field("Gräns Låg/Medel (bpm)", "granLagMedelPuls")}
+            {readOnly("Gräns Låg/Medel (bpm)", assessment.granLagMedelPuls)}
             {field("Nedre gräns (bpm)", "nedreGransPuls")}
           </div>
         </div>
+      </div>
+
+      {/* Live zone table */}
+      <div className="mt-6">
+        <ZoneTable
+          atHR={assessment.atPuls}
+          ltHR={assessment.ltPuls}
+          maxHR={assessment.estMaxPuls ?? assessment.hogstaUpnaddPuls}
+          atWatt={speedSport ? assessment.atEffektSpeed : assessment.atEffektWatt}
+          ltWatt={speedSport ? assessment.ltEffektSpeed : assessment.ltEffektWatt}
+          isSpeed={speedSport}
+        />
       </div>
     </div>
   )

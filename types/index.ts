@@ -76,6 +76,8 @@ export interface TestInputParams {
 
 export interface TestResults {
   vo2Max: number | null
+  vo2AbsoluteMlMin?: number | null  // Measured absolute oxygen uptake (ml O₂/min)
+  maxWatt?: number | null           // Explicit override for max watt (VO2 max tests)
   atWatt: number | null  // LT1 @ 2.0 mmol
   ltWatt: number | null  // LT2 @ 4.0 mmol
   maxHR: number | null
@@ -121,6 +123,7 @@ export interface CoachAssessment {
   nedreGransSpeed: number | null
   estMaxPuls: number | null
   hogstaUpnaddPuls: number | null
+  vilopuls: number | null           // Resting HR
   atPuls: number | null
   ltPuls: number | null
   granLagMedelPuls: number | null   // "Gräns Låg/Medel" bpm
