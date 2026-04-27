@@ -38,7 +38,11 @@ function LoadDot(props: any) {
 export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
   const [modalOpen, setModalOpen] = useState(false)
 
-  const data = rows.map((r) => ({
+  // Only chart rows up to the last one where the athlete actually entered data
+  const lastDataIdx = rows.reduce((max, r, i) => (r.hr > 0 || r.lac > 0) ? i : max, -1)
+  const activeRows = lastDataIdx >= 0 ? rows.slice(0, lastDataIdx + 1) : rows
+
+  const data = activeRows.map((r) => ({
     min: r.min,
     watt: r.watt > 0 ? r.watt : null,
     speed: r.speed && r.speed > 0 ? r.speed : null,
@@ -64,9 +68,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
   }
 
   const stepMins = new Set(
-    rows.reduce<number[]>((acc, r, i) => {
+    activeRows.reduce<number[]>((acc, r, i) => {
       const load = r.watt > 0 ? r.watt : (r.speed ?? 0)
-      const prevLoad = i > 0 ? (rows[i-1].watt > 0 ? rows[i-1].watt : (rows[i-1].speed ?? 0)) : -1
+      const prevLoad = i > 0 ? (activeRows[i-1].watt > 0 ? activeRows[i-1].watt : (activeRows[i-1].speed ?? 0)) : -1
       if (load > 0 && load !== prevLoad) acc.push(r.min)
       return acc
     }, [])
@@ -185,7 +189,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           <LabelList
             dataKey="hr"
             content={({ x, y, value, index }: any) => {
-              if (index == null || !lacEnabledCheck(rows[index], dur)) return null
+              if (index == null || !lacEnabledCheck(activeRows[index], dur)) return null
               return (
                 <text x={x as number} y={(y as number) - 6} textAnchor="middle"
                   fontSize={13} fill="#f43f5e" fontWeight={700}>
@@ -286,7 +290,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
       {/* Mobile trigger */}
       <button
         type="button"
-        className="lg:hidden w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] py-4 text-sm font-semibold text-[#007AFF] flex items-center justify-center gap-2"
+        className="lg:hidden w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] py-4 text-sm font-semibold text-[#0071BA] flex items-center justify-center gap-2"
         onClick={() => setModalOpen(true)}
       >
         <BarChart2 className="h-4 w-4" />

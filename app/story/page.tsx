@@ -12,7 +12,7 @@ const tokens = [
   { name: "--background",          value: "hsl(0 0% 96%)",      label: "background" },
   { name: "--foreground",          value: "hsl(240 6% 10%)",     label: "foreground" },
   { name: "--card",                value: "hsl(0 0% 100%)",      label: "card" },
-  { name: "--primary",             value: "hsl(211 100% 50%)",   label: "primary (#007AFF)" },
+  { name: "--primary",             value: "hsl(211 100% 50%)",   label: "primary (#0071BA)" },
   { name: "--secondary",           value: "hsl(240 5% 94%)",     label: "secondary" },
   { name: "--muted",               value: "hsl(240 5% 94%)",     label: "muted" },
   { name: "--muted-foreground",    value: "hsl(240 4% 52%)",     label: "muted-foreground" },
@@ -44,13 +44,13 @@ export default async function StoryPage() {
         <p className="text-sm text-primary mb-2">Alla UI-komponenter och design tokens på ett ställe.</p>
 
         {/* TYPOGRAPHY RULES */}
-        <div className="mb-10 rounded-2xl bg-[#007AFF] p-5 text-white">
+        <div className="mb-10 rounded-2xl bg-[#0071BA] p-5 text-white">
           <p className="text-sm font-black uppercase tracking-wider mb-3">Typografiregler</p>
           <ul className="text-sm space-y-1.5">
             <li>• Minsta textstorlek för brödtext: <strong>text-sm (14px)</strong> — aldrig text-xs för viktig data</li>
             <li>• Primär text: <strong>text-primary</strong> (#1D1D1F) — all brödtext, etiketter, rubriker, viktig data</li>
             <li>• Sekundär text: <strong>text-secondary</strong> (#515154) — tidsstämplar, enheter, underordnad info</li>
-            <li>• Interaktiv text: <strong>text-interactive</strong> (#007AFF) — länktext och knappar endast</li>
+            <li>• Interaktiv text: <strong>text-interactive</strong> (#0071BA) — länktext och knappar endast</li>
           </ul>
         </div>
 

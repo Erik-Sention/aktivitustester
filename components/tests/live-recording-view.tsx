@@ -213,10 +213,16 @@ function StageTimer({
   intervalSeconds,
   totalStages,
   onStageChange,
+  onTick,
+  stageLabel,
+  setupMinutes,
 }: {
   intervalSeconds: number
   totalStages: number
   onStageChange: (stage: number) => void
+  onTick?: (stage: number, elapsed: number) => void
+  stageLabel?: string
+  setupMinutes?: number
 }) {
   const [stage, setStage] = useState(1)
   const [elapsed, setElapsed] = useState(0)
@@ -224,6 +230,8 @@ function StageTimer({
   const ref = useRef<ReturnType<typeof setInterval> | null>(null)
   const onStageChangeRef = useRef(onStageChange)
   useEffect(() => { onStageChangeRef.current = onStageChange })
+  const onTickRef = useRef(onTick)
+  onTickRef.current = onTick
 
   useEffect(() => {
     if (running) {
@@ -235,32 +243,41 @@ function StageTimer({
   }, [running])
 
   useEffect(() => {
-    if (running && elapsed > 0 && elapsed >= intervalSeconds * 60) {
+    const stageDur = setupMinutes != null && stage === 1 ? setupMinutes : intervalSeconds
+    if (running && elapsed > 0 && elapsed >= stageDur * 60) {
       const next = Math.min(stage + 1, totalStages)
       setElapsed(0)
       setStage(next)
       onStageChangeRef.current(next)
+    } else {
+      onTickRef.current?.(stage, elapsed)
     }
-  }, [elapsed, running, intervalSeconds, totalStages, stage])
+  }, [elapsed, running, intervalSeconds, totalStages, stage, setupMinutes])
 
   function reset() {
     setRunning(false)
     setElapsed(0)
     setStage(1)
     onStageChange(1)
+    onTickRef.current?.(1, 0)
   }
 
-  const remaining = Math.max(0, intervalSeconds * 60 - elapsed)
+  const stageDur = setupMinutes != null && stage === 1 ? setupMinutes : intervalSeconds
+  const remaining = Math.max(0, stageDur * 60 - elapsed)
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60
 
   return (
     <div className="bg-white rounded-2xl border border-[hsl(var(--border))] px-5 py-3 flex items-center gap-3 shadow-sm">
+      <div className={`flex flex-col items-center gap-1 shrink-0 ${running ? "visible" : "invisible"}`}>
+        <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest leading-none">Live</span>
+      </div>
       <div className="flex-1 text-center">
         <span className="text-sm font-bold text-secondary uppercase tracking-widest block leading-none mb-1.5">
-          Stage {stage} / {totalStages}
+          {stageLabel || `Stage ${stage} / ${totalStages}`}
         </span>
-        <span className={`text-3xl font-black tabular-nums tracking-tighter leading-none ${running ? "text-primary" : "text-[#D1D1D6]"}`}>
+        <span className={`text-3xl font-mono font-bold leading-none block text-center ${running ? "text-primary" : "text-[#D1D1D6]"}`}>
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </span>
       </div>
@@ -527,6 +544,15 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [activeRow, setActiveRow] = useState<number | null>(null)
   const [lacStrings, setLacStrings] = useState<Record<number, string>>({})
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const timerRowRef = useRef<HTMLTableRowElement | null>(null)
+  const timerDrivenRef = useRef(false)
+  const [timerLabel, setTimerLabel] = useState("Setup")
+  useEffect(() => {
+    if (timerDrivenRef.current) {
+      timerRowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      timerDrivenRef.current = false
+    }
+  }, [activeRow])
 
   // ── Unsaved-changes guard ─────────────────────────────────────────
   const isDirty =
@@ -927,7 +953,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     onClick={() => changeSport(s)}
                     className={`px-4 py-2 rounded-full text-base font-medium border transition-colors ${
                       form.sport === s
-                        ? "bg-[#007AFF] text-white border-[#007AFF]"
+                        ? "bg-[#0071BA] text-white border-[#0071BA]"
                         : "bg-white text-[#86868B] border-[hsl(var(--border))] hover:border-[#86868B]"
                     }`}
                   >
@@ -943,7 +969,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 <button
                   type="button"
                   onClick={() => setShowBikeSettings((v) => !v)}
-                  className="text-sm text-[#007AFF] font-medium hover:text-[#0066d6]"
+                  className="text-sm text-[#0071BA] font-medium hover:text-[#005a96]"
                 >
                   {showBikeSettings ? "Dölj cykelinställningar" : "+ Lägg till cykelinställningar"}
                 </button>
@@ -1081,7 +1107,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                             onClick={() => update("speedIncrement", String(s))}
                             className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
                               form.speedIncrement === String(s)
-                                ? "bg-[#007AFF] text-white border-[#007AFF]"
+                                ? "bg-[#0071BA] text-white border-[#0071BA]"
                                 : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
                             }`}
                           >
@@ -1100,7 +1126,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                         <div className="flex gap-2 items-center">
                           {[8, 9, 10].map((s) => (
                             <button key={s} type="button" onClick={() => update("startSpeed", String(s))}
-                              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startSpeed === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startSpeed === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                               {s}
                             </button>
                           ))}
@@ -1119,7 +1145,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                         <div className="flex gap-2">
                           {[0.5, 1.0].map((s) => (
                             <button key={s} type="button" onClick={() => update("speedIncrement", String(s))}
-                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.speedIncrement === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.speedIncrement === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                               +{s}
                             </button>
                           ))}
@@ -1131,7 +1157,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                       <div className="flex gap-2">
                         {[0, 1, 2, 3, 5].map((s) => (
                           <button key={s} type="button" onClick={() => update("incline", String(s))}
-                            className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.incline === String(s) ? "bg-[#007AFF] text-white border-[#007AFF]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                            className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.incline === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                             {s}%
                           </button>
                         ))}
@@ -1162,7 +1188,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                         onClick={() => update("stepSize", String(s))}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
                           form.stepSize === String(s)
-                            ? "bg-[#007AFF] text-white border-[#007AFF]"
+                            ? "bg-[#0071BA] text-white border-[#0071BA]"
                             : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
                         }`}
                       >
@@ -1185,7 +1211,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                         onClick={() => setForm((f) => ({ ...f, startWatt: String(p.startWatt), stepSize: String(p.stepSize) }))}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
                           active
-                            ? "bg-[#007AFF] text-white border-[#007AFF]"
+                            ? "bg-[#0071BA] text-white border-[#0071BA]"
                             : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
                         }`}
                       >
@@ -1329,7 +1355,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <Label htmlFor="wgNotes">Anteckningar</Label>
           <textarea id="wgNotes" value={form.notes} onChange={(e) => update("notes", e.target.value)}
             rows={3} placeholder="Fritext…"
-            className="mt-1 w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] px-3 py-2 text-base text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none" />
+            className="mt-1 w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] px-3 py-2 text-base text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#0071BA] resize-none" />
         </div>
 
         {error && <p className="text-sm text-[hsl(var(--destructive))] text-center">{error}</p>}
@@ -1365,8 +1391,25 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         <div className="flex items-center gap-3 shrink-0">
           <StageTimer
             intervalSeconds={parseInt(form.testDuration) || 3}
-            totalStages={stageCount || 1}
+            totalStages={(stageCount || 1) + 1}
+            setupMinutes={1}
             onStageChange={() => {}}
+            stageLabel={timerLabel}
+            onTick={(stage, elapsed) => {
+              let absMin: number
+              if (stage === 1) {
+                absMin = 0
+                setTimerLabel("Setup")
+              } else {
+                absMin = (stage - 2) * dur + Math.floor(elapsed / 60) + 1
+                setTimerLabel(`Stage ${stage - 1} / ${stageCount || 1}`)
+              }
+              const idx = rows.findIndex(r => r.min === absMin)
+              if (idx !== -1) {
+                timerDrivenRef.current = true
+                setActiveRow(idx)
+              }
+            }}
           />
           {guestMode ? (
             <>
@@ -1438,7 +1481,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   })
                 }
               }}
-              className="text-sm text-[#007AFF] hover:text-[#0066d6] font-medium"
+              className="text-sm text-[#0071BA] hover:text-[#005a96] font-medium"
             >
               Fyll i exempeldata
             </button>
@@ -1467,7 +1510,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   return (
                     <tr
                       key={i}
-                      className={`transition-colors ${!isVo2 && lacOk ? "bg-[#007AFF]/[0.03]" : ""} ${activeRow === i ? "ring-1 ring-inset ring-[#007AFF]/20" : ""}`}
+                      ref={activeRow === i ? timerRowRef : null}
+                      className={`transition-colors ${activeRow === i ? "bg-[#0071BA]/[0.10] ring-2 ring-inset ring-[#0071BA]/40" : (!isVo2 && lacOk ? "bg-[#0071BA]/[0.03]" : "")}`}
                     >
                       {/* Min */}
                       <td className="px-3 py-2">
@@ -1546,7 +1590,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                       </>}
                       {/* Delete row (stage-end for regular; any row for VO2max) */}
                       <td className="px-1 py-2 text-center">
-                        {(isVo2 ? i > 0 : borgOk) ? (
+                        {(isVo2 ? i > 0 : borgOk) && i === rows.length - 1 ? (
                           <button
                             type="button"
                             onClick={() => isVo2 ? setRows((prev) => prev.filter((_, idx) => idx !== i)) : removeStage(row.min)}
@@ -1569,7 +1613,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             <button
               type="button"
               onClick={addStage}
-              className="text-sm text-[#007AFF] hover:text-[#0066d6] font-medium"
+              className="text-sm text-[#0071BA] hover:text-[#005a96] font-medium"
             >
               + Lägg till {form.testType === "vo2max" ? "rad" : "steg"}
             </button>

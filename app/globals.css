@@ -20,25 +20,25 @@ input[type="number"] {
     --card-foreground: 240 6% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 6% 10%;
-    --primary: 211 100% 50%;
+    --primary: 204 100% 36%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 5% 94%;
     --secondary-foreground: 240 6% 20%;
     --muted: 240 5% 94%;
     --muted-foreground: 240 4% 52%;
-    --accent: 211 100% 50%;
+    --accent: 204 100% 36%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 240 5% 90%;
     --input: 240 5% 90%;
-    --ring: 211 100% 50%;
+    --ring: 204 100% 36%;
     --radius: 1rem;
 
     /* Text color hierarchy — enforces consistency across components */
     --text-primary: #1D1D1F;     /* Primary text: all body content, labels, headings, important data */
     --text-secondary: #515154;   /* Secondary text: timestamps, units, metadata, subtle hints */
-    --text-interactive: #007AFF; /* Interactive text: links, buttons — do not use for data */
+    --text-interactive: #0071BA; /* Interactive text: links, buttons — do not use for data */
   }
 }
 
@@ -95,7 +95,7 @@ input[type="number"] {
 }
 .table-input:focus {
   outline: none;
-  border-color: rgb(0 122 255 / 0.6);
+  border-color: rgb(0 113 186 / 0.6);
   background: #ffffff;
 }
 
@@ -113,12 +113,12 @@ input[type="number"] {
 }
 .table-input-lg:focus {
   outline: none;
-  border-color: rgb(0 122 255 / 0.6);
+  border-color: rgb(0 113 186 / 0.6);
   background: #ffffff;
 }
 
 /* Active (focused) row in data tables */
-.row-active  { background-color: rgb(0 122 255 / 0.05); }
+.row-active  { background-color: rgb(0 113 186 / 0.05); }
 
 /* Current timer stage row */
 .row-current { background-color: hsl(35 91% 50% / 0.07); }

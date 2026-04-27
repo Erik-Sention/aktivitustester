@@ -22,7 +22,7 @@ import { Pencil, ChevronRight } from "lucide-react"
 function PageSpinner() {
   return (
     <div className="flex items-center justify-center h-64">
-      <div className="h-8 w-8 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+      <div className="h-8 w-8 rounded-full border-2 border-[#0071BA] border-t-transparent animate-spin" />
     </div>
   )
 }
@@ -80,9 +80,9 @@ export function TestDetailClient({ id }: { id: string }) {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-0.5">
           <nav className="flex items-center gap-1.5 text-sm font-semibold text-secondary" data-pdf-hide>
-            <Link href="/dashboard/athletes" className="hover:text-[#007AFF] transition-colors">Atleter</Link>
+            <Link href="/dashboard/athletes" className="hover:text-[#0071BA] transition-colors">Atleter</Link>
             <span>/</span>
-            <Link href={`/dashboard/athletes/${test.athleteId}`} className="hover:text-[#007AFF] transition-colors text-primary">
+            <Link href={`/dashboard/athletes/${test.athleteId}`} className="hover:text-[#0071BA] transition-colors text-primary">
               {athleteName}
             </Link>
           </nav>
@@ -140,7 +140,7 @@ export function TestDetailClient({ id }: { id: string }) {
             <WingateResultsPanel test={serializedTest as any} />
           )}
           {test.testType !== "vo2max" && test.testType !== "wingate" && (
-            <div className="rounded-2xl bg-[#007AFF] p-6 text-white shadow-xl shadow-[#007AFF]/20">
+            <div className="rounded-2xl bg-[#0071BA] p-6 text-white shadow-xl shadow-[#0071BA]/20">
               <span className="text-sm font-black uppercase tracking-[0.15em] text-white">Coachbedömning</span>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                 <div>

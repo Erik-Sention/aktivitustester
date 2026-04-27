@@ -21,7 +21,7 @@ import { Pencil, Mail, Phone, User, Calendar, Hash, ShieldCheck, ShieldOff, Cloc
 function PageSpinner() {
   return (
     <div className="flex items-center justify-center h-64">
-      <div className="h-8 w-8 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+      <div className="h-8 w-8 rounded-full border-2 border-[#0071BA] border-t-transparent animate-spin" />
     </div>
   )
 }

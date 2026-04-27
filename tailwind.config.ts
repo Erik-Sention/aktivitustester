@@ -20,8 +20,8 @@ const config: Config = {
       colors: {
         background: "#F5F5F7",
         card: "#FFFFFF",
-        brand: "#007AFF",
-        accent: "#007AFF",
+        brand: "#0071BA",
+        accent: "#0071BA",
         "at-black": "#1D1D1F",
         "at-mid":   "#86868B",
         "at-light": "#F5F5F7",
@@ -38,7 +38,7 @@ const config: Config = {
       textColor: {
         primary:      "var(--text-primary)",      /* #1D1D1F — all body text, labels, data */
         secondary:    "var(--text-secondary)",    /* #515154 — timestamps, units, secondary info */
-        interactive:  "var(--text-interactive)",  /* #007AFF — links & buttons only */
+        interactive:  "var(--text-interactive)",  /* #0071BA — links & buttons only */
       },
       boxShadow: {
         "apple":       "0 2px 8px 0 rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",

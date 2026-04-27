@@ -100,7 +100,7 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
             href="/dashboard/profile"
             className="flex items-center gap-2.5 hover:opacity-75 transition-opacity"
           >
-            <div className="h-8 w-8 rounded-full overflow-hidden bg-[#007AFF]/10 flex items-center justify-center text-xs font-bold text-interactive flex-shrink-0">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-[#0071BA]/10 flex items-center justify-center text-xs font-bold text-interactive flex-shrink-0">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (

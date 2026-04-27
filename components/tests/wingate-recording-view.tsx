@@ -67,7 +67,7 @@ export function WingateTimer() {
         <span className="text-sm font-bold text-[#515154] uppercase tracking-widest block leading-none mb-1.5">
           {finished ? "KLAR" : "WINGATE 30 SEK"}
         </span>
-        <span className={`text-4xl font-black tabular-nums tracking-tighter leading-none ${running ? "text-[#007AFF]" : finished ? "text-[#34C759]" : "text-[#D1D1D6]"}`}>
+        <span className={`text-4xl font-black tabular-nums tracking-tighter leading-none ${running ? "text-[#0071BA]" : finished ? "text-[#34C759]" : "text-[#D1D1D6]"}`}>
           {String(remaining).padStart(2, "0")}
         </span>
       </div>
@@ -365,7 +365,7 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
           onChange={(e) => setField("notes", e.target.value)}
           rows={3}
           placeholder="Fritext…"
-          className="mt-1 w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] px-3 py-2 text-base text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
+          className="mt-1 w-full rounded-xl border border-[hsl(var(--border))] bg-[#F5F5F7] px-3 py-2 text-base text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#0071BA] resize-none"
         />
       </div>
 

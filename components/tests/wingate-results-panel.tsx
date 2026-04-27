@@ -18,7 +18,7 @@ export function WingateResultsPanel({ test }: WingateResultsPanelProps) {
     <div className="space-y-5">
 
       {/* Effektresultat */}
-      <div className="rounded-2xl bg-[#007AFF] p-6 text-white shadow-xl shadow-[#007AFF]/20">
+      <div className="rounded-2xl bg-[#0071BA] p-6 text-white shadow-xl shadow-[#0071BA]/20">
         <p className="text-sm font-black uppercase tracking-[0.15em] text-white mb-4">Wingate-resultat</p>
 
         <div className="space-y-4">

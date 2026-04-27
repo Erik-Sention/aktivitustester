@@ -66,7 +66,7 @@ export function ConsentDocumentModal({ onClose }: Props) {
               "Skapa personliga träningsprogram och rapporter",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2 text-[#515154]">
-                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#007AFF] flex-shrink-0" />
+                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#0071BA] flex-shrink-0" />
                 {item}
               </li>
             ))}

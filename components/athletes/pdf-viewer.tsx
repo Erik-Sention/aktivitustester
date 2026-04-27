@@ -45,7 +45,7 @@ export function PdfViewer({ url, pageWidth }: PdfViewerProps) {
             onLoadError={() => setError("Kunde inte läsa PDF")}
             loading={
               <div className="flex items-center justify-center p-8">
-                <div className="h-8 w-8 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+                <div className="h-8 w-8 rounded-full border-2 border-[#0071BA] border-t-transparent animate-spin" />
               </div>
             }
           >

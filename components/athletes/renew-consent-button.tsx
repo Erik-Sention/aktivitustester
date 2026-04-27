@@ -43,7 +43,7 @@ export function RenewConsentButton({
           <button
             type="button"
             onClick={() => setShowConsentDoc(true)}
-            className="text-xs text-[#007AFF] hover:underline"
+            className="text-xs text-[#0071BA] hover:underline"
           >
             Läs samtyckesavtalet här
           </button>

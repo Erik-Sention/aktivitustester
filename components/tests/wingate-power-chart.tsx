@@ -18,7 +18,7 @@ interface WingatePowerChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  Peak:  "#007AFF",
+  Peak:  "#0071BA",
   Medel: "#34C759",
   Min:   "#FF9500",
 }

@@ -10,8 +10,8 @@ import { calculateNineZones } from '@/lib/zones'
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const C = {
-  blue:       '#1e40af',
-  blueLight:  '#bfdbfe',
+  blue:       '#0071BA',
+  blueLight:  '#b3d9f0',
   green:      '#0f766e',
   greenBg:    '#ccfbf1',
   purple:     '#4338ca',
@@ -342,7 +342,9 @@ function PerformanceChart({
   estMaxHR: number | null
   isSpeed?: boolean
 }) {
-  const pts = rawData.filter(p => p.min >= 0 && (p.watt > 0 || (p.speed ?? 0) > 0 || p.hr > 0))
+  const lastDataIdx = rawData.reduce((max, r, i) => (r.hr > 0 || r.lac > 0) ? i : max, -1)
+  const activeRaw = lastDataIdx >= 0 ? rawData.slice(0, lastDataIdx + 1) : rawData
+  const pts = activeRaw.filter(p => p.min >= 0 && (p.watt > 0 || (p.speed ?? 0) > 0 || p.hr > 0))
   if (pts.length < 2) return null
 
   const intensityOf = (p: RawDataPoint) => isSpeed ? (p.speed ?? 0) : p.watt

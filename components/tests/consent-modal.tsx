@@ -166,7 +166,7 @@ export function ConsentModal({ athleteName, athleteEmail, coaches, defaultCoachU
         <button
           type="button"
           onClick={() => setShowConsentDoc(true)}
-          className="text-xs text-[#007AFF] hover:underline text-left"
+          className="text-xs text-[#0071BA] hover:underline text-left"
         >
           Läs samtyckesavtalet här
         </button>

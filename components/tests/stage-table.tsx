@@ -320,7 +320,7 @@ export function StageTable({
                 ? (stage.stageNumber === 0 || (stage.stageNumber > 0 && stage.stageNumber % activeStepMinutes! === 0))
                 : true;
               const rowBg = isPerMinuteMode
-                ? (isStepEnd ? "border-b bg-[#007AFF]/[0.04] last:border-0" : "border-b last:border-0")
+                ? (isStepEnd ? "border-b bg-[#0071BA]/[0.04] last:border-0" : "border-b last:border-0")
                 : "border-b last:border-0";
               return (
                 <tr key={rowIdx} className={rowBg + " [&_td]:py-4 [&_td]:px-3"}>

@@ -205,8 +205,8 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                     className={cn(
                       "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
                       resultType === type
-                        ? "bg-[#007AFF] border-[#007AFF] text-white"
-                        : "bg-white border-[#C7C7CC] text-[#1D1D1F] hover:border-[#007AFF]"
+                        ? "bg-[#0071BA] border-[#0071BA] text-white"
+                        : "bg-white border-[#C7C7CC] text-[#1D1D1F] hover:border-[#0071BA]"
                     )}
                   >
                     {type}
@@ -224,7 +224,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                     value={customResultType}
                     onChange={(e) => setCustomResultType(e.target.value)}
                     required
-                    className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
+                    className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#0071BA]/30 focus:bg-white transition-all"
                   />
                 </div>
               )}
@@ -242,7 +242,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                 onChange={(e) => setTestDate(e.target.value)}
                 required
                 min={archiveOnly ? "2000-01-01" : undefined}
-                className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
+                className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#0071BA]/30 focus:bg-white transition-all"
               />
             </div>
             <div className="space-y-1.5">
@@ -253,7 +253,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                 value={testDateEnd}
                 onChange={(e) => setTestDateEnd(e.target.value)}
                 min={testDate || undefined}
-                className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:bg-white transition-all"
+                className="flex h-12 w-full rounded-xl bg-[hsl(var(--input))] px-4 py-3 text-base text-primary focus:outline-none focus:ring-2 focus:ring-[#0071BA]/30 focus:bg-white transition-all"
               />
             </div>
           </div>
@@ -270,13 +270,13 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
               className={cn(
                 "border-2 border-dashed rounded-xl px-4 py-5 flex flex-col items-center gap-2 cursor-pointer transition-colors",
                 dragOver
-                  ? "border-[#007AFF] bg-[#007AFF]/5"
-                  : "border-[#C7C7CC] hover:border-[#007AFF] hover:bg-[#F5F5F7]/50"
+                  ? "border-[#0071BA] bg-[#0071BA]/5"
+                  : "border-[#C7C7CC] hover:border-[#0071BA] hover:bg-[#F5F5F7]/50"
               )}
             >
               <Upload className="h-6 w-6 text-[#86868B]" />
               <span className="text-sm text-[#515154]">
-                Dra och släpp eller <span className="text-[#007AFF]">välj filer</span>
+                Dra och släpp eller <span className="text-[#0071BA]">välj filer</span>
               </span>
               <span className="text-xs text-[#86868B]">PDF, JPEG, PNG, XLS, XLSX, XLSM — flera filer tillåtna</span>
             </div>
@@ -314,7 +314,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                         setFileDisplayNames((prev) => prev.map((v, j) => j === i ? val : v))
                       }}
                       disabled={loading}
-                      className="flex-1 min-w-0 bg-white rounded-lg border border-[#C7C7CC] px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#007AFF] disabled:opacity-40 placeholder:text-[#C7C7CC]"
+                      className="flex-1 min-w-0 bg-white rounded-lg border border-[#C7C7CC] px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#0071BA] disabled:opacity-40 placeholder:text-[#C7C7CC]"
                     />
                     <span className="text-xs text-[#86868B] flex-shrink-0">{formatBytes(file.size)}</span>
                     <button
@@ -340,7 +340,7 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
               </div>
               <div className="h-2 bg-[#E5E5EA] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#007AFF] rounded-full transition-all duration-200"
+                  className="h-full bg-[#0071BA] rounded-full transition-all duration-200"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

@@ -96,7 +96,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
   if (loading) {
     return (
       <div className="bg-white rounded-3xl shadow-apple p-8 flex items-center justify-center h-48">
-        <div className="h-8 w-8 rounded-full border-2 border-[#007AFF] border-t-transparent animate-spin" />
+        <div className="h-8 w-8 rounded-full border-2 border-[#0071BA] border-t-transparent animate-spin" />
       </div>
     )
   }
@@ -113,7 +113,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
           disabled={uploading}
           className="relative group flex-shrink-0"
         >
-          <div className="h-20 w-20 rounded-full overflow-hidden bg-[#007AFF]/10 flex items-center justify-center text-2xl font-bold text-interactive">
+          <div className="h-20 w-20 rounded-full overflow-hidden bg-[#0071BA]/10 flex items-center justify-center text-2xl font-bold text-interactive">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Profilbild" className="h-full w-full object-cover" />
             ) : (

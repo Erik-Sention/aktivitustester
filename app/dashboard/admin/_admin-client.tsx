@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 
-type Tab = 'coaches' | 'athletes' | 'tests' | 'files' | 'export' | 'seed'
+type Tab = 'coaches' | 'athletes' | 'tests' | 'files' | 'export' | 'seed' | 'import'
 
 interface UserDoc {
   _id: string
@@ -89,6 +89,10 @@ export function AdminClient() {
   // Seed state
   const [seedLoading, setSeedLoading] = useState(false)
   const [seedResult, setSeedResult] = useState<string | null>(null)
+
+  // Import CSV state
+  const [importLoading, setImportLoading] = useState(false)
+  const [importResult, setImportResult] = useState<{ imported: number; errors: string[] } | null>(null)
 
   // Fetch coaches on mount
   useEffect(() => {
@@ -253,12 +257,34 @@ export function AdminClient() {
     }
   }
 
+  async function handleImport(file: File) {
+    setImportLoading(true)
+    setImportResult(null)
+    setError(null)
+    try {
+      const text = await file.text()
+      const res = await fetch('/api/admin/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: text,
+      })
+      const data = await res.json() as { imported?: number; errors?: string[]; error?: string }
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setImportResult({ imported: data.imported ?? 0, errors: data.errors ?? [] })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Import misslyckades')
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'coaches', label: 'Coacher' },
     { key: 'athletes', label: 'Arkiverade atleter' },
     { key: 'tests', label: 'Arkiverade tester' },
     { key: 'files', label: 'Arkiverade filer' },
     { key: 'export', label: 'Exportera data' },
+    { key: 'import', label: 'Importera CSV' },
     { key: 'seed', label: 'Demodata' },
   ]
 
@@ -295,6 +321,7 @@ export function AdminClient() {
         {/* ── Coacher ── */}
         {tab === 'coaches' && (
           usersLoading ? <Loading /> : users.length === 0 ? <Empty text="Inga coacher hittades" /> : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
@@ -325,12 +352,14 @@ export function AdminClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           )
         )}
 
         {/* ── Arkiverade atleter ── */}
         {tab === 'athletes' && (
           athletesLoading ? <Loading /> : archivedAthletes.length === 0 && athletesFetched ? <Empty text="Inga arkiverade atleter" /> : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
@@ -355,12 +384,14 @@ export function AdminClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           )
         )}
 
         {/* ── Arkiverade tester ── */}
         {tab === 'tests' && (
           testsLoading ? <Loading /> : archivedTests.length === 0 && testsFetched ? <Empty text="Inga arkiverade tester" /> : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
@@ -386,12 +417,14 @@ export function AdminClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           )
         )}
 
         {/* ── Arkiverade filer ── */}
         {tab === 'files' && (
           filesLoading ? <Loading /> : archivedFiles.length === 0 && filesFetched ? <Empty text="Inga arkiverade filer" /> : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/[0.06]">
@@ -416,7 +449,35 @@ export function AdminClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           )
+        )}
+
+        {/* ── Importera CSV ── */}
+        {tab === 'import' && (
+          <div className="px-8 py-8 space-y-5">
+            <p className="text-sm text-secondary">
+              Importera ett test från en JSON-backup som laddades ned via nödknappen i testet. Atleten hämtas automatiskt via ID:t i filen.
+            </p>
+            {importResult && (
+              <div className={`rounded-2xl border px-5 py-3 text-sm space-y-2 ${importResult.imported > 0 ? 'bg-green-50 border-green-100 text-green-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                <p className="font-semibold">{importResult.imported} {importResult.imported === 1 ? 'test importerades' : 'tester importerades'}</p>
+                {importResult.errors.map((e, i) => (
+                  <p key={i} className="text-xs">{e}</p>
+                ))}
+              </div>
+            )}
+            <label className="flex flex-col gap-3">
+              <input
+                type="file"
+                accept=".json"
+                disabled={importLoading}
+                className="text-sm text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-[#F5F5F7] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-[#E5E5EA] cursor-pointer"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleImport(f) }}
+              />
+            </label>
+            {importLoading && <p className="text-sm text-secondary">Importerar…</p>}
+          </div>
         )}
 
         {/* ── Demodata ── */}

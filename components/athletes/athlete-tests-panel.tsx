@@ -115,7 +115,7 @@ function maybeExcelDate(val: string): string {
 }
 
 const CHART_DEFS = [
-  { keys: ["effekt", "watt", " w"], color: "#007AFF", name: "Effekt (W)", yAxis: "left" },
+  { keys: ["effekt", "watt", " w"], color: "#0071BA", name: "Effekt (W)", yAxis: "left" },
   { keys: ["puls", "hr", "hjärt"],  color: "#F59E0B", name: "Puls",       yAxis: "left" },
   { keys: ["laktat", "lac"],         color: "#EF4444", name: "Laktat",     yAxis: "right" },
 ]
@@ -640,7 +640,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
             placeholder="Orsak till arkivering…"
             value={archiveMenuReason}
             onChange={(e) => setArchiveMenuReason(e.target.value.slice(0, 50))}
-            className="w-full rounded-lg border border-[#C7C7CC] px-2.5 py-1.5 text-sm pr-9 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+            className="w-full rounded-lg border border-[#C7C7CC] px-2.5 py-1.5 text-sm pr-9 focus:outline-none focus:ring-1 focus:ring-[#0071BA]"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#86868B]">{archiveMenuReason.length}/50</span>
         </div>
@@ -719,9 +719,9 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           "bg-white rounded-2xl border shadow-sm flex items-center gap-3 px-4 py-4 transition-colors",
           !isEditing && "cursor-pointer hover:bg-[#F5F5F7]/50",
           isActive
-            ? "border-[#007AFF] shadow-[0_0_0_2px_rgba(0,122,255,0.1)]"
+            ? "border-[#0071BA] shadow-[0_0_0_2px_rgba(0,122,255,0.1)]"
             : "border-[hsl(var(--border))]",
-          indented && "ml-6 border-l-2 border-l-[#007AFF]/20 rounded-l-none"
+          indented && "ml-6 border-l-2 border-l-[#0071BA]/20 rounded-l-none"
         )}
       >
         <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[#515154]">
@@ -737,7 +737,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 value={editingResultType}
                 onChange={(e) => setEditingResultType(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                className="text-sm font-semibold border border-[#007AFF] rounded px-1.5 py-0.5 outline-none"
+                className="text-sm font-semibold border border-[#0071BA] rounded px-1.5 py-0.5 outline-none"
               />
             ) : (
               <span className="font-semibold text-[#1D1D1F]">{f.resultType}</span>
@@ -830,7 +830,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
           onClick={() => toggleGroup(group.groupId)}
           className="bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm flex items-center gap-3 px-4 py-4 cursor-pointer hover:bg-[#F5F5F7]/50 transition-colors"
         >
-          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[#007AFF]">
+          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[#0071BA]">
             <Folder className="w-4 h-4" />
           </div>
 
@@ -841,7 +841,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   autoFocus
                   value={editingGroupName}
                   onChange={(e) => setEditingGroupName(e.target.value)}
-                  className="text-sm font-semibold border border-[#007AFF] rounded px-1.5 py-0.5 outline-none flex-1 min-w-0"
+                  className="text-sm font-semibold border border-[#0071BA] rounded px-1.5 py-0.5 outline-none flex-1 min-w-0"
                 />
                 <button onClick={() => handleSaveGroupEdit(group)} className="p-1 rounded hover:bg-green-50 text-green-600">
                   <Check className="w-4 h-4" />
@@ -1059,7 +1059,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                   className={cn(
                     "bg-white rounded-2xl border transition-colors cursor-pointer flex items-center gap-3 px-4 py-4",
                     isSelected
-                      ? "border-[#007AFF] shadow-[0_0_0_2px_rgba(0,122,255,0.15)]"
+                      ? "border-[#0071BA] shadow-[0_0_0_2px_rgba(0,122,255,0.15)]"
                       : "border-[hsl(var(--border))] hover:bg-[#F5F5F7]/50 shadow-sm"
                   )}
                 >
@@ -1072,8 +1072,8 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                       className={cn(
                         "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
                         isSelected
-                          ? "bg-[#007AFF] border-[#007AFF]"
-                          : "bg-white border-[#C7C7CC] hover:border-[#007AFF]"
+                          ? "bg-[#0071BA] border-[#0071BA]"
+                          : "bg-white border-[#C7C7CC] hover:border-[#0071BA]"
                       )}
                     >
                       {isSelected && (
@@ -1176,7 +1176,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                     if (successMessage.reload) window.location.reload()
                     else setSuccessMessage(null)
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-semibold hover:bg-[#0071e3] transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[#0071BA] text-white text-sm font-semibold hover:bg-[#0071e3] transition-colors"
                 >
                   OK
                 </button>
@@ -1333,7 +1333,7 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
                 <div className="flex flex-col flex-1 bg-white">
                   {excelLoading && (
                     <div className="flex items-center justify-center flex-1 gap-3 text-[#515154] py-16">
-                      <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-[#0071BA] border-t-transparent rounded-full animate-spin" />
                       Läser fil…
                     </div>
                   )}

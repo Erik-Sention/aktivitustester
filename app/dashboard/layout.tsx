@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getSessionUser } from "@/lib/session"
 import { NavBar } from "@/components/nav-bar"
+import { DraftRecoveryBanner } from "@/components/draft-recovery-banner"
 
 export default async function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <NavBar userName={user.email} role={user.role} uid={user.uid} />
+      <DraftRecoveryBanner />
       <main className="flex-1 w-full px-6 py-8">
         {children}
       </main>

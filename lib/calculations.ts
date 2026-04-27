@@ -50,7 +50,7 @@ export const VO2MAX_ZONES = [
   { label: "Aktiv",     colorBg: "bg-[#B8E6B8]", colorText: "text-[#1D1D1F]" },
   { label: "Atlet",     colorBg: "bg-[#6EC96E]", colorText: "text-white" },
   { label: "Pro",       colorBg: "bg-[#3DB8B8]", colorText: "text-white" },
-  { label: "Elite",     colorBg: "bg-[#007AFF]", colorText: "text-white" },
+  { label: "Elite",     colorBg: "bg-[#0071BA]", colorText: "text-white" },
 ]
 
 // Lower bound of each zone, index matches VO2MAX_ZONES
