@@ -1,5 +1,7 @@
+import { getSessionUser } from "@/lib/session"
 import { AthletesClientPage } from "./_athletes-client"
 
-export default function AthletesPage() {
-  return <AthletesClientPage />
+export default async function AthletesPage() {
+  const user = await getSessionUser()
+  return <AthletesClientPage userRole={user?.role} />
 }

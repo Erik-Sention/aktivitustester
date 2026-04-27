@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { getAthletes } from "@/lib/athletes"
+import { getCoachProfileClient } from "@/lib/coach-profile"
 import { Athlete } from "@/types"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/button"
@@ -19,20 +20,20 @@ function PageSpinner() {
   )
 }
 
-export function AthletesClientPage() {
+export function AthletesClientPage({ userRole }: { userRole?: string }) {
   const [athletes, setAthletes] = useState<Athlete[]>([])
+  const [coachName, setCoachName] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       unsub()
       if (!user) return
-      const data = await getAthletes()
+      const [data, profile] = await Promise.all([getAthletes(), getCoachProfileClient(user.uid)])
+      setCoachName(profile?.displayName || undefined)
       setAthletes(data)
       setLoading(false)
     })
@@ -40,6 +41,8 @@ export function AthletesClientPage() {
   }, [])
 
   if (!mounted || loading) return <PageSpinner />
+
+  const isAdmin = userRole === "ADMIN"
 
   return (
     <div className="space-y-4">
@@ -60,17 +63,21 @@ export function AthletesClientPage() {
           </Link>
         </div>
       ) : (
-        <AthletesTable athletes={athletes.map((a): SerializedAthlete => ({
-          id: a.id,
-          firstName: a.firstName,
-          lastName: a.lastName,
-          gender: a.gender,
-          email: a.email,
-          phone: a.phone,
-          mainCoach: a.mainCoach,
-          currentWeight: a.currentWeight,
-          status: a.status,
-        }))} />
+        <AthletesTable
+          isAdmin={isAdmin}
+          currentCoachName={coachName}
+          athletes={athletes.map((a): SerializedAthlete => ({
+            id: a.id,
+            firstName: a.firstName,
+            lastName: a.lastName,
+            gender: a.gender,
+            email: a.email,
+            phone: a.phone,
+            mainCoach: a.mainCoach,
+            currentWeight: a.currentWeight,
+            status: a.status,
+          }))}
+        />
       )}
     </div>
   )

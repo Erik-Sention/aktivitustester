@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { createAthleteAction, updateAthleteAction } from "@/app/actions/athletes"
+import { getCoachProfilesClient } from "@/lib/coach-profile"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -60,6 +61,11 @@ export function AthleteForm({ existing }: AthleteFormProps) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [coaches, setCoaches] = useState<{ displayName: string }[]>([])
+
+  useEffect(() => {
+    getCoachProfilesClient().then(setCoaches)
+  }, [])
 
   const [form, setForm] = useState({
     firstName: existing?.firstName ?? "",
@@ -215,11 +221,16 @@ export function AthleteForm({ existing }: AthleteFormProps) {
 
               <div className="space-y-1">
                 <Label htmlFor="mainCoach">Huvudcoach</Label>
-                <Input
+                <Select
                   id="mainCoach"
                   value={form.mainCoach}
                   onChange={(e) => update("mainCoach", e.target.value)}
-                />
+                >
+                  <option value="">— Välj coach —</option>
+                  {coaches.map((c) => (
+                    <option key={c.displayName} value={c.displayName}>{c.displayName}</option>
+                  ))}
+                </Select>
               </div>
             </>
           )}
