@@ -28,7 +28,7 @@ function LoadDot(props: any) {
   return (
     <g>
       <circle cx={cx} cy={cy} r={2.5} fill="#C7C7CC" />
-      <text x={cx + 5} y={cy - 14} fontSize={13} fill="#86868B" fontWeight="700" fontFamily="sans-serif">
+      <text x={cx + 5} y={cy - 20} fontSize={12} fill="#86868B" fontWeight="700" fontFamily="sans-serif">
         {label}
       </text>
     </g>
@@ -107,7 +107,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
 
       {/* Cadence — hidden axis, large domain pushes values into bottom quarter */}
       {hasCadence && (
-        <YAxis yAxisId="cadence" orientation="left" domain={[0, 360]} hide />
+        <YAxis yAxisId="cadence" orientation="left" domain={[0, 1800]} hide />
       )}
 
       {/* Right 3: Lactate */}
@@ -247,7 +247,19 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           activeDot={{ r: 6 }}
           connectNulls
         >
-          <LabelList dataKey="borg" position="top" offset={7} style={{ fontSize: 13, fill: "#f59e0b", fontWeight: 700 }} />
+          <LabelList
+              dataKey="borg"
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              content={({ x, y, value }: any) => {
+                if (!value) return null
+                return (
+                  <text x={(x as number) + 10} y={(y as number) - 12}
+                    fontSize={13} fill="#f59e0b" fontWeight={700}>
+                    {value}
+                  </text>
+                )
+              }}
+            />
         </Line>
       )}
     </ComposedChart>

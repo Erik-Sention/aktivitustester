@@ -20,8 +20,8 @@ const C = {
   zoneMed:    '#d1fae5',
   zoneHigh:   '#fee2e2',
   hrLine:     '#ef4444',
-  lacLine:    '#f59e0b',
-  wattLine:   '#eab308',
+  lacLine:    '#3b82f6',
+  wattLine:   '#C7C7CC',
   lacOrange:  '#f97316',
   lacRed:     '#dc2626',
   slate50:    '#f8fafc',
@@ -333,14 +333,11 @@ function buildStaircase(
 }
 
 function PerformanceChart({
-  rawData, lt1Watt, lt2Watt, lt1HR, lt2HR, nedreHR, estMaxHR, isSpeed,
+  rawData, lt1Watt, lt2Watt, estMaxHR, isSpeed,
 }: {
   rawData: RawDataPoint[]
   lt1Watt: number | null
   lt2Watt: number | null
-  lt1HR:   number | null
-  lt2HR:   number | null
-  nedreHR: number | null
   estMaxHR: number | null
   isSpeed?: boolean
 }) {
@@ -358,10 +355,12 @@ function PerformanceChart({
 
   const hrAxisMax = Math.ceil((maxHRData + 15) / 25) * 25
 
-  const xS  = (m: number) => PX + (m / (maxMin || 1)) * PW
-  const hrY = (h: number) => PY2 - (h / hrAxisMax) * PH
-  const wY  = (w: number) => PY2 - (w / (maxIntensity * 1.05)) * PH
+  const xS   = (m: number) => PX + (m / (maxMin || 1)) * PW
+  const hrY  = (h: number) => PY2 - (h / hrAxisMax) * PH
+  const wY   = (w: number) => PY2 - (w / (maxIntensity * 1.05)) * PH
   const lacY = (l: number) => PY2 - (l / (maxLacData * 1.2)) * PH
+  const cadY = (c: number) => PY2 - (c / 1800) * PH
+  const borgY = (b: number) => PY2 - ((b - 4) / 22) * PH
 
   // HR axis ticks (every 25 bpm)
   const hrTicks: number[] = []
@@ -382,8 +381,10 @@ function PerformanceChart({
     }
   }
 
-  const lacPts = pts.filter(p => p.lac > 0)
-  const hrPts  = pts.filter(p => p.hr > 0)
+  const lacPts  = pts.filter(p => p.lac > 0)
+  const hrPts   = pts.filter(p => p.hr > 0)
+  const cadPts  = pts.filter(p => (p.cadence ?? 0) > 0)
+  const borgPts = pts.filter(p => (p.borg ?? 0) > 0)
 
   const intensityPts = isSpeed
     ? pts.filter(p => (p.speed ?? 0) > 0).map(p => ({ min: p.min, watt: p.speed ?? 0 }))
@@ -391,6 +392,8 @@ function PerformanceChart({
   const wattStaircase = buildStaircase(intensityPts, xS, wY)
   const hrPolyline  = hrPts.map(p => `${xS(p.min).toFixed(1)},${hrY(p.hr).toFixed(1)}`).join(' ')
   const lacPolyline = lacPts.map(p => `${xS(p.min).toFixed(1)},${lacY(p.lac).toFixed(1)}`).join(' ')
+  const cadPolyline  = cadPts.map(p => `${xS(p.min).toFixed(1)},${cadY(p.cadence ?? 0).toFixed(1)}`).join(' ')
+  const borgPolyline = borgPts.map(p => `${xS(p.min).toFixed(1)},${borgY(p.borg ?? 0).toFixed(1)}`).join(' ')
 
   // LT1/LT2 vertical lines — first minute when intensity reaches threshold
   const lt1Min = lt1Watt
@@ -404,33 +407,11 @@ function PerformanceChart({
       : (pts.find(p => p.watt >= lt2Watt)?.min ?? null)
     : null
 
-  const showZones = lt1HR != null && lt2HR != null
-
   return (
     <Svg width={CHART_W} height={CHART_H}>
       {/* Plot background */}
       <Rect x={PX} y={PY} width={PW} height={PH} fill={C.slate50} />
 
-      {/* Zone bands */}
-      {showZones && (() => {
-        const loY   = nedreHR  ? hrY(nedreHR)  : PY2
-        const lt1Y  = hrY(lt1HR!)
-        const lt2Y  = hrY(lt2HR!)
-        const hiY   = estMaxHR ? hrY(estMaxHR) : PY
-        return (
-          <G>
-            <Rect x={PX} y={lt1Y}  width={PW} height={Math.max(0, loY  - lt1Y)} fill={C.zoneLow}  opacity={0.5} />
-            <Rect x={PX} y={lt2Y}  width={PW} height={Math.max(0, lt1Y - lt2Y)} fill={C.zoneMed}  opacity={0.5} />
-            <Rect x={PX} y={hiY}   width={PW} height={Math.max(0, lt2Y - hiY)}  fill={C.zoneHigh} opacity={0.5} />
-            {/* Zone labels on right edge */}
-            <T x={PX2 - 2} y={Math.min((loY + lt1Y) / 2 + 3, PY2 - 4)}  fontSize={5.5} fill="#1d4ed8" textAnchor="end" opacity={0.8}>LÅG</T>
-            <T x={PX2 - 2} y={(lt1Y + lt2Y) / 2 + 3}                     fontSize={5.5} fill={C.green}  textAnchor="end" opacity={0.8}>MED</T>
-            {lt2Y - hiY > 12 && (
-              <T x={PX2 - 2} y={(lt2Y + hiY) / 2 + 3}                    fontSize={5.5} fill="#dc2626" textAnchor="end" opacity={0.8}>HÖG</T>
-            )}
-          </G>
-        )
-      })()}
 
       {/* HR grid lines */}
       {hrTicks.map(h => {
@@ -441,7 +422,7 @@ function PerformanceChart({
 
       {/* Intensity staircase (watt or speed) */}
       {wattStaircase && (
-        <Polyline points={wattStaircase} stroke={C.wattLine} strokeWidth={2.2} fill="none" />
+        <Polyline points={wattStaircase} stroke={C.wattLine} strokeWidth={2.2} fill="none" opacity={0.6} />
       )}
       {/* Intensity step labels */}
       {intensityLabels.map((p, i) => (
@@ -456,8 +437,8 @@ function PerformanceChart({
       {lt1Min != null && (
         <G>
           <Line x1={xS(lt1Min)} y1={PY} x2={xS(lt1Min)} y2={PY2}
-            stroke={C.green} strokeWidth={1.4} strokeDasharray="5 3" />
-          <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={13} fill={C.green} rx={2} />
+            stroke={C.green} strokeWidth={1.4} strokeDasharray="5 3" opacity={0.6} />
+          <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={13} fill={C.green} rx={2} opacity={0.6} />
           <T x={xS(lt1Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">AT</T>
           {lt1Watt && (
             <T x={xS(lt1Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt1Watt}{isSpeed ? '' : 'W'}</T>
@@ -469,8 +450,8 @@ function PerformanceChart({
       {lt2Min != null && (
         <G>
           <Line x1={xS(lt2Min)} y1={PY} x2={xS(lt2Min)} y2={PY2}
-            stroke={C.purple} strokeWidth={1.4} strokeDasharray="5 3" />
-          <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={13} fill={C.purple} rx={2} />
+            stroke={C.purple} strokeWidth={1.4} strokeDasharray="5 3" opacity={0.6} />
+          <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={13} fill={C.purple} rx={2} opacity={0.6} />
           <T x={xS(lt2Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT</T>
           {lt2Watt && (
             <T x={xS(lt2Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt2Watt}{isSpeed ? '' : 'W'}</T>
@@ -478,36 +459,59 @@ function PerformanceChart({
         </G>
       )}
 
+      {/* Cadence line + labels (bottom strip) */}
+      {cadPts.length >= 2 && cadPolyline && (
+        <Polyline points={cadPolyline} stroke="#8b5cf6" strokeWidth={1} fill="none" opacity={0.6} />
+      )}
+      {cadPts.map((p, i) => (
+        <G key={`cd${i}`}>
+          <Circle cx={xS(p.min)} cy={cadY(p.cadence ?? 0)} r={2} fill="#8b5cf6" opacity={0.6} />
+          <T x={xS(p.min) + 5} y={cadY(p.cadence ?? 0) - 5} fontSize={6} fill="#8b5cf6" textAnchor="start">
+            {p.cadence}
+          </T>
+        </G>
+      ))}
+
+      {/* Borg line + labels */}
+      {borgPts.length >= 2 && borgPolyline && (
+        <Polyline points={borgPolyline} stroke="#f59e0b" strokeWidth={1} fill="none" strokeDasharray="3 2" opacity={0.6} />
+      )}
+      {borgPts.map((p, i) => (
+        <G key={`bg${i}`}>
+          <Circle cx={xS(p.min)} cy={borgY(p.borg ?? 0)} r={2} fill="#f59e0b" opacity={0.6} />
+          <T x={xS(p.min) + 5} y={borgY(p.borg ?? 0) - 3} fontSize={6} fill="#f59e0b" textAnchor="start">
+            {p.borg}
+          </T>
+        </G>
+      ))}
+
       {/* HR line */}
       {hrPolyline && (
-        <Polyline points={hrPolyline} stroke={C.hrLine} strokeWidth={1.6} fill="none" />
+        <Polyline points={hrPolyline} stroke={C.hrLine} strokeWidth={1.6} fill="none" opacity={0.6} />
       )}
       {hrPts.map((p, i) => (
         <G key={`hd${i}`}>
-          <Circle cx={xS(p.min)} cy={hrY(p.hr)} r={2.5} fill={C.hrLine} />
-          {/* Label at lactate points, first and last */}
-          {(p.lac > 0 || i === 0 || i === hrPts.length - 1) && (
-            <T x={xS(p.min)} y={hrY(p.hr) - 5} fontSize={5.5} fill={C.hrLine} textAnchor="middle">
-              {p.hr}
-            </T>
-          )}
+          <Circle cx={xS(p.min)} cy={hrY(p.hr)} r={2.5} fill={C.hrLine} opacity={0.6} />
+          <T x={xS(p.min)} y={hrY(p.hr) - 5} fontSize={5.5} fill={C.hrLine} textAnchor="middle">
+            {p.hr}
+          </T>
         </G>
       ))}
 
       {/* Lactate line */}
       {lacPts.length >= 2 && (
-        <Polyline points={lacPolyline} stroke={C.lacLine} strokeWidth={2} fill="none" />
+        <Polyline points={lacPolyline} stroke={C.lacLine} strokeWidth={2} fill="none" opacity={0.6} />
       )}
       {/* Lactate diamonds + value labels */}
       {lacPts.map((p, i) => {
-        const lacColor = p.lac >= 4 ? C.lacRed : p.lac >= 2 ? C.lacOrange : C.lacLine
+        const lacColor = C.lacLine
         const cx = xS(p.min), cy = lacY(p.lac)
         const d = 4
         return (
           <G key={`ld${i}`}>
             <Path
               d={`M${cx.toFixed(1)},${(cy - d).toFixed(1)} L${(cx + d).toFixed(1)},${cy.toFixed(1)} L${cx.toFixed(1)},${(cy + d).toFixed(1)} L${(cx - d).toFixed(1)},${cy.toFixed(1)} Z`}
-              fill={lacColor}
+              fill={lacColor} opacity={0.6}
             />
             <T x={cx} y={cy + d + 8} fontSize={7} fill={lacColor} textAnchor="middle" fontFamily="Helvetica-Bold">
               {p.lac}
@@ -574,6 +578,20 @@ function PerformanceChart({
           <G>
             <Line x1={PX + 163} y1={CHART_H - 14} x2={PX + 175} y2={CHART_H - 14} stroke={C.purple} strokeWidth={1.5} strokeDasharray="4 2" />
             <T x={PX + 178} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT</T>
+          </G>
+        )}
+        {cadPts.length > 0 && (
+          <G>
+            <Line x1={PX + 200} y1={CHART_H - 14} x2={PX + 212} y2={CHART_H - 14} stroke="#8b5cf6" strokeWidth={1.5} />
+            <Circle cx={PX + 206} cy={CHART_H - 14} r={2} fill="#8b5cf6" />
+            <T x={PX + 215} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Kadans</T>
+          </G>
+        )}
+        {borgPts.length > 0 && (
+          <G>
+            <Line x1={PX + 248} y1={CHART_H - 14} x2={PX + 260} y2={CHART_H - 14} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2" />
+            <Circle cx={PX + 254} cy={CHART_H - 14} r={2} fill="#f59e0b" />
+            <T x={PX + 263} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Borg</T>
           </G>
         )}
       </G>
@@ -978,7 +996,6 @@ export function AktivitusReport({
   const lt2Watt  = isSpeed ? (ca?.ltEffektSpeed  ?? r.ltWatt) : (ca?.ltEffektWatt  ?? r.ltWatt)
   const lt1HR    = ca?.atPuls        ?? null
   const lt2HR    = ca?.ltPuls        ?? null
-  const nedreHR  = ca?.nedreGransPuls ?? null
   const estMaxHR = ca?.estMaxPuls ?? ca?.hogstaUpnaddPuls ?? r.maxHR
 
   const protocolStr = ip.startWatt
@@ -1010,9 +1027,6 @@ export function AktivitusReport({
               rawData={test.rawData}
               lt1Watt={lt1Watt}
               lt2Watt={lt2Watt}
-              lt1HR={lt1HR}
-              lt2HR={lt2HR}
-              nedreHR={nedreHR}
               estMaxHR={estMaxHR}
               isSpeed={isSpeed}
             />
