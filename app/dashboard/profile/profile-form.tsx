@@ -5,10 +5,20 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
 import { storage, auth } from "@/lib/firebase"
 import { getCoachProfileClient, upsertCoachProfileClient } from "@/lib/coach-profile"
+import { ClinicLocation } from "@/types"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
+
+const CLINIC_LOCATIONS: { value: ClinicLocation; label: string }[] = [
+  { value: "stockholm",   label: "Stockholm" },
+  { value: "stockholm_c", label: "Stockholm C" },
+  { value: "linkoping",   label: "Linköping" },
+  { value: "goteborg",    label: "Göteborg" },
+  { value: "malmo",       label: "Malmö" },
+]
 
 interface ProfileFormProps {
   uid: string
@@ -18,6 +28,7 @@ interface ProfileFormProps {
 export function ProfileForm({ uid, email }: ProfileFormProps) {
   const [displayName, setDisplayName] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+  const [defaultLocation, setDefaultLocation] = useState<ClinicLocation | "">("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,6 +39,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
         .then((p) => {
           if (p?.displayName) setDisplayName(p.displayName)
           if (p?.avatarUrl) setAvatarUrl(p.avatarUrl)
+          if (p?.defaultLocation) setDefaultLocation(p.defaultLocation)
         })
         .catch(() => { toast.error("Kunde inte hämta profilen.") })
         .finally(() => setLoading(false))
@@ -70,6 +82,7 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
         email,
         displayName: displayName.trim(),
         ...(avatarUrl ? { avatarUrl } : {}),
+        ...(defaultLocation ? { defaultLocation } : {}),
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -146,6 +159,24 @@ export function ProfileForm({ uid, email }: ProfileFormProps) {
         />
         <p className="text-sm text-secondary">
           Fylls i automatiskt som testledare i nya test och visas i PDF-rapporter.
+        </p>
+      </div>
+
+      {/* Default location */}
+      <div className="space-y-1.5">
+        <Label htmlFor="defaultLocation">Standardplats</Label>
+        <Select
+          id="defaultLocation"
+          value={defaultLocation}
+          onChange={(e) => setDefaultLocation(e.target.value as ClinicLocation | "")}
+        >
+          <option value="">— Ingen standard —</option>
+          {CLINIC_LOCATIONS.map((loc) => (
+            <option key={loc.value} value={loc.value}>{loc.label}</option>
+          ))}
+        </Select>
+        <p className="text-sm text-secondary">
+          Förfylls automatiskt som plats i nya test.
         </p>
       </div>
 

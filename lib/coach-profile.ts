@@ -1,11 +1,13 @@
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { ClinicLocation } from "@/types"
 
 export interface CoachProfile {
   uid: string
   email: string
   displayName: string
   avatarUrl: string
+  defaultLocation?: ClinicLocation
 }
 
 export async function getCoachProfileClient(uid: string): Promise<CoachProfile | null> {

@@ -335,7 +335,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const pendingBack = useRef<(() => void) | null>(null)
   const [draftToRestore, setDraftToRestore] = useState<RecordingDraft | null>(null)
 
-  // ── Load coach display name for testLeader pre-fill ──────────────
+  // ── Load coach profile for testLeader + testLocation pre-fill ───────
   useEffect(() => {
     if (!coachUid) return
     getCoachProfileClient(coachUid).then((p) => {
@@ -343,6 +343,12 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         setForm((prev) => ({
           ...prev,
           testLeader: prev.testLeader === (defaultTestLeader ?? "") ? p.displayName : prev.testLeader,
+        }))
+      }
+      if (p?.defaultLocation) {
+        setForm((prev) => ({
+          ...prev,
+          testLocation: prev.testLocation === "" ? p.defaultLocation! : prev.testLocation,
         }))
       }
     }).catch(() => {})

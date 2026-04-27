@@ -19,14 +19,17 @@ interface LiveTestChartProps {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function WattDot(props: any) {
+function LoadDot(props: any) {
   const { cx, cy, payload, stepMins } = props
-  if (!stepMins?.has(payload.min) || payload.watt == null) return null
+  const label = payload.watt != null ? `${payload.watt}W`
+              : payload.speed != null ? `${payload.speed} km/h`
+              : null
+  if (!stepMins?.has(payload.min) || label == null) return null
   return (
     <g>
       <circle cx={cx} cy={cy} r={2.5} fill="#C7C7CC" />
       <text x={cx + 5} y={cy - 14} fontSize={13} fill="#86868B" fontWeight="700" fontFamily="sans-serif">
-        {payload.watt}W
+        {label}
       </text>
     </g>
   )
@@ -38,6 +41,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
   const data = rows.map((r) => ({
     min: r.min,
     watt: r.watt > 0 ? r.watt : null,
+    speed: r.speed && r.speed > 0 ? r.speed : null,
     hr: r.hr > 0 ? r.hr : null,
     lac: lacEnabledCheck(r, dur) && r.lac > 0 ? r.lac : null,
     borg: lacEnabledCheck(r, dur) && r.borg > 0 ? r.borg : null,
@@ -48,6 +52,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
   const hasLac     = data.some((d) => d.lac != null)
   const hasBorg    = data.some((d) => d.borg != null)
   const hasCadence = data.some((d) => d.cadence != null)
+  const hasSpeed   = data.some((d) => d.speed != null)
 
   if (!hasHr && !hasLac) {
     return (
@@ -59,7 +64,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
 
   const stepMins = new Set(
     rows.reduce<number[]>((acc, r, i) => {
-      if (r.watt > 0 && (i === 0 || r.watt !== rows[i - 1].watt)) acc.push(r.min)
+      const load = r.watt > 0 ? r.watt : (r.speed ?? 0)
+      const prevLoad = i > 0 ? (rows[i-1].watt > 0 ? rows[i-1].watt : (rows[i-1].speed ?? 0)) : -1
+      if (load > 0 && load !== prevLoad) acc.push(r.min)
       return acc
     }, [])
   )
@@ -84,16 +91,16 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
       <YAxis
         yAxisId="hr"
         orientation="left"
-        label={{ value: "Puls (bpm)", angle: -90, position: "insideLeft", offset: 16, fontSize: 13 }}
+        label={{ value: "Puls (bpm)", angle: -90, position: "insideLeft", offset: 16, fontSize: 13, fill: "#f43f5e" }}
         tick={{ fontSize: 13 }}
         width={56}
       />
 
-      {/* Right 1: Watt */}
+      {/* Right 1: Watt or Speed */}
       <YAxis
         yAxisId="watt"
         orientation="right"
-        label={{ value: "Watt", angle: 90, position: "insideRight", offset: 16, fontSize: 13 }}
+        label={{ value: hasSpeed ? "km/h" : "Watt", angle: 90, position: "insideRight", offset: 16, fontSize: 13, fill: "#C7C7CC" }}
         tick={{ fontSize: 13 }}
         width={48}
       />
@@ -109,7 +116,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           yAxisId="lac"
           orientation="right"
           domain={[0, "dataMax + 1"]}
-          label={{ value: "Laktat (mmol)", angle: 90, position: "insideRight", offset: 16, fontSize: 13 }}
+          label={{ value: "Laktat (mmol)", angle: 90, position: "insideRight", offset: 16, fontSize: 13, fill: "#3b82f6" }}
           tick={{ fontSize: 13 }}
           width={52}
         />
@@ -126,8 +133,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           if (name === "Puls")   return [`${value} bpm`, "Puls"]
           if (name === "Laktat") return [`${value} mmol/L`, "Laktat"]
           if (name === "Watt")   return [`${value} W`, "Watt"]
-          if (name === "Kadans") return [`${value} rpm`, "Kadans"]
-          if (name === "Borg")   return [`${value} (Borg)`, "Borg"]
+          if (name === "Kadans")    return [`${value} rpm`, "Kadans"]
+          if (name === "Hastighet") return [`${value} km/h`, "Hastighet"]
+          if (name === "Borg")      return [`${value} (Borg)`, "Borg"]
           return [value, name]
         }}
         labelFormatter={(v) => `Minut ${v}`}
@@ -142,10 +150,25 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         name="Watt"
         stroke="#C7C7CC"
         strokeWidth={2}
-        dot={({ key, ...props }) => <WattDot key={key} {...props} stepMins={stepMins} />}
+        dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
         activeDot={false}
         connectNulls
       />
+
+      {/* Speed staircase (löpning / skidor) */}
+      {hasSpeed && (
+        <Line
+          yAxisId="watt"
+          type="stepAfter"
+          dataKey="speed"
+          name="Hastighet"
+          stroke="#C7C7CC"
+          strokeWidth={2}
+          dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
+          activeDot={false}
+          connectNulls
+        />
+      )}
 
       {/* HR */}
       {hasHr && (
@@ -160,7 +183,19 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           activeDot={{ r: 5 }}
           connectNulls
         >
-          <LabelList dataKey="hr" position="top" offset={6} style={{ fontSize: 13, fill: "#f43f5e", fontWeight: 700 }} />
+          {/* Only show HR labels at stage ends to avoid overlap with load step labels */}
+          <LabelList
+            dataKey="hr"
+            content={({ x, y, value, index }: any) => {
+              if (index == null || !lacEnabledCheck(rows[index], dur)) return null
+              return (
+                <text x={x as number} y={(y as number) - 6} textAnchor="middle"
+                  fontSize={13} fill="#f43f5e" fontWeight={700}>
+                  {value}
+                </text>
+              )
+            }}
+          />
         </Line>
       )}
 
