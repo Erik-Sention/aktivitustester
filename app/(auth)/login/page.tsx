@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -55,10 +56,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8">
         {/* Brand mark */}
         <div className="text-center space-y-3">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#007AFF] text-white text-2xl font-bold shadow-[0_8px_30px_rgba(0,122,255,0.35)] mb-2">
-            A
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-primary">Aktivitus</h1>
+          <Image
+            src="/aktivitus-logo.png"
+            alt="Aktivitus"
+            width={296}
+            height={68}
+            className="h-12 w-auto mx-auto"
+            priority
+          />
           <p className="text-base text-secondary">Coach Console</p>
         </div>
 

@@ -74,9 +74,6 @@ export function TestDetailClient({ id }: { id: string }) {
     createdAt: { seconds: test.createdAt.seconds, nanoseconds: test.createdAt.nanoseconds },
   }
   const testDuration = test.inputParams.testDuration || 3
-  function isLacRow(min: number) {
-    return min === 0 || (min > 0 && min % testDuration === 0)
-  }
 
   return (
     <div id="test-detail-content" className="space-y-6">
@@ -343,13 +340,13 @@ export function TestDetailClient({ id }: { id: string }) {
                   </thead>
                   <tbody className="divide-y divide-[hsl(var(--border))]/30">
                     {test.rawData.map((p, i) => (
-                      <tr key={i} className={`transition-colors ${isLacRow(p.min) && p.lac > 0 ? "bg-[#007AFF]/[0.04] hover:bg-[#007AFF]/[0.08]" : "hover:bg-[#F5F5F7]/50"}`}>
+                      <tr key={i} className="transition-colors hover:bg-[#F5F5F7]/50">
                         <td className="px-4 py-3 text-primary tabular-nums">{p.min}</td>
                         <td className="px-4 py-3 text-right font-mono font-bold text-primary">
                           {isSpeedSport(test.sport) ? (p.speed ?? 0) || "—" : p.watt || "—"}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-primary">{p.hr || "—"}</td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold ${p.lac >= 4 ? "text-[hsl(var(--destructive))]" : p.lac >= 2 ? "text-[hsl(var(--warning))]" : "text-primary"}`}>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-primary">
                           {p.lac || "—"}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-primary">{p.borg || "—"}</td>

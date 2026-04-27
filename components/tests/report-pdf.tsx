@@ -12,10 +12,10 @@ import { calculateNineZones } from '@/lib/zones'
 const C = {
   blue:       '#1e40af',
   blueLight:  '#bfdbfe',
-  green:      '#059669',
-  greenBg:    '#d1fae5',
-  purple:     '#7c3aed',
-  purpleBg:   '#ede9fe',
+  green:      '#0f766e',
+  greenBg:    '#ccfbf1',
+  purple:     '#4338ca',
+  purpleBg:   '#e0e7ff',
   zoneLow:    '#dbeafe',
   zoneMed:    '#d1fae5',
   zoneHigh:   '#fee2e2',
@@ -167,6 +167,7 @@ const s = StyleSheet.create({
   zoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    opacity: 0.8,
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 7,
@@ -355,7 +356,8 @@ function PerformanceChart({
 
   const hrAxisMax = Math.ceil((maxHRData + 15) / 25) * 25
 
-  const xS   = (m: number) => PX + (m / (maxMin || 1)) * PW
+  const xPAD = 8
+  const xS   = (m: number) => PX + xPAD + (m / (maxMin || 1)) * (PW - 2 * xPAD)
   const hrY  = (h: number) => PY2 - (h / hrAxisMax) * PH
   const wY   = (w: number) => PY2 - (w / (maxIntensity * 1.05)) * PH
   const lacY = (l: number) => PY2 - (l / (maxLacData * 1.2)) * PH
@@ -438,11 +440,8 @@ function PerformanceChart({
         <G>
           <Line x1={xS(lt1Min)} y1={PY} x2={xS(lt1Min)} y2={PY2}
             stroke={C.green} strokeWidth={1.4} strokeDasharray="5 3" opacity={0.6} />
-          <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={13} fill={C.green} rx={2} opacity={0.6} />
+          <Rect x={xS(lt1Min) + 2} y={PY + 2} width={28} height={9} fill={C.green} rx={2} opacity={0.6} />
           <T x={xS(lt1Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">AT</T>
-          {lt1Watt && (
-            <T x={xS(lt1Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt1Watt}{isSpeed ? '' : 'W'}</T>
-          )}
         </G>
       )}
 
@@ -451,11 +450,8 @@ function PerformanceChart({
         <G>
           <Line x1={xS(lt2Min)} y1={PY} x2={xS(lt2Min)} y2={PY2}
             stroke={C.purple} strokeWidth={1.4} strokeDasharray="5 3" opacity={0.6} />
-          <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={13} fill={C.purple} rx={2} opacity={0.6} />
+          <Rect x={xS(lt2Min) + 2} y={PY + 2} width={28} height={9} fill={C.purple} rx={2} opacity={0.6} />
           <T x={xS(lt2Min) + 16} y={PY + 9} fontSize={6} fill={C.white} textAnchor="middle" fontFamily="Helvetica-Bold">LT</T>
-          {lt2Watt && (
-            <T x={xS(lt2Min) + 16} y={PY + 15} fontSize={5.5} fill={C.white} textAnchor="middle">{lt2Watt}{isSpeed ? '' : 'W'}</T>
-          )}
         </G>
       )}
 
@@ -560,30 +556,18 @@ function PerformanceChart({
         <Polyline points={`${PX + 135},${CHART_H - 14} ${PX + 147},${CHART_H - 14}`} stroke={C.wattLine} strokeWidth={2} />
         <T x={PX + 150} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>{isSpeed ? 'Hastighet' : 'Watt'}</T>
 
-        {lt1Min != null && (
-          <G>
-            <Line x1={PX + 173} y1={CHART_H - 14} x2={PX + 185} y2={CHART_H - 14} stroke={C.green} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 188} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>AT</T>
-          </G>
-        )}
-        {lt2Min != null && (
-          <G>
-            <Line x1={PX + 208} y1={CHART_H - 14} x2={PX + 220} y2={CHART_H - 14} stroke={C.purple} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 223} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT</T>
-          </G>
-        )}
         {cadPts.length > 0 && (
           <G>
-            <Line x1={PX + 245} y1={CHART_H - 14} x2={PX + 257} y2={CHART_H - 14} stroke="#8b5cf6" strokeWidth={1.5} />
-            <Circle cx={PX + 251} cy={CHART_H - 14} r={2} fill="#8b5cf6" />
-            <T x={PX + 260} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Kadans</T>
+            <Line x1={PX + 173} y1={CHART_H - 14} x2={PX + 185} y2={CHART_H - 14} stroke="#8b5cf6" strokeWidth={1.5} />
+            <Circle cx={PX + 179} cy={CHART_H - 14} r={2} fill="#8b5cf6" />
+            <T x={PX + 188} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Kadans</T>
           </G>
         )}
         {borgPts.length > 0 && (
           <G>
-            <Line x1={PX + 293} y1={CHART_H - 14} x2={PX + 305} y2={CHART_H - 14} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2" />
-            <Circle cx={PX + 299} cy={CHART_H - 14} r={2} fill="#f59e0b" />
-            <T x={PX + 308} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Borg</T>
+            <Line x1={PX + 220} y1={CHART_H - 14} x2={PX + 232} y2={CHART_H - 14} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2" />
+            <Circle cx={PX + 226} cy={CHART_H - 14} r={2} fill="#f59e0b" />
+            <T x={PX + 235} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Borg</T>
           </G>
         )}
       </G>
@@ -659,28 +643,28 @@ function PageHeader({
 }) {
   return (
     <View style={s.header}>
-      {/* Left: optional avatar + logo */}
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {coachAvatarUrl && (
-          <View style={s.avatarWrap}>
-            <Image src={coachAvatarUrl} style={s.avatarImg} />
-          </View>
-        )}
-        <View style={s.headerLeft}>
-          <Text style={s.headerLogo}>AKTIVITUS</Text>
-          <Text style={s.headerSubtitle}>
-            Testklinik &amp; Coaching{subtitle ? `  ·  ${subtitle}` : ''}
-          </Text>
-        </View>
+      {/* Left: logo only */}
+      <View style={s.headerLeft}>
+        <Text style={s.headerLogo}>AKTIVITUS</Text>
+        <Text style={s.headerSubtitle}>
+          Testklinik &amp; Coaching{subtitle ? `  ·  ${subtitle}` : ''}
+        </Text>
       </View>
-      {/* Right: athlete + meta */}
+      {/* Right: athlete + meta + coach (avatar inline with name) */}
       <View style={s.headerRight}>
         <Text style={s.headerName}>{athleteName}</Text>
         <Text style={s.headerMeta}>
           {testDate}  ·  {sportLabel(sport)}  ·  {testTypeLabel(testType)}
         </Text>
         {(coachName || testLeader) && (
-          <Text style={s.headerLeader}>Testledare: {coachName ?? testLeader}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+            {coachAvatarUrl && (
+              <View style={[s.avatarWrap, { width: 20, height: 20, borderRadius: 10, marginRight: 5, marginTop: 0 }]}>
+                <Image src={coachAvatarUrl} style={{ width: 20, height: 20 }} />
+              </View>
+            )}
+            <Text style={s.headerLeader}>Testledare: {coachName ?? testLeader}</Text>
+          </View>
         )}
       </View>
     </View>

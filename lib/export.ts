@@ -26,7 +26,8 @@ export function buildAthleteCSV(tests: Test[], athleteName: string, anonymize: b
   const header = [
     'Atlet', 'Testdatum', 'Sport', 'Testtyp', 'Protokoll',
     'Kroppsvikt (kg)', 'AT (W)', 'LT2 (W)', 'Max HR', 'Max Laktat (mmol/L)',
-    'Steg', 'Tid (min)', 'Watt', 'HR', 'Laktat (mmol/L)', 'Borg', 'Kadens',
+    'VO2max (ml/kg/min)', 'Testplats', 'Coach ID', 'Testledare', 'Anteckningar',
+    'Steg', 'Tid (min)', 'Belastning (W/km-h)', 'HR', 'Laktat (mmol/L)', 'Borg', 'Kadens',
   ].join(',')
 
   const rows = tests.flatMap(test => {
@@ -45,6 +46,11 @@ export function buildAthleteCSV(tests: Test[], athleteName: string, anonymize: b
       r.ltWatt ?? '',
       r.maxHR ?? '',
       r.maxLactate ?? '',
+      r.vo2Max ?? '',
+      test.testLocation ?? '',
+      test.coachId ?? '',
+      test.testLeader ?? '',
+      test.notes ?? '',
     ]
     const speedSport = isSpeedSport(test.sport ?? '')
     if (!test.rawData?.length) {
@@ -78,7 +84,8 @@ export function buildBulkCSV(docs: Array<Record<string, unknown>>): string {
   const header = [
     'Atlet-ID', 'Testdatum', 'Sport', 'Testtyp', 'Protokoll',
     'Kroppsvikt (kg)', 'AT (W)', 'LT2 (W)', 'Max HR', 'Max Laktat (mmol/L)',
-    'Steg', 'Tid (min)', 'Watt', 'HR', 'Laktat (mmol/L)', 'Borg', 'Kadens',
+    'VO2max (ml/kg/min)', 'Testplats', 'Coach ID', 'Testledare', 'Anteckningar',
+    'Steg', 'Tid (min)', 'Belastning (W/km-h)', 'HR', 'Laktat (mmol/L)', 'Borg', 'Kadens',
   ].join(',')
 
   const rows = docs.flatMap(doc => {
@@ -109,6 +116,11 @@ export function buildBulkCSV(docs: Array<Record<string, unknown>>): string {
       results.ltWatt ?? '',
       results.maxHR ?? '',
       results.maxLactate ?? '',
+      results.vo2Max ?? '',
+      (doc.testLocation as string) ?? '',
+      (doc.coachId as string) ?? '',
+      (doc.testLeader as string) ?? '',
+      (doc.notes as string) ?? '',
     ]
 
     const speedSport = isSpeedSport((doc.sport as string) ?? '')

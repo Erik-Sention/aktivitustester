@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { doc, onSnapshot } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
+import { Users, ShieldCheck, Menu, X } from "lucide-react"
 import { db, auth } from "@/lib/firebase"
 import type { CoachProfile } from "@/lib/coach-profile"
 
@@ -18,6 +20,7 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
   const router = useRouter()
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     let unsubSnap: (() => void) | undefined
@@ -60,29 +63,39 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-black/[0.06]">
       <div className="container mx-auto px-6 max-w-6xl flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/dashboard/athletes" className="flex items-center gap-3 group">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#007AFF] text-white text-sm font-bold shadow-brand-glow group-hover:scale-105 transition-transform">
-            A
-          </span>
-          <span className="font-semibold text-base tracking-tight text-primary">
-            Aktivitus <span className="text-primary/50 font-normal">/ Coach Console</span>
-          </span>
+        <Link href="/dashboard/athletes" className="flex items-center group">
+          <Image
+            src="/aktivitus-logo.png"
+            alt="Aktivitus"
+            width={148}
+            height={34}
+            className="h-8 w-auto opacity-90 group-hover:opacity-100 transition-opacity"
+            priority
+          />
         </Link>
 
-        {/* Nav links */}
-        <nav className="hidden sm:flex items-center gap-6">
-          <Link href="/dashboard/athletes" className="text-base font-medium text-primary hover:text-interactive transition-colors">
+        {/* Desktop nav links */}
+        <nav className="hidden sm:flex items-center gap-2">
+          <Link
+            href="/dashboard/athletes"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-primary hover:bg-[#F5F5F7] transition-colors"
+          >
+            <Users className="h-4 w-4" />
             Atleter
           </Link>
           {role === 'ADMIN' && (
-            <Link href="/dashboard/admin" className="text-base font-medium text-primary hover:text-interactive transition-colors">
+            <Link
+              href="/dashboard/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-primary hover:bg-[#F5F5F7] transition-colors"
+            >
+              <ShieldCheck className="h-4 w-4" />
               Admin
             </Link>
           )}
         </nav>
 
-        {/* Right — avatar + name → profile + logout */}
-        <div className="flex items-center gap-4">
+        {/* Right — desktop: avatar + name + logout | mobile: avatar + hamburger */}
+        <div className="flex items-center gap-3">
           <Link
             href="/dashboard/profile"
             className="flex items-center gap-2.5 hover:opacity-75 transition-opacity"
@@ -102,12 +115,53 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
           </Link>
           <button
             onClick={handleLogout}
-            className="text-base text-primary hover:text-interactive transition-colors font-medium"
+            className="hidden sm:block text-base text-primary hover:text-interactive transition-colors font-medium"
+          >
+            Logga ut
+          </button>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="sm:hidden p-2 rounded-lg text-primary hover:bg-[#F5F5F7] transition-colors"
+            aria-label="Öppna meny"
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="sm:hidden border-t border-black/[0.06] bg-white px-4 py-3 flex flex-col gap-1">
+          <Link
+            href="/dashboard/athletes"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-primary hover:bg-[#F5F5F7] transition-colors"
+          >
+            <Users className="h-4 w-4" />
+            Atleter
+          </Link>
+          {role === 'ADMIN' && (
+            <Link
+              href="/dashboard/admin"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-primary hover:bg-[#F5F5F7] transition-colors"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Admin
+            </Link>
+          )}
+          <div className="my-1 border-t border-black/[0.06]" />
+          <button
+            onClick={() => { setMenuOpen(false); handleLogout() }}
+            className="flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-primary hover:bg-[#F5F5F7] transition-colors text-left"
           >
             Logga ut
           </button>
         </div>
-      </div>
+      )}
     </header>
   )
 }

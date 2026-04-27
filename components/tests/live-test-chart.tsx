@@ -52,6 +52,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
   const hasLac     = data.some((d) => d.lac != null)
   const hasBorg    = data.some((d) => d.borg != null)
   const hasCadence = data.some((d) => d.cadence != null)
+  const hasWatt    = data.some((d) => d.watt != null)
   const hasSpeed   = data.some((d) => d.speed != null)
 
   if (!hasHr && !hasLac) {
@@ -81,6 +82,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         dataKey="min"
         type="number"
         domain={[0, "dataMax"]}
+        padding={{ left: 24, right: 24 }}
         tickCount={Math.min(data.length, 20)}
         label={{ value: "Minut", position: "insideBottom", offset: -12, fontSize: 14 }}
         tick={{ fontSize: 13 }}
@@ -133,19 +135,21 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
       />
       <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 13, paddingTop: 16 }} />
 
-      {/* Watt staircase */}
-      <Line
-        yAxisId="watt"
-        type="stepAfter"
-        dataKey="watt"
-        name="Watt"
-        stroke="#C7C7CC"
-        strokeWidth={2}
-        strokeOpacity={0.6}
-        dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
-        activeDot={false}
-        connectNulls
-      />
+      {/* Watt staircase — hidden for speed-based sports (running, skiing) */}
+      {hasWatt && (
+        <Line
+          yAxisId="watt"
+          type="stepAfter"
+          dataKey="watt"
+          name="Watt"
+          stroke="#C7C7CC"
+          strokeWidth={2}
+          strokeOpacity={0.6}
+          dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
+          activeDot={false}
+          connectNulls
+        />
+      )}
 
       {/* Speed staircase (löpning / skidor) */}
       {hasSpeed && (
