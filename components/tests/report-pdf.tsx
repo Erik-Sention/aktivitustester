@@ -536,13 +536,6 @@ function PerformanceChart({
       <Line x1={PX}  y1={PY}  x2={PX}  y2={PY2} stroke={C.slate300} strokeWidth={0.5} />
       <Line x1={PX}  y1={PY2} x2={PX2} y2={PY2} stroke={C.slate300} strokeWidth={0.5} />
 
-      {/* HR axis ticks + labels */}
-      {hrTicks.map(h => {
-        const y = hrY(h)
-        if (y < PY - 1 || y > PY2 + 1) return null
-        return <T key={`ht${h}`} x={PX - 4} y={y + 3} fontSize={6} fill={C.hrLine} textAnchor="end">{h}</T>
-      })}
-
       {/* X-axis ticks + labels */}
       {xTicks.map(m => (
         <G key={`xt${m}`}>
@@ -552,46 +545,45 @@ function PerformanceChart({
       ))}
 
       {/* Axis unit labels */}
-      <T x={PX - 4} y={PY + 5} fontSize={6} fill={C.hrLine} textAnchor="end" fontFamily="Helvetica-Bold">bpm</T>
-      <T x={PX + PW / 2} y={CHART_H - 1} fontSize={6} fill={C.slate400} textAnchor="middle">Minuter</T>
+<T x={PX + PW / 2} y={CHART_H - 1} fontSize={6} fill={C.slate400} textAnchor="middle">Minuter</T>
 
       {/* Legend */}
       <G>
         <Polyline points={`${PX + 2},${CHART_H - 14} ${PX + 14},${CHART_H - 14}`} stroke={C.hrLine} strokeWidth={2} />
         <Circle cx={PX + 8} cy={CHART_H - 14} r={2.5} fill={C.hrLine} />
-        <T x={PX + 17} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Puls</T>
+        <T x={PX + 17} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Puls (bpm)</T>
 
-        <Polyline points={`${PX + 44},${CHART_H - 14} ${PX + 56},${CHART_H - 14}`} stroke={C.lacLine} strokeWidth={2} />
-        <Path d={`M${PX + 50},${CHART_H - 18} L${PX + 54},${CHART_H - 14} L${PX + 50},${CHART_H - 10} L${PX + 46},${CHART_H - 14} Z`} fill={C.lacLine} />
-        <T x={PX + 59} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Laktat</T>
+        <Polyline points={`${PX + 65},${CHART_H - 14} ${PX + 77},${CHART_H - 14}`} stroke={C.lacLine} strokeWidth={2} />
+        <Path d={`M${PX + 71},${CHART_H - 18} L${PX + 75},${CHART_H - 14} L${PX + 71},${CHART_H - 10} L${PX + 67},${CHART_H - 14} Z`} fill={C.lacLine} />
+        <T x={PX + 80} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Laktat (mmol)</T>
 
-        <Polyline points={`${PX + 90},${CHART_H - 14} ${PX + 102},${CHART_H - 14}`} stroke={C.wattLine} strokeWidth={2} />
-        <T x={PX + 105} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>{isSpeed ? 'Hastighet' : 'Watt'}</T>
+        <Polyline points={`${PX + 135},${CHART_H - 14} ${PX + 147},${CHART_H - 14}`} stroke={C.wattLine} strokeWidth={2} />
+        <T x={PX + 150} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>{isSpeed ? 'Hastighet' : 'Watt'}</T>
 
         {lt1Min != null && (
           <G>
-            <Line x1={PX + 128} y1={CHART_H - 14} x2={PX + 140} y2={CHART_H - 14} stroke={C.green} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 143} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>AT</T>
+            <Line x1={PX + 173} y1={CHART_H - 14} x2={PX + 185} y2={CHART_H - 14} stroke={C.green} strokeWidth={1.5} strokeDasharray="4 2" />
+            <T x={PX + 188} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>AT</T>
           </G>
         )}
         {lt2Min != null && (
           <G>
-            <Line x1={PX + 163} y1={CHART_H - 14} x2={PX + 175} y2={CHART_H - 14} stroke={C.purple} strokeWidth={1.5} strokeDasharray="4 2" />
-            <T x={PX + 178} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT</T>
+            <Line x1={PX + 208} y1={CHART_H - 14} x2={PX + 220} y2={CHART_H - 14} stroke={C.purple} strokeWidth={1.5} strokeDasharray="4 2" />
+            <T x={PX + 223} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>LT</T>
           </G>
         )}
         {cadPts.length > 0 && (
           <G>
-            <Line x1={PX + 200} y1={CHART_H - 14} x2={PX + 212} y2={CHART_H - 14} stroke="#8b5cf6" strokeWidth={1.5} />
-            <Circle cx={PX + 206} cy={CHART_H - 14} r={2} fill="#8b5cf6" />
-            <T x={PX + 215} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Kadans</T>
+            <Line x1={PX + 245} y1={CHART_H - 14} x2={PX + 257} y2={CHART_H - 14} stroke="#8b5cf6" strokeWidth={1.5} />
+            <Circle cx={PX + 251} cy={CHART_H - 14} r={2} fill="#8b5cf6" />
+            <T x={PX + 260} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Kadans</T>
           </G>
         )}
         {borgPts.length > 0 && (
           <G>
-            <Line x1={PX + 248} y1={CHART_H - 14} x2={PX + 260} y2={CHART_H - 14} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2" />
-            <Circle cx={PX + 254} cy={CHART_H - 14} r={2} fill="#f59e0b" />
-            <T x={PX + 263} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Borg</T>
+            <Line x1={PX + 293} y1={CHART_H - 14} x2={PX + 305} y2={CHART_H - 14} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2" />
+            <Circle cx={PX + 299} cy={CHART_H - 14} r={2} fill="#f59e0b" />
+            <T x={PX + 308} y={CHART_H - 11} fontSize={6.5} fill={C.slate600}>Borg</T>
           </G>
         )}
       </G>

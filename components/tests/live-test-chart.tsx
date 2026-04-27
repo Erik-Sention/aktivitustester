@@ -71,7 +71,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
     }, [])
   )
 
-  const rightMargin = 48 + (hasLac ? 52 : 0)
+  const rightMargin = 16
 
   const chartContent = (
     <ComposedChart data={data} margin={{ top: 28, right: rightMargin, left: 0, bottom: 20 }}>
@@ -91,18 +91,16 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
       <YAxis
         yAxisId="hr"
         orientation="left"
-        label={{ value: "Puls (bpm)", angle: -90, position: "insideLeft", offset: 16, fontSize: 13, fill: "#f43f5e" }}
-        tick={{ fontSize: 13 }}
-        width={56}
+        tick={false}
+        width={8}
       />
 
       {/* Right 1: Watt or Speed */}
       <YAxis
         yAxisId="watt"
         orientation="right"
-        label={{ value: hasSpeed ? "km/h" : "Watt", angle: 90, position: "insideRight", offset: 16, fontSize: 13, fill: "#C7C7CC" }}
-        tick={{ fontSize: 13 }}
-        width={48}
+        tick={false}
+        width={8}
       />
 
       {/* Cadence — hidden axis, large domain pushes values into bottom quarter */}
@@ -110,16 +108,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         <YAxis yAxisId="cadence" orientation="left" domain={[0, 1800]} hide />
       )}
 
-      {/* Right 3: Lactate */}
+      {/* Right 3: Lactate — hidden axis, scale only */}
       {hasLac && (
-        <YAxis
-          yAxisId="lac"
-          orientation="right"
-          domain={[0, "dataMax + 1"]}
-          label={{ value: "Laktat (mmol)", angle: 90, position: "insideRight", offset: 16, fontSize: 13, fill: "#3b82f6" }}
-          tick={{ fontSize: 13 }}
-          width={52}
-        />
+        <YAxis yAxisId="lac" orientation="right" domain={[0, "dataMax + 1"]} hide width={0} />
       )}
 
       {/* Borg — hidden axis, legend is sufficient */}
@@ -130,12 +121,12 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
       <Tooltip
         contentStyle={{ fontSize: 13 }}
         formatter={(value: number, name: string) => {
-          if (name === "Puls")   return [`${value} bpm`, "Puls"]
-          if (name === "Laktat") return [`${value} mmol/L`, "Laktat"]
-          if (name === "Watt")   return [`${value} W`, "Watt"]
-          if (name === "Kadans")    return [`${value} rpm`, "Kadans"]
-          if (name === "Hastighet") return [`${value} km/h`, "Hastighet"]
-          if (name === "Borg")      return [`${value} (Borg)`, "Borg"]
+          if (name === "Puls (bpm)")    return [`${value} bpm`, "Puls (bpm)"]
+          if (name === "Laktat (mmol)") return [`${value} mmol/L`, "Laktat (mmol)"]
+          if (name === "Watt")          return [`${value} W`, "Watt"]
+          if (name === "Kadans")        return [`${value} rpm`, "Kadans"]
+          if (name === "Hastighet")     return [`${value} km/h`, "Hastighet"]
+          if (name === "Borg")          return [`${value} (Borg)`, "Borg"]
           return [value, name]
         }}
         labelFormatter={(v) => `Minut ${v}`}
@@ -150,6 +141,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
         name="Watt"
         stroke="#C7C7CC"
         strokeWidth={2}
+        strokeOpacity={0.6}
         dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
         activeDot={false}
         connectNulls
@@ -164,6 +156,7 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           name="Hastighet"
           stroke="#C7C7CC"
           strokeWidth={2}
+          strokeOpacity={0.6}
           dot={({ key, ...props }) => <LoadDot key={key} {...props} stepMins={stepMins} />}
           activeDot={false}
           connectNulls
@@ -176,10 +169,11 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           yAxisId="hr"
           type="monotone"
           dataKey="hr"
-          name="Puls"
+          name="Puls (bpm)"
           stroke="#f43f5e"
           strokeWidth={2.5}
-          dot={{ r: 3, fill: "#f43f5e", strokeWidth: 0 }}
+          strokeOpacity={0.6}
+          dot={{ r: 3, fill: "#f43f5e", strokeWidth: 0, fillOpacity: 0.6 }}
           activeDot={{ r: 5 }}
           connectNulls
         >
@@ -208,7 +202,8 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           name="Kadans"
           stroke="#8b5cf6"
           strokeWidth={2}
-          dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 0 }}
+          strokeOpacity={0.6}
+          dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 0, fillOpacity: 0.6 }}
           activeDot={{ r: 6 }}
           connectNulls
         >
@@ -222,10 +217,11 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           yAxisId="lac"
           type="monotone"
           dataKey="lac"
-          name="Laktat"
+          name="Laktat (mmol)"
           stroke="#3b82f6"
           strokeWidth={2.5}
-          dot={{ r: 5, fill: "#3b82f6", strokeWidth: 0 }}
+          strokeOpacity={0.6}
+          dot={{ r: 5, fill: "#3b82f6", strokeWidth: 0, fillOpacity: 0.6 }}
           activeDot={{ r: 7 }}
           connectNulls
         >
@@ -242,8 +238,9 @@ export function LiveTestChart({ rows, dur, height = 460 }: LiveTestChartProps) {
           name="Borg"
           stroke="#f59e0b"
           strokeWidth={2}
+          strokeOpacity={0.6}
           strokeDasharray="4 2"
-          dot={{ r: 4, fill: "#f59e0b", strokeWidth: 0 }}
+          dot={{ r: 4, fill: "#f59e0b", strokeWidth: 0, fillOpacity: 0.6 }}
           activeDot={{ r: 6 }}
           connectNulls
         >
