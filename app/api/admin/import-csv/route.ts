@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser, getSessionRefreshToken } from '@/lib/session'
 import { exchangeRefreshToken, firestoreGet, firestoreSet } from '@/lib/firestore-rest'
-import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL } from '@/lib/calculations'
+import { interpolateLactateThreshold, LT1_MMOL, LT2_MMOL, calculateVo2Max } from '@/lib/calculations'
 import type { RawDataPoint } from '@/types'
 
 async function requireAdmin() {
@@ -57,15 +57,27 @@ export async function POST(req: NextRequest) {
     rows: RawDataPoint[]
     manualVo2MaxStr?: string
     manualAbsVo2Str?: string
+    exhaustionWattStr?: string
+    exhaustionMaxHR?: string
+    exhaustionTimeMins?: string
+    exhaustionTimeSecs?: string
+    coachAssessment?: Record<string, unknown>
+    bikeSettings?: Record<string, unknown>
+    wingateResults?: { peakPower: string; meanPower: string; minPower: string }
+    wingateParams?: { startCadenceRpm: string; bodyWeightPercent: string; bodyWeight: string }
   }
 
-  if (!backup?.form?.athleteId || !backup?.rows) {
-    return NextResponse.json({ error: 'Ogiltig backup-fil — saknar form eller rows' }, { status: 400 })
+  const isWingate = backup?.form?.testType === 'wingate'
+
+  if (!backup?.form?.athleteId) {
+    return NextResponse.json({ error: 'Ogiltig backup-fil — saknar athleteId' }, { status: 400 })
+  }
+  if (!isWingate && !backup?.rows) {
+    return NextResponse.json({ error: 'Ogiltig backup-fil — saknar rows' }, { status: 400 })
   }
 
-  const { form, rows } = backup
+  const { form, rows = [] } = backup
 
-  // Look up athlete to get clinicId
   const athlete = await firestoreGet('athletes', form.athleteId, idToken)
   if (!athlete) {
     return NextResponse.json({ error: `Atlet med ID ${form.athleteId} hittades inte` }, { status: 404 })
@@ -73,13 +85,30 @@ export async function POST(req: NextRequest) {
 
   const results = calculateResults(rows)
 
-  // Apply manual VO2max if entered before the emergency download
+  // VO2max: priority chain matches recording view (manual → abs÷weight → formula)
+  const bodyWeightNum = parseFloat(form.bodyWeight) || 0
   if (backup.manualVo2MaxStr) {
     const v = parseFloat(backup.manualVo2MaxStr)
-    if (!isNaN(v)) results.vo2Max = v
+    if (!isNaN(v) && v > 0) results.vo2Max = v
+  }
+  if (!results.vo2Max && backup.manualAbsVo2Str) {
+    const lmin = parseFloat(backup.manualAbsVo2Str)
+    if (lmin > 0 && bodyWeightNum > 0) results.vo2Max = Math.round(lmin * 1000 / bodyWeightNum)
+  }
+  if (!results.vo2Max && backup.exhaustionWattStr) {
+    const w = parseInt(backup.exhaustionWattStr)
+    if (w > 0 && bodyWeightNum > 0) results.vo2Max = calculateVo2Max(w, bodyWeightNum)
   }
 
   const isSpeedSport = form.sport === 'lopning' || form.sport === 'skidor_band'
+
+  // Build exhaustion-time note prefix for VO2max tests
+  let notesValue = form.notes ?? ''
+  if (backup.exhaustionTimeMins && backup.exhaustionTimeSecs) {
+    const mm = backup.exhaustionTimeMins.padStart(2, '0')
+    const ss = backup.exhaustionTimeSecs.padStart(2, '0')
+    notesValue = `Utmattning tid: ${mm}:${ss}\n${notesValue}`
+  }
 
   const testDoc: Record<string, unknown> = {
     athleteId:    form.athleteId,
@@ -88,12 +117,12 @@ export async function POST(req: NextRequest) {
     testDate:     new Date(form.testDate),
     sport:        form.sport,
     testType:     form.testType,
-    protocol:     form.protocol,
+    protocol:     form.protocol ?? 'standard_3min',
     testLocation: form.testLocation ?? '',
     testLeader:   form.testLeader ?? '',
-    notes:        form.notes ?? '',
+    notes:        notesValue,
     inputParams: {
-      testDuration: parseInt(form.testDuration) || 3,
+      testDuration: parseInt(form.testDuration) || (isWingate ? 0 : 3),
       bodyWeight:   parseFloat(form.bodyWeight) || null,
       heightCm:     parseFloat(form.heightCm) || null,
       ...(isSpeedSport
@@ -105,6 +134,41 @@ export async function POST(req: NextRequest) {
     createdAt: new Date(),
     isArchived: false,
   }
+
+  // VO2max-specific result fields
+  if (backup.exhaustionWattStr) {
+    const w = parseInt(backup.exhaustionWattStr)
+    if (!isNaN(w) && w > 0) (testDoc.results as Record<string, unknown>).maxWatt = w
+  }
+  if (backup.exhaustionMaxHR) {
+    const hr = parseInt(backup.exhaustionMaxHR)
+    if (!isNaN(hr) && hr > 0) (testDoc.results as Record<string, unknown>).maxHR = hr
+  }
+  if (backup.manualAbsVo2Str) {
+    const lmin = parseFloat(backup.manualAbsVo2Str)
+    if (!isNaN(lmin) && lmin > 0) (testDoc.results as Record<string, unknown>).vo2AbsoluteMlMin = Math.round(lmin * 1000)
+  }
+
+  // Wingate-specific fields
+  if (isWingate && backup.wingateResults) {
+    const peak = parseFloat(backup.wingateResults.peakPower)
+    const mean = parseFloat(backup.wingateResults.meanPower)
+    const min  = parseFloat(backup.wingateResults.minPower)
+    if (peak > 0 && mean > 0 && min > 0) {
+      testDoc.wingateData = { peakPower: peak, meanPower: mean, minPower: min }
+    }
+  }
+  if (isWingate && backup.wingateParams) {
+    testDoc.wingateInputParams = {
+      startCadenceRpm:   parseInt(backup.wingateParams.startCadenceRpm) || null,
+      bodyWeightPercent: parseFloat(backup.wingateParams.bodyWeightPercent) || 10,
+      bodyWeight:        parseFloat(backup.wingateParams.bodyWeight) || null,
+    }
+  }
+
+  // Optional shared fields
+  if (backup.coachAssessment) testDoc.coachAssessment = backup.coachAssessment
+  if (backup.bikeSettings && Object.keys(backup.bikeSettings).length > 0) testDoc.settings = { bike: backup.bikeSettings }
 
   const id = crypto.randomUUID()
   await firestoreSet('tests', id, testDoc, idToken)

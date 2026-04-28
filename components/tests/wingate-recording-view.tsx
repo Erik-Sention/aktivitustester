@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { fullName } from "@/lib/utils"
-import { Play, Pause, RotateCcw } from "lucide-react"
+import { Play, Pause, RotateCcw, Download } from "lucide-react"
 import { ClinicLocation } from "@/types"
 
 interface AthleteOption {
@@ -126,6 +126,25 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.athleteId])
+
+  function handleEmergencyDownload() {
+    const payload = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      form: { ...form, testType: "wingate", sport: "cykel" },
+      rows: [],
+      wingateResults: results,
+      wingateParams: {
+        startCadenceRpm: form.startCadenceRpm,
+        bodyWeightPercent: form.bodyWeightPercent,
+        bodyWeight: form.bodyWeight,
+      },
+    }, null, 2)
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([payload], { type: "application/json" })),
+      download: `wingate_backup_${form.athleteId || "okand"}_${form.testDate}.json`,
+    })
+    a.click()
+  }
 
   async function handleSave() {
     if (!form.athleteId) { setError("Välj en atlet"); return }
@@ -306,6 +325,9 @@ export function WingateRecordingView({ athletes, defaultAthleteId, defaultTestLe
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setStep("setup")}>Tillbaka</Button>
+          <Button variant="outline" onClick={handleEmergencyDownload} title="Ladda ned JSON-backup">
+            <Download className="h-4 w-4" />
+          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Sparar…" : "Spara test"}
           </Button>

@@ -12,6 +12,7 @@ import {
   TestInputParams, CoachAssessment, SportSettings, WingateData, WingateInputParams,
 } from "@/types"
 import { isSpeedSport } from "@/lib/utils"
+import { calculateVo2Max } from "@/lib/calculations"
 
 const SPORT_LABELS: Record<SportType, string> = {
   cykel: "Cykel",
@@ -84,7 +85,7 @@ export function EditTestForm({
   const [date, setDate] = useState(testDate)
   const [noteText, setNoteText] = useState(notes)
   const [sport, setSport] = useState<SportType>(initialSport)
-  const [testType, setTestType] = useState<TestType>(initialTestType)
+  const testType = initialTestType
   const [protocol, setProtocol] = useState<ProtocolType>(initialProtocol)
   const [location, setLocation] = useState<ClinicLocation | "">(initialLocation)
   const [leader, setLeader] = useState(initialLeader)
@@ -243,12 +244,8 @@ export function EditTestForm({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="testType">Testtyp</Label>
-            <Select id="testType" value={testType} onChange={(e) => setTestType(e.target.value as TestType)}>
-              {(Object.keys(TESTTYPE_LABELS) as TestType[]).map((t) => (
-                <option key={t} value={t}>{TESTTYPE_LABELS[t]}</option>
-              ))}
-            </Select>
+            <Label>Testtyp</Label>
+            <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#86868B]">{TESTTYPE_LABELS[testType]}</div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="protocol">Protokoll</Label>
@@ -283,7 +280,7 @@ export function EditTestForm({
       </div>
 
       {/* Section 2: Protokollparametrar */}
-      <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
+      {testType !== "wingate" && <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Protokoll</p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           {sport === "lopning" || sport === "skidor_band" ? (<>
@@ -326,49 +323,70 @@ export function EditTestForm({
             <Input id="heightCm" type="number" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="—" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Section 3: Wingatedata (only for Wingate tests) */}
       {testType === "wingate" && (
         <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
           <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Wingatedata</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div className="space-y-1">
-              <Label htmlFor="peakPower">Peak (W)</Label>
-              <Input id="peakPower" type="text" inputMode="numeric"
-                value={wingateData.peakPower}
-                onChange={(e) => setWingateData((p) => ({ ...p, peakPower: e.target.value }))}
-                placeholder="t.ex. 1100" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="meanPower">Medel (W)</Label>
-              <Input id="meanPower" type="text" inputMode="numeric"
-                value={wingateData.meanPower}
-                onChange={(e) => setWingateData((p) => ({ ...p, meanPower: e.target.value }))}
-                placeholder="t.ex. 850" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="minPower">Min (W)</Label>
-              <Input id="minPower" type="text" inputMode="numeric"
-                value={wingateData.minPower}
-                onChange={(e) => setWingateData((p) => ({ ...p, minPower: e.target.value }))}
-                placeholder="t.ex. 600" />
-            </div>
-            {(() => {
-              const p = parseFloat(wingateData.peakPower)
-              const m = parseFloat(wingateData.minPower)
-              if (!p || !m || p <= 0) return null
-              const fi = ((p - m) / p * 100).toFixed(1)
-              return (
-                <div className="space-y-1 col-span-2 sm:col-span-3">
-                  <Label>Fatigue Index (beräknat)</Label>
-                  <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#1D1D1F]">
-                    {fi} %
+          {(() => {
+            const bwKg = parseFloat(wingateParams.bodyWeight)
+            const wkg = (watts: string) => {
+              const w = parseFloat(watts)
+              return w > 0 && bwKg > 0 ? (w / bwKg).toFixed(2) : null
+            }
+            const peak = parseFloat(wingateData.peakPower)
+            const minP = parseFloat(wingateData.minPower)
+            const fi = peak > 0 && minP > 0 ? ((peak - minP) / peak * 100).toFixed(1) : null
+            return (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="peakPower">Peak (W)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input id="peakPower" type="text" inputMode="numeric"
+                      value={wingateData.peakPower}
+                      onChange={(e) => setWingateData((p) => ({ ...p, peakPower: e.target.value }))}
+                      placeholder="t.ex. 1100" />
+                    {wkg(wingateData.peakPower) && (
+                      <span className="text-sm text-[#515154] shrink-0">{wkg(wingateData.peakPower)} W/kg</span>
+                    )}
                   </div>
                 </div>
-              )
-            })()}
-          </div>
+                <div className="space-y-1">
+                  <Label htmlFor="meanPower">Medel (W)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input id="meanPower" type="text" inputMode="numeric"
+                      value={wingateData.meanPower}
+                      onChange={(e) => setWingateData((p) => ({ ...p, meanPower: e.target.value }))}
+                      placeholder="t.ex. 850" />
+                    {wkg(wingateData.meanPower) && (
+                      <span className="text-sm text-[#515154] shrink-0">{wkg(wingateData.meanPower)} W/kg</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="minPower">Min (W)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input id="minPower" type="text" inputMode="numeric"
+                      value={wingateData.minPower}
+                      onChange={(e) => setWingateData((p) => ({ ...p, minPower: e.target.value }))}
+                      placeholder="t.ex. 600" />
+                    {wkg(wingateData.minPower) && (
+                      <span className="text-sm text-[#515154] shrink-0">{wkg(wingateData.minPower)} W/kg</span>
+                    )}
+                  </div>
+                </div>
+                {fi && (
+                  <div className="space-y-1 col-span-2 sm:col-span-3">
+                    <Label>Fatigue Index (beräknat)</Label>
+                    <div className="px-3 py-2 rounded-xl bg-[#F5F5F7] text-sm font-semibold text-[#1D1D1F]">
+                      {fi} %
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div className="space-y-1">
               <Label htmlFor="bwPercent">% kroppsvikt (bromslast)</Label>
@@ -398,65 +416,80 @@ export function EditTestForm({
       {testType === "vo2max" && (
         <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
           <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">VO₂ max-resultat</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div className="space-y-1">
-              <Label htmlFor="absVo2">Syreupptag (L/min)</Label>
-              <Input
-                id="absVo2"
-                type="text"
-                inputMode="decimal"
-                value={vo2AbsoluteLiters}
-                onChange={(e) => setVo2AbsoluteLiters(e.target.value)}
-                placeholder="t.ex. 3.2"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vo2max">VO₂ max (ml/kg/min)</Label>
-              <Input
-                id="vo2max"
-                type="text"
-                inputMode="decimal"
-                value={vo2MaxValue}
-                onChange={(e) => setVo2MaxValue(e.target.value)}
-                placeholder="t.ex. 58.4"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="exhaustionTime">Utmattningstid (MM:SS)</Label>
-              <Input
-                id="exhaustionTime"
-                type="text"
-                value={exhaustionTimeValue}
-                onChange={(e) => setExhaustionTimeValue(e.target.value)}
-                placeholder="t.ex. 11:32"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="maxWatt">Max effekt (W)</Label>
-              <Input
-                id="maxWatt"
-                type="number"
-                value={maxWattValue}
-                onChange={(e) => setMaxWattValue(e.target.value)}
-                placeholder="t.ex. 250"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="maxHR">Max puls (bpm)</Label>
-              <Input
-                id="maxHR"
-                type="number"
-                value={maxHRValue}
-                onChange={(e) => setMaxHRValue(e.target.value)}
-                placeholder="t.ex. 184"
-              />
-            </div>
-          </div>
+          {(() => {
+            const bw = parseFloat(bodyWeight)
+            const maxW = parseFloat(maxWattValue)
+            const absLmin = parseFloat(vo2AbsoluteLiters)
+            const liveFromAbs = absLmin > 0 && bw > 0 ? Math.round(absLmin * 1000 / bw) : null
+            const formulaVo2 = bw > 0 && maxW > 0 ? calculateVo2Max(maxW, bw) : null
+            const vo2Placeholder = liveFromAbs ?? formulaVo2
+            return (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="absVo2">Syreupptag (L/min)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="absVo2"
+                      type="text"
+                      inputMode="decimal"
+                      value={vo2AbsoluteLiters}
+                      onChange={(e) => setVo2AbsoluteLiters(e.target.value)}
+                      placeholder="t.ex. 3.2"
+                    />
+                    {liveFromAbs != null && (
+                      <span className="text-sm text-[#515154] shrink-0">→ {liveFromAbs} ml/kg/min</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="vo2max">VO₂ max (ml/kg/min)</Label>
+                  <Input
+                    id="vo2max"
+                    type="text"
+                    inputMode="decimal"
+                    value={vo2MaxValue}
+                    onChange={(e) => setVo2MaxValue(e.target.value)}
+                    placeholder={vo2Placeholder != null ? String(vo2Placeholder) : "t.ex. 58.4"}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="exhaustionTime">Utmattningstid (MM:SS)</Label>
+                  <Input
+                    id="exhaustionTime"
+                    type="text"
+                    value={exhaustionTimeValue}
+                    onChange={(e) => setExhaustionTimeValue(e.target.value)}
+                    placeholder="t.ex. 11:32"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="maxWatt">Max effekt (W)</Label>
+                  <Input
+                    id="maxWatt"
+                    type="number"
+                    value={maxWattValue}
+                    onChange={(e) => setMaxWattValue(e.target.value)}
+                    placeholder="t.ex. 250"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="maxHR">Max puls (bpm)</Label>
+                  <Input
+                    id="maxHR"
+                    type="number"
+                    value={maxHRValue}
+                    onChange={(e) => setMaxHRValue(e.target.value)}
+                    placeholder="t.ex. 184"
+                  />
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
       {/* Coachbedömning */}
-      <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
+      {testType === "troskeltest" && <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-6 shadow-sm space-y-4">
         <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Coachbedömning</p>
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-3">
@@ -483,10 +516,10 @@ export function EditTestForm({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Minutdata */}
-      <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-white shadow-sm">
+      {testType === "troskeltest" && <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-white shadow-sm">
         <div className="border-b border-[hsl(var(--border))] bg-[#F5F5F7]/50 px-5 py-3">
           <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>
         </div>
@@ -549,7 +582,7 @@ export function EditTestForm({
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
       {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 

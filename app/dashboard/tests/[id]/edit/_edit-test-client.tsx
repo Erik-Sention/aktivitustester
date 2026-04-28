@@ -51,7 +51,9 @@ export function EditTestClient({ id }: { id: string }) {
   return (
     <div className="space-y-6 py-6">
       <div>
-        <h1 className="text-2xl font-bold">Redigera test</h1>
+        <h1 className="text-2xl font-bold">
+          Redigera {test.testType === "troskeltest" ? "Tröskeltest" : test.testType === "vo2max" ? "VO₂ max-test" : "Wingate"}
+        </h1>
         {athlete && (
           <p className="text-sm text-[#86868B] mt-0.5">{fullName(athlete.firstName, athlete.lastName)}</p>
         )}
