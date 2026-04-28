@@ -214,15 +214,19 @@ function StageTimer({
   totalStages,
   onStageChange,
   onTick,
+  onPause,
   stageLabel,
   setupMinutes,
+  setupSeconds,
 }: {
   intervalSeconds: number
   totalStages: number
   onStageChange: (stage: number) => void
   onTick?: (stage: number, elapsed: number) => void
+  onPause?: (stage: number, elapsed: number) => void
   stageLabel?: string
   setupMinutes?: number
+  setupSeconds?: number
 }) {
   const [stage, setStage] = useState(1)
   const [elapsed, setElapsed] = useState(0)
@@ -232,6 +236,16 @@ function StageTimer({
   useEffect(() => { onStageChangeRef.current = onStageChange })
   const onTickRef = useRef(onTick)
   onTickRef.current = onTick
+  const onPauseRef = useRef(onPause)
+  onPauseRef.current = onPause
+
+  function getStageDurSeconds(s: number): number {
+    if (s === 1) {
+      if (setupSeconds != null) return setupSeconds
+      if (setupMinutes != null) return setupMinutes * 60
+    }
+    return intervalSeconds * 60
+  }
 
   useEffect(() => {
     if (running) {
@@ -243,8 +257,8 @@ function StageTimer({
   }, [running])
 
   useEffect(() => {
-    const stageDur = setupMinutes != null && stage === 1 ? setupMinutes : intervalSeconds
-    if (running && elapsed > 0 && elapsed >= stageDur * 60) {
+    const stageDurSeconds = getStageDurSeconds(stage)
+    if (running && elapsed > 0 && elapsed >= stageDurSeconds) {
       const next = Math.min(stage + 1, totalStages)
       setElapsed(0)
       setStage(next)
@@ -252,7 +266,7 @@ function StageTimer({
     } else {
       onTickRef.current?.(stage, elapsed)
     }
-  }, [elapsed, running, intervalSeconds, totalStages, stage, setupMinutes])
+  }, [elapsed, running, intervalSeconds, totalStages, stage, setupMinutes, setupSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function reset() {
     setRunning(false)
@@ -262,8 +276,8 @@ function StageTimer({
     onTickRef.current?.(1, 0)
   }
 
-  const stageDur = setupMinutes != null && stage === 1 ? setupMinutes : intervalSeconds
-  const remaining = Math.max(0, stageDur * 60 - elapsed)
+  const stageDurSeconds = getStageDurSeconds(stage)
+  const remaining = Math.max(0, stageDurSeconds - elapsed)
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60
 
@@ -281,7 +295,10 @@ function StageTimer({
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </span>
       </div>
-      <button type="button" onClick={() => setRunning((r) => !r)}
+      <button type="button" onClick={() => {
+        if (running) onPauseRef.current?.(stage, elapsed)
+        setRunning((r) => !r)
+      }}
         className="p-2.5 rounded-xl hover:bg-[#F5F5F7] text-secondary transition-colors">
         {running ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
       </button>
@@ -1461,7 +1478,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
           <StageTimer
             intervalSeconds={parseInt(form.testDuration) || 3}
             totalStages={(stageCount || 1) + 1}
-            setupMinutes={1}
+            setupSeconds={form.testType === "vo2max" ? 10 : 60}
             onStageChange={() => {}}
             stageLabel={timerLabel}
             onTick={(stage, elapsed) => {
@@ -1477,6 +1494,21 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               if (idx !== -1) {
                 timerDrivenRef.current = true
                 setActiveRow(idx)
+              }
+            }}
+            onPause={(stage, elapsed) => {
+              if (form.testType !== "vo2max" || stage <= 1) return
+              const stageDurMin = parseInt(form.testDuration) || 1
+              const testElapsedSec = (stage - 2) * stageDurMin * 60 + elapsed
+              const mins = Math.floor(testElapsedSec / 60)
+              const secs = testElapsedSec % 60
+              if (!exhaustionTimeMins && !exhaustionTimeSecs) {
+                setExhaustionTimeMins(String(mins))
+                setExhaustionTimeSecs(String(secs))
+              }
+              if (!exhaustionWattStr && activeRow !== null && !isSpeedBased(form.sport)) {
+                const w = rows[activeRow]?.watt
+                if (w) setExhaustionWattStr(String(w))
               }
             }}
           />
@@ -1508,8 +1540,26 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         </div>
       </div>
 
-      <div className="grid gap-6 lg:gap-8 lg:grid-cols-[1fr_2fr] lg:items-stretch lg:h-[calc(100vh-180px)]">
-        {/* Left column: Data table */}
+      <div className={`grid gap-6 lg:gap-8 ${form.testType === "vo2max" ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_2fr]"} lg:items-stretch lg:h-[calc(100vh-180px)]`}>
+        {/* Left column: load indicator (VO2max) or data table (threshold) */}
+        {form.testType === "vo2max" ? (
+          <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#86868B]">Aktuell belastning</p>
+            <div className="text-8xl font-black text-[#0071BA] tabular-nums leading-none mt-2">
+              {activeRow !== null
+                ? (isSpeedBased(form.sport) ? rows[activeRow]?.speed ?? "—" : rows[activeRow]?.watt ?? "—")
+                : (isSpeedBased(form.sport) ? form.startSpeed || "—" : form.startWatt || "—")}
+            </div>
+            <p className="text-2xl font-bold text-[#515154]">
+              {isSpeedBased(form.sport) ? "km/h" : "Watt"}
+            </p>
+            {activeRow !== null && (
+              <p className="text-base text-[#86868B] mt-4">
+                Steg {activeRow + 1}
+              </p>
+            )}
+          </div>
+        ) : (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-sm">
           <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3 flex items-center justify-between">
             <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F]">Minutdata</p>
@@ -1563,11 +1613,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   <th className="px-3 py-3 text-left w-14">Min</th>
                   <th className="px-3 py-3 text-right w-16">{isSpeedBased(form.sport) ? "km/h" : "W"}</th>
                   <th className="px-3 py-3 text-right w-20">Puls</th>
-                  {form.testType !== "vo2max" && <>
+                  <>
                     <th className="px-3 py-3 text-right w-20">Laktat</th>
                     <th className="px-3 py-3 text-right w-16">Borg</th>
                     <th className="px-3 py-3 text-right w-20">Kad.</th>
-                  </>}
+                  </>
                   <th className="px-1 py-3 w-8"></th>
                 </tr>
               </thead>
@@ -1575,12 +1625,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 {rows.map((row, i) => {
                   const lacOk = lacEnabled(row, dur)
                   const borgOk = borgEnabled(row, dur)
-                  const isVo2 = form.testType === "vo2max"
                   return (
                     <tr
                       key={i}
                       ref={activeRow === i ? timerRowRef : null}
-                      className={`transition-colors ${activeRow === i ? "bg-[#0071BA]/[0.10] ring-2 ring-inset ring-[#0071BA]/40" : (!isVo2 && lacOk ? "bg-[#0071BA]/[0.03]" : "")}`}
+                      className={`transition-colors ${activeRow === i ? "bg-[#0071BA]/[0.10] ring-2 ring-inset ring-[#0071BA]/40" : (lacOk ? "bg-[#0071BA]/[0.03]" : "")}`}
                     >
                       {/* Min */}
                       <td className="px-3 py-2">
@@ -1602,8 +1651,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                           className="table-input-lg w-16"
                         />
                       </td>
-                      {/* Laktat / Borg / Kadans — hidden for VO2max */}
-                      {!isVo2 && <>
+                      <>
                         <td className="px-3 py-2 text-right">
                           {lacOk ? (
                             <input
@@ -1656,13 +1704,13 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                             <span className="text-[#D1D1D6] font-semibold">—</span>
                           )}
                         </td>
-                      </>}
-                      {/* Delete row (stage-end for regular; any row for VO2max) */}
+                      </>
+                      {/* Delete last stage */}
                       <td className="px-1 py-2 text-center">
-                        {(isVo2 ? i > 0 : borgOk) && i === rows.length - 1 ? (
+                        {borgOk && i === rows.length - 1 ? (
                           <button
                             type="button"
-                            onClick={() => isVo2 ? setRows((prev) => prev.filter((_, idx) => idx !== i)) : removeStage(row.min)}
+                            onClick={() => removeStage(row.min)}
                             title="Ta bort rad"
                             className="text-[#D1D1D6] hover:text-red-400 transition-colors leading-none"
                           >
@@ -1684,25 +1732,28 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               onClick={addStage}
               className="text-sm text-[#0071BA] hover:text-[#005a96] font-medium"
             >
-              + Lägg till {form.testType === "vo2max" ? "rad" : "steg"}
+              + Lägg till steg
             </button>
           </div>
         </div>
+        )} {/* end left column ternary */}
 
         {/* Right column: Chart + Coach Assessment */}
         <div className="flex flex-col gap-6 lg:h-full">
-          {/* Chart */}
-          <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
-            <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Kurva (live)</p>
-            <LiveTestChart
-              rows={rows}
-              dur={dur}
-            />
-          </div>
+          {/* Chart — hidden for VO2max (no per-minute data to plot) */}
+          {form.testType !== "vo2max" && (
+            <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm">
+              <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-4">Kurva (live)</p>
+              <LiveTestChart
+                rows={rows}
+                dur={dur}
+              />
+            </div>
+          )}
 
           {/* VO2max exhaustion panel — replaces coach assessment */}
           {form.testType === "vo2max" ? (
-            <div className="lg:flex-1 rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto space-y-5">
+            <div className="lg:h-full rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-sm overflow-y-auto space-y-5">
               {/* Utmattning */}
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-[#1D1D1F] mb-3">Utmattning</p>

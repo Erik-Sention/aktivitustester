@@ -131,8 +131,8 @@ export function TestDetailClient({ id }: { id: string }) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-12 items-start">
-        {/* Right column — 30% */}
-        <div className="lg:col-span-4 lg:order-2 space-y-5">
+        {/* Right column — 30% (full width for VO2max) */}
+        <div className={`${test.testType === "vo2max" ? "lg:col-span-12" : "lg:col-span-4"} lg:order-2 space-y-5`}>
           {test.testType === "vo2max" && (
             <Vo2MaxResultsPanel test={serializedTest as any} gender={athlete?.gender ?? ""} />
           )}
@@ -314,14 +314,14 @@ export function TestDetailClient({ id }: { id: string }) {
             )
           })()}
 
-          {test.testType !== "wingate" && (
+          {test.testType !== "wingate" && test.testType !== "vo2max" && (
             <div className="rounded-2xl border border-[hsl(var(--border))]/60 bg-white p-5 shadow-apple">
               <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">Prestandagraf</p>
               <LiveTestChart rows={test.rawData} dur={testDuration} height={480} />
             </div>
           )}
 
-          {test.testType !== "wingate" && test.rawData.length > 0 && (
+          {test.testType !== "wingate" && test.testType !== "vo2max" && test.rawData.length > 0 && (
             <div className="overflow-hidden rounded-2xl border border-[hsl(var(--border))]/60 bg-white shadow-apple">
               <div className="border-b border-[hsl(var(--border))]/60 bg-[#F5F5F7]/50 px-5 py-3">
                 <p className="text-sm font-black uppercase tracking-widest text-primary">Minutdata</p>

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aktivitus — Nödtestverktyg</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #F5F5F7;
+      color: #1D1D1F;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0071BA;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: #1D1D1F; }
+    .header-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: #FF3B30;
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Warning banner ─────────────────────────────────── */
+    .warning-banner {
+      background: #FFF3CD;
+      border-bottom: 2px solid #FF3B30;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1D1D1F;
+    }
+    .warning-icon { font-size: 16px; }
+
+    /* ── Main layout ────────────────────────────────────── */
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #86868B;
+      margin-bottom: 10px;
+      margin-top: 28px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.07);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Grid ───────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+    .span-2 { grid-column: span 2; }
+    @media (max-width: 640px) { .span-2 { grid-column: span 1; } }
+
+    /* ── Form fields ────────────────────────────────────── */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #515154;
+      margin-bottom: 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 13px;
+      border: 1.5px solid #D2D2D7;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      color: #1D1D1F;
+      background: #F5F5F7;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #0071BA;
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2386868B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 36px; }
+
+    /* ── Load config ────────────────────────────────────── */
+    .load-row { display: grid; gap: 10px; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 640px) { .load-row { grid-template-columns: 1fr 1fr; } }
+
+    /* ── Table ──────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #86868B;
+      border-bottom: 1.5px solid #E5E5EA;
+      white-space: nowrap;
+    }
+    td { padding: 6px 4px; border-bottom: 1px solid #F2F2F7; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #FAFAFA; }
+
+    .td-min { width: 52px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: #515154; }
+    .td-num input { text-align: right; padding: 8px 10px; }
+    .td-comment input { min-width: 120px; }
+
+    /* ── Buttons ────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s;
+      font-family: inherit;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-primary { background: #0071BA; color: #fff; }
+    .btn-primary:hover { background: #005a96; }
+    .btn-outline { background: #fff; color: #1D1D1F; border: 1.5px solid #D2D2D7; }
+    .btn-outline:hover { background: #F5F5F7; }
+    .btn-danger-sm {
+      padding: 5px 9px;
+      border-radius: 7px;
+      font-size: 13px;
+      background: none;
+      border: 1px solid #D2D2D7;
+      color: #FF3B30;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1;
+    }
+    .btn-danger-sm:hover { background: #FFF1F0; border-color: #FF3B30; }
+    .btn-add {
+      padding: 8px 14px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #EAF4FC;
+      color: #0071BA;
+      border: 1.5px dashed #0071BA;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+      margin-top: 10px;
+    }
+    .btn-add:hover { background: #D5EAF8; }
+
+    /* ── Generate rows button ───────────────────────────── */
+    .generate-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Export section ─────────────────────────────────── */
+    .export-bar {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.07);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .export-info { font-size: 13px; color: #515154; }
+    .export-info strong { color: #1D1D1F; }
+    .btn-export {
+      background: #0071BA;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 28px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-export:hover { background: #005a96; }
+
+    /* ── Auto-save indicator ────────────────────────────── */
+    .autosave {
+      text-align: center;
+      font-size: 12px;
+      color: #86868B;
+      margin-top: 12px;
+    }
+    .autosave.saved { color: #34C759; }
+
+    /* ── Helpers ────────────────────────────────────────── */
+    .row-num { font-size: 13px; color: #86868B; text-align: center; padding: 0 6px; }
+    .dimmed { color: #C7C7CC; font-size: 13px; text-align: center; }
+
+    @media print {
+      .btn, .btn-add, .btn-export, .btn-danger-sm, .export-bar, .generate-row, .warning-banner { display: none !important; }
+      body { background: white; }
+      .card { border: 1px solid #ccc; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">Aktivitus<span> · Nödverktyg</span></div>
+  <span class="header-badge">OFFLINE</span>
+</header>
+
+<!-- Warning -->
+<div class="warning-banner">
+  <span class="warning-icon">⚠️</span>
+  Offlineläge — data sparas INTE till systemet. Ladda ned JSON när testet är klart och skicka till admin för manuell import.
+</div>
+
+<!-- Main -->
+<div class="container">
+
+  <!-- Athlete info -->
+  <p class="section-title">Atlet</p>
+  <div class="card">
+    <div class="grid-2">
+      <div>
+        <label for="firstName">Förnamn</label>
+        <input type="text" id="firstName" placeholder="Anna" oninput="autosave()">
+      </div>
+      <div>
+        <label for="lastName">Efternamn</label>
+        <input type="text" id="lastName" placeholder="Lindgren" oninput="autosave()">
+      </div>
+      <div>
+        <label for="email">E-post</label>
+        <input type="email" id="email" placeholder="anna@example.com" oninput="autosave()">
+      </div>
+      <div>
+        <label for="bodyWeight">Kroppsvikt (kg)</label>
+        <input type="number" id="bodyWeight" placeholder="70" step="0.1" oninput="autosave()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Test config -->
+  <p class="section-title">Testinställningar</p>
+  <div class="card">
+    <div class="grid-3">
+      <div>
+        <label for="testDate">Testdatum</label>
+        <input type="date" id="testDate" oninput="autosave()">
+      </div>
+      <div>
+        <label for="sport">Sport</label>
+        <select id="sport" onchange="onSportChange(); autosave()">
+          <option value="cykel">Cykel</option>
+          <option value="lopning">Löpning</option>
+          <option value="skidor_band">Skidor (band)</option>
+          <option value="skierg">Skierg</option>
+          <option value="kajak">Kajak</option>
+        </select>
+      </div>
+      <div>
+        <label for="testType">Testtyp</label>
+        <select id="testType" onchange="autosave()">
+          <option value="troskeltest">Tröskeltest</option>
+          <option value="vo2max">VO₂max</option>
+        </select>
+      </div>
+      <div>
+        <label for="testLocation">Plats</label>
+        <select id="testLocation" onchange="autosave()">
+          <option value="stockholm">Stockholm</option>
+          <option value="stockholm_c">Stockholm C</option>
+          <option value="linkoping">Linköping</option>
+          <option value="goteborg">Göteborg</option>
+          <option value="malmo">Malmö</option>
+        </select>
+      </div>
+      <div>
+        <label for="coach">Ansvarig coach</label>
+        <input type="text" id="coach" placeholder="Erik Helsing" oninput="autosave()">
+      </div>
+    </div>
+
+    <!-- Load config -->
+    <p class="section-title" style="margin-top:20px;">Belastning &amp; steg</p>
+    <div class="load-row">
+      <div>
+        <label id="startLoadLabel">Startvatt (W)</label>
+        <input type="number" id="startLoad" value="40" step="5" oninput="autosave()">
+      </div>
+      <div>
+        <label id="stepSizeLabel">Stegstorlek</label>
+        <input type="number" id="stepSize" value="20" step="5" oninput="autosave()">
+      </div>
+      <div>
+        <label>Steglängd (min)</label>
+        <input type="number" id="stepDuration" value="3" min="1" max="10" oninput="autosave()">
+      </div>
+      <div>
+        <label>Antal steg</label>
+        <input type="number" id="numSteps" value="6" min="1" max="20" oninput="autosave()">
+      </div>
+    </div>
+    <div id="inclineRow" style="display:none; margin-top:14px;">
+      <label>Lutning (%)</label>
+      <input type="number" id="incline" value="1" step="0.5" style="max-width:120px;" oninput="autosave()">
+    </div>
+    <div class="generate-row">
+      <button class="btn btn-outline" onclick="generateRows()">↻ Generera testrader</button>
+      <span style="font-size:13px; color:#86868B;">Skapar rader automatiskt utifrån inställningarna ovan</span>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <p class="section-title">Anteckningar</p>
+  <div class="card">
+    <label for="notes">Fritext (syfte, kommentarer etc.)</label>
+    <textarea id="notes" placeholder="Skriv eventuella anteckningar här…" oninput="autosave()"></textarea>
+  </div>
+
+  <!-- Test rows -->
+  <p class="section-title">Testdata — minuta värden</p>
+  <div class="card">
+    <div class="table-wrap">
+      <table id="testTable">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th style="width:60px;">Min</th>
+            <th id="loadHeader" style="width:90px;">Watt</th>
+            <th style="width:80px;">Puls (bpm)</th>
+            <th style="width:90px;">Laktat (mmol)</th>
+            <th style="width:70px;">Borg</th>
+            <th style="width:80px;">Kadans</th>
+            <th>Kommentar</th>
+            <th style="width:36px;"></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addRow()">+ Lägg till rad manuellt</button>
+  </div>
+
+  <!-- Export -->
+  <div class="export-bar">
+    <div class="export-info">
+      <strong>Klar med testet?</strong><br>
+      Ladda ned JSON-filen och skicka den till admin för manuell import i systemet.
+    </div>
+    <button class="btn-export" onclick="exportJSON()">
+      ⬇ Ladda ner JSON
+    </button>
+  </div>
+
+  <p class="autosave" id="autosaveStatus">Data sparas automatiskt i webbläsaren.</p>
+
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let rows = [];
+  let rowCounter = 0;
+
+  const SPORT_SPEED_BASED = ['lopning', 'skidor_band'];
+
+  function isSpeedBased() {
+    return SPORT_SPEED_BASED.includes(document.getElementById('sport').value);
+  }
+
+  // ── Init ───────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
+    loadFromStorage();
+    if (rows.length === 0) generateRows();
+  });
+
+  // ── Sport change ───────────────────────────────────────
+  function onSportChange() {
+    const speedBased = isSpeedBased();
+    document.getElementById('loadHeader').textContent = speedBased ? 'Hastighet (km/h)' : 'Watt';
+    document.getElementById('startLoadLabel').textContent = speedBased ? 'Starthastighet (km/h)' : 'Startvatt (W)';
+    document.getElementById('stepSizeLabel').textContent = speedBased ? 'Ökning per steg (km/h)' : 'Stegstorlek (W)';
+    document.getElementById('inclineRow').style.display = speedBased ? 'block' : 'none';
+    if (speedBased && parseFloat(document.getElementById('startLoad').value) > 30) {
+      document.getElementById('startLoad').value = 8;
+      document.getElementById('stepSize').value = 1;
+    }
+    // Update all load column headers in existing rows
+    document.querySelectorAll('.load-input').forEach(el => {
+      el.placeholder = speedBased ? '8.0' : '200';
+    });
+  }
+
+  // ── Generate rows ──────────────────────────────────────
+  function generateRows() {
+    const start = parseFloat(document.getElementById('startLoad').value) || (isSpeedBased() ? 8 : 40);
+    const step  = parseFloat(document.getElementById('stepSize').value) || (isSpeedBased() ? 1 : 20);
+    const dur   = parseInt(document.getElementById('stepDuration').value) || 3;
+    const num   = parseInt(document.getElementById('numSteps').value) || 6;
+
+    rows = [];
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    rowCounter = 0;
+
+    for (let i = 0; i < num; i++) {
+      const load = isSpeedBased()
+        ? Math.round((start + i * step) * 10) / 10
+        : Math.round(start + i * step);
+      const minEnd = (i + 1) * dur;
+      addRowData({ min: minEnd, load, hr: '', lac: '', borg: '', cadence: '', comment: '' });
+    }
+    autosave();
+  }
+
+  // ── Add row ────────────────────────────────────────────
+  function addRow() {
+    const lastRow = rows[rows.length - 1];
+    const dur = parseInt(document.getElementById('stepDuration').value) || 3;
+    const step = parseFloat(document.getElementById('stepSize').value) || (isSpeedBased() ? 1 : 20);
+    const newMin = lastRow ? lastRow.min + dur : dur;
+    const newLoad = lastRow ? (isSpeedBased()
+      ? Math.round((parseFloat(lastRow.load) + step) * 10) / 10
+      : Math.round(parseFloat(lastRow.load) + step)) : '';
+    addRowData({ min: newMin, load: newLoad, hr: '', lac: '', borg: '', cadence: '', comment: '' });
+    autosave();
+  }
+
+  function addRowData(data) {
+    const id = ++rowCounter;
+    rows.push({ id, ...data });
+    renderRow(id, data, rows.length);
+  }
+
+  function renderRow(id, data, rowNum) {
+    const tbody = document.getElementById('tableBody');
+    const tr = document.createElement('tr');
+    tr.id = `row-${id}`;
+    tr.innerHTML = `
+      <td class="row-num">${rowNum}</td>
+      <td class="td-min"><input type="number" class="min-input" value="${data.min}" style="width:52px; text-align:center;" onchange="updateRowField(${id},'min',this.value); renumberRows(); autosave()"></td>
+      <td class="td-num"><input type="number" class="load-input" value="${data.load}" placeholder="${isSpeedBased() ? '8.0' : '200'}" step="${isSpeedBased() ? '0.5' : '5'}" onchange="updateRowField(${id},'load',this.value); autosave()"></td>
+      <td class="td-num"><input type="number" class="hr-input" value="${data.hr}" placeholder="150" min="60" max="230" onchange="updateRowField(${id},'hr',this.value); autosave()"></td>
+      <td class="td-num"><input type="number" class="lac-input" value="${data.lac}" placeholder="1.5" step="0.1" min="0" max="25" onchange="updateRowField(${id},'lac',this.value); autosave()"></td>
+      <td class="td-num"><input type="number" class="borg-input" value="${data.borg}" placeholder="13" min="6" max="20" onchange="updateRowField(${id},'borg',this.value); autosave()"></td>
+      <td class="td-num"><input type="number" class="cad-input" value="${data.cadence}" placeholder="85" min="0" max="200" onchange="updateRowField(${id},'cadence',this.value); autosave()"></td>
+      <td class="td-comment"><input type="text" class="comment-input" value="${data.comment || ''}" placeholder="Kommentar…" onchange="updateRowField(${id},'comment',this.value); autosave()"></td>
+      <td><button class="btn-danger-sm" onclick="removeRow(${id})" title="Ta bort rad">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function updateRowField(id, field, value) {
+    const row = rows.find(r => r.id === id);
+    if (row) row[field] = value;
+  }
+
+  function removeRow(id) {
+    rows = rows.filter(r => r.id !== id);
+    const el = document.getElementById(`row-${id}`);
+    if (el) el.remove();
+    renumberRows();
+    autosave();
+  }
+
+  function renumberRows() {
+    const trs = document.querySelectorAll('#tableBody tr');
+    trs.forEach((tr, i) => {
+      const numCell = tr.querySelector('.row-num');
+      if (numCell) numCell.textContent = i + 1;
+    });
+  }
+
+  // ── JSON export ────────────────────────────────────────
+  function exportJSON() {
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName  = document.getElementById('lastName').value.trim();
+    const sport     = document.getElementById('sport').value;
+    const speedBased = isSpeedBased();
+
+    // Read live values from DOM inputs (more reliable than state)
+    const liveRows = [];
+    document.querySelectorAll('#tableBody tr').forEach(tr => {
+      const min     = parseFloat(tr.querySelector('.min-input')?.value) || 0;
+      const load    = parseFloat(tr.querySelector('.load-input')?.value) || 0;
+      const hr      = parseFloat(tr.querySelector('.hr-input')?.value) || 0;
+      const lac     = parseFloat(tr.querySelector('.lac-input')?.value) || 0;
+      const borg    = parseFloat(tr.querySelector('.borg-input')?.value) || 0;
+      const cadence = parseFloat(tr.querySelector('.cad-input')?.value) || 0;
+      const comment = tr.querySelector('.comment-input')?.value || '';
+      liveRows.push({
+        min,
+        watt:    speedBased ? 0 : load,
+        speed:   speedBased ? load : undefined,
+        hr, lac, borg, cadence,
+        _comment: comment || undefined,
+      });
+    });
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      source: 'emergency-tool',
+      form: {
+        athleteId: '',
+        athleteFirstName: firstName,
+        athleteLastName:  lastName,
+        athleteEmail:     document.getElementById('email').value.trim(),
+        athleteFullName:  [firstName, lastName].filter(Boolean).join(' '),
+        sport,
+        testType:         document.getElementById('testType').value,
+        protocol:         'manual',
+        testLocation:     document.getElementById('testLocation').value,
+        testLeader:       document.getElementById('coach').value.trim(),
+        testDate:         document.getElementById('testDate').value,
+        notes:            document.getElementById('notes').value.trim(),
+        bodyWeight:       document.getElementById('bodyWeight').value.trim(),
+        heightCm:         '',
+        startLoad:        document.getElementById('startLoad').value,
+        stepSize:         document.getElementById('stepSize').value,
+        testDuration:     document.getElementById('stepDuration').value,
+        startWatt:        speedBased ? '' : document.getElementById('startLoad').value,
+        startSpeed:       speedBased ? document.getElementById('startLoad').value : '',
+        speedIncrement:   speedBased ? document.getElementById('stepSize').value : '',
+        incline:          document.getElementById('incline').value || '0',
+      },
+      rows: liveRows,
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const safeName = lastName.replace(/\s+/g, '-').toLowerCase() || 'atlet';
+    const date = document.getElementById('testDate').value || new Date().toISOString().split('T')[0];
+    const filename = `emergency_${safeName}_${date}.json`;
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Auto-save to localStorage ──────────────────────────
+  let autosaveTimer = null;
+  function autosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      try {
+        const state = collectState();
+        localStorage.setItem('aktivitus_emergency_draft', JSON.stringify(state));
+        const el = document.getElementById('autosaveStatus');
+        el.textContent = 'Sparat i webbläsaren — ' + new Date().toLocaleTimeString('sv-SE');
+        el.className = 'autosave saved';
+        setTimeout(() => { el.className = 'autosave'; el.textContent = 'Data sparas automatiskt i webbläsaren.'; }, 3000);
+      } catch(e) {}
+    }, 800);
+  }
+
+  function collectState() {
+    const liveRows = [];
+    document.querySelectorAll('#tableBody tr').forEach(tr => {
+      liveRows.push({
+        min:     tr.querySelector('.min-input')?.value || '',
+        load:    tr.querySelector('.load-input')?.value || '',
+        hr:      tr.querySelector('.hr-input')?.value || '',
+        lac:     tr.querySelector('.lac-input')?.value || '',
+        borg:    tr.querySelector('.borg-input')?.value || '',
+        cadence: tr.querySelector('.cad-input')?.value || '',
+        comment: tr.querySelector('.comment-input')?.value || '',
+      });
+    });
+    return {
+      firstName:    document.getElementById('firstName').value,
+      lastName:     document.getElementById('lastName').value,
+      email:        document.getElementById('email').value,
+      bodyWeight:   document.getElementById('bodyWeight').value,
+      testDate:     document.getElementById('testDate').value,
+      sport:        document.getElementById('sport').value,
+      testType:     document.getElementById('testType').value,
+      testLocation: document.getElementById('testLocation').value,
+      coach:        document.getElementById('coach').value,
+      notes:        document.getElementById('notes').value,
+      startLoad:    document.getElementById('startLoad').value,
+      stepSize:     document.getElementById('stepSize').value,
+      stepDuration: document.getElementById('stepDuration').value,
+      numSteps:     document.getElementById('numSteps').value,
+      incline:      document.getElementById('incline').value,
+      liveRows,
+    };
+  }
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem('aktivitus_emergency_draft');
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s.firstName)    document.getElementById('firstName').value = s.firstName;
+      if (s.lastName)     document.getElementById('lastName').value = s.lastName;
+      if (s.email)        document.getElementById('email').value = s.email;
+      if (s.bodyWeight)   document.getElementById('bodyWeight').value = s.bodyWeight;
+      if (s.testDate)     document.getElementById('testDate').value = s.testDate;
+      if (s.sport)        { document.getElementById('sport').value = s.sport; onSportChange(); }
+      if (s.testType)     document.getElementById('testType').value = s.testType;
+      if (s.testLocation) document.getElementById('testLocation').value = s.testLocation;
+      if (s.coach)        document.getElementById('coach').value = s.coach;
+      if (s.notes)        document.getElementById('notes').value = s.notes;
+      if (s.startLoad)    document.getElementById('startLoad').value = s.startLoad;
+      if (s.stepSize)     document.getElementById('stepSize').value = s.stepSize;
+      if (s.stepDuration) document.getElementById('stepDuration').value = s.stepDuration;
+      if (s.numSteps)     document.getElementById('numSteps').value = s.numSteps;
+      if (s.incline)      document.getElementById('incline').value = s.incline;
+      if (s.liveRows && s.liveRows.length > 0) {
+        rows = [];
+        document.getElementById('tableBody').innerHTML = '';
+        rowCounter = 0;
+        s.liveRows.forEach(r => addRowData(r));
+      }
+    } catch(e) {}
+  }
+</script>
+</body>
+</html>

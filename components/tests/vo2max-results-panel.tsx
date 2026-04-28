@@ -10,105 +10,60 @@ function parseExhaustionTime(notes: string): string | null {
   return m ? m[1] : null
 }
 
+function isSpeedSport(sport: string): boolean {
+  return sport === "lopning" || sport === "skidor_band"
+}
+
 export function Vo2MaxResultsPanel({ test }: Vo2MaxResultsPanelProps) {
   const vo2 = test.results.vo2Max
   const maxHR = test.results.maxHR
   const maxLactate = test.results.maxLactate
   const bodyWeight = test.inputParams.bodyWeight
   const exhaustionTime = parseExhaustionTime(test.notes ?? "")
+  const speedSport = isSpeedSport(test.sport)
 
-  // Prefer explicitly stored maxWatt, fall back to rawData derivation
   const maxWatt = (test.results.maxWatt ?? 0) > 0
     ? test.results.maxWatt!
     : (test.rawData.length > 0
         ? Math.max(...test.rawData.filter(r => r.hr > 0).map(r => r.watt), 0) || null
         : null)
 
-  // Absolute VO2: use stored value if available, fall back to reverse-calc
   const absVo2 = test.results.vo2AbsoluteMlMin != null
     ? test.results.vo2AbsoluteMlMin
     : (vo2 != null && bodyWeight != null && bodyWeight > 0 ? Math.round(vo2 * bodyWeight) : null)
 
+  const stats: { label: string; value: string }[] = []
+  if (maxHR != null && maxHR > 0) stats.push({ label: "Max puls", value: `${maxHR} bpm` })
+  if (!speedSport && maxWatt != null && maxWatt > 0) stats.push({ label: "Max effekt", value: `${maxWatt} W` })
+  if (exhaustionTime) stats.push({ label: "Utmattningstid", value: exhaustionTime })
+  if (maxLactate != null && maxLactate > 0) stats.push({ label: "Max laktat", value: `${maxLactate.toFixed(1)} mmol/L` })
+  if (absVo2 != null && absVo2 > 0) stats.push({ label: "Syreupptag", value: `${(absVo2 / 1000).toFixed(2)} L/min` })
+  if (bodyWeight != null && bodyWeight > 0) stats.push({ label: "Kroppsvikt", value: `${bodyWeight} kg` })
+
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl bg-white border border-[hsl(var(--border))] shadow-apple p-6">
-        <p className="text-sm font-black uppercase tracking-widest text-primary mb-4">VO₂MAX</p>
+    <div className="rounded-2xl bg-[#0071BA] p-6 text-white shadow-xl shadow-[#0071BA]/20">
+      <span className="text-sm font-black uppercase tracking-[0.15em] text-white/80">VO₂MAX</span>
 
-        {/* Big value */}
-        {vo2 != null && (
-          <div className="mb-5 flex items-end gap-2">
-            <span className="text-[56px] font-black leading-none tracking-tighter text-interactive">{vo2}</span>
-            <span className="text-base text-secondary mb-2">ml/kg/min</span>
-          </div>
-        )}
-
-        <div className="space-y-0 divide-y divide-[hsl(var(--border))]/50">
-
-          {/* Protokoll */}
-          <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Protokoll</p>
-            <dl className="space-y-1.5">
-              <div className="flex justify-between text-base">
-                <dt className="text-secondary">Starteffekt</dt>
-                <dd className="font-semibold text-primary">
-                  {(test.inputParams.startWatt ?? 0) > 0 ? `${test.inputParams.startWatt} W` : "Ej angivet"}
-                </dd>
-              </div>
-              <div className="flex justify-between text-base">
-                <dt className="text-secondary">Effektökning</dt>
-                <dd className="font-semibold text-primary">
-                  {(test.inputParams.stepSize ?? 0) > 0 ? `${test.inputParams.stepSize} W/min` : "Ej angivet"}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Utmattning */}
-          <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Utmattning</p>
-            <dl className="space-y-1.5">
-              {exhaustionTime && (
-                <div className="flex justify-between text-base">
-                  <dt className="text-secondary">Utmattningstid</dt>
-                  <dd className="font-semibold text-primary">{exhaustionTime}</dd>
-                </div>
-              )}
-              <div className="flex justify-between text-base">
-                <dt className="text-secondary">Max effekt</dt>
-                <dd className="font-semibold text-primary">
-                  {maxWatt != null && maxWatt > 0 ? `${maxWatt} W` : "Ej angivet"}
-                </dd>
-              </div>
-              {maxLactate != null && maxLactate > 0 && (
-                <div className="flex justify-between text-base">
-                  <dt className="text-secondary">Maxlaktat</dt>
-                  <dd className="font-bold text-primary">{maxLactate.toFixed(2)} mmol/L</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Resultat */}
-          <div className="py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-secondary mb-2">Resultat</p>
-            <dl className="space-y-1.5">
-              {absVo2 != null && absVo2 > 0 && (
-                <div className="flex justify-between text-base">
-                  <dt className="text-secondary">Syreupptag (abs.)</dt>
-                  <dd className="font-semibold text-primary">{absVo2} ml/min</dd>
-                </div>
-              )}
-              {maxHR != null && maxHR > 0 && (
-                <div className="flex justify-between text-base">
-                  <dt className="text-secondary">Max puls</dt>
-                  <dd className="font-semibold text-primary">{maxHR} bpm</dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
+      {vo2 != null ? (
+        <div className="mt-2 flex items-end gap-3">
+          <span className="text-[72px] font-black leading-none tracking-tighter text-white">{vo2}</span>
+          <span className="text-lg text-white/70 mb-3">ml/kg/min</span>
         </div>
-      </div>
+      ) : (
+        <p className="mt-3 text-white/60 text-sm">Inget VO₂ max-värde sparat</p>
+      )}
+
+      {stats.length > 0 && (
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-5">
+          {stats.map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-xs uppercase tracking-wider text-white/60 leading-none mb-1.5">{label}</p>
+              <p className="text-xl font-black tracking-tight leading-none">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   )
 }

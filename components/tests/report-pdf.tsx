@@ -632,7 +632,7 @@ function WingateBarChart({
 
 // ─── Page header ──────────────────────────────────────────────────────────────
 function PageHeader({
-  athleteName, testDate, sport, testType, testLeader, subtitle, coachName, coachAvatarUrl,
+  athleteName, testDate, sport, testType, testLeader, subtitle, coachName, coachAvatarUrl, protocolLine,
 }: {
   athleteName: string
   testDate: string
@@ -642,6 +642,7 @@ function PageHeader({
   subtitle?: string
   coachName?: string
   coachAvatarUrl?: string
+  protocolLine?: string
 }) {
   return (
     <View style={s.header}>
@@ -656,7 +657,7 @@ function PageHeader({
       <View style={s.headerRight}>
         <Text style={s.headerName}>{athleteName}</Text>
         <Text style={s.headerMeta}>
-          {testDate}  ·  {sportLabel(sport)}  ·  {testTypeLabel(testType)}
+          {testDate}  ·  {sportLabel(sport)}  ·  {testTypeLabel(testType)}{protocolLine ? `  ·  ${protocolLine}` : ''}
         </Text>
         {(coachName || testLeader) && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
@@ -880,71 +881,6 @@ function KnowledgePage({
   )
 }
 
-function VO2KnowledgePage({
-  athleteName, testDate, sport, testType, coachName, testLeader, coachAvatarUrl, gender,
-}: {
-  athleteName: string; testDate: string; sport: string; testType: string
-  coachName?: string; testLeader?: string; coachAvatarUrl?: string
-  gender?: 'M' | 'K' | ''
-}) {
-  return (
-    <Page size="A4" style={s.page}>
-      <PageHeader
-        athleteName={athleteName} testDate={testDate} sport={sport} testType={testType}
-        subtitle="Om ditt VO₂max" coachName={coachName}
-        testLeader={testLeader} coachAvatarUrl={coachAvatarUrl}
-      />
-
-      <View style={s.box}>
-        <Text style={s.kwTitle}>Syreupptagningsförmåga</Text>
-        <Text style={[s.kwLead, { marginBottom: 8 }]}>Vad VO₂max-testet mäter — och vad ditt resultat innebär</Text>
-        <View style={s.kwDivider} />
-
-        <Text style={s.kwBody}>
-          Vid test av VO₂max mäts den maximala mängd syre som kroppen kan använda vid aerob förbränning. Vid VO₂max är de anaeroba energiprocesserna också i full gång och den effekt eller löpfart som nås vid VO₂max är därför högre än vad som teoretiskt krävs för att motsvara den aeroba förbränningen.
-        </Text>
-        <Text style={[s.kwBody, { marginTop: 6 }]}>
-          Maximal syreupptagningsförmåga anges ofta som absolut kapacitet (l/min), men då de flesta uthållighetsidrotter innebär uppbärande av den egna kroppsvikten används ofta ett relativt värde, det så kallade testvärdet (ml/kg·min⁻¹). Framgång inom uthållighetsidrott kräver i de flesta fall en hög maximal syreupptagningsförmåga och VO₂max för kvinnor och män tävlandes på elitnivå är oftast inom 60–75 respektive 65–85 ml/kg·min⁻¹.
-        </Text>
-
-        <Text style={[s.kwHeading, { marginTop: 8 }]}>Central kapacitet</Text>
-        <Text style={s.kwBody}>
-          Utgörs av hjärtats pumpförmåga samt blodets förmåga att transportera syre. Den centrala kapaciteten bestämmer till största del VO₂max.
-        </Text>
-
-        <Text style={[s.kwHeading, { marginTop: 8 }]}>Lokal kapacitet</Text>
-        <Text style={s.kwBody}>
-          Utgörs av hur syret tas upp och används vid energiomsättning i den arbetande muskulaturen. Musklerna har i regel en överkapacitet att använda syre och begränsar inte VO₂max vid helkroppsarbete. En hög lokal kapacitet medför därmed en god uthållighet.
-        </Text>
-
-        <View style={[s.kwDivider, { marginTop: 10 }]} />
-        <Text style={[s.sectionLabel, { marginTop: 8 }]}>REFERENSVÄRDEN</Text>
-        <Text style={[s.kwBody, { marginBottom: 4 }]}>Medelvärden för test av VO₂max på Aktivitus (alla åldrar):</Text>
-        {(gender === 'K' || !gender) && (
-          <View style={s.threshStatRow}>
-            <Text style={{ fontSize: 8.5, color: C.slate600 }}>Kvinnor</Text>
-            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.slate800 }}>45 ml/kg</Text>
-          </View>
-        )}
-        {(gender === 'M' || !gender) && (
-          <View style={s.threshStatRow}>
-            <Text style={{ fontSize: 8.5, color: C.slate600 }}>Män</Text>
-            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: C.slate800 }}>54 ml/kg</Text>
-          </View>
-        )}
-
-        <View style={[s.kwDivider, { marginTop: 10, marginBottom: 4 }]} />
-        <Text style={[s.kwHeading, { marginTop: 0 }]}>Nästa steg</Text>
-        <Text style={s.kwBody}>
-          Diskutera dina resultat och träningsupplägg med din coach. VO₂max-testet rekommenderas upprepas var 3–6 månad för att följa din konditionsutveckling. Välkommen tillbaka!
-        </Text>
-      </View>
-
-      <PageFooter />
-    </Page>
-  )
-}
-
 // ─── Main document ────────────────────────────────────────────────────────────
 export function AktivitusReport({
   test,
@@ -976,11 +912,19 @@ export function AktivitusReport({
   const lt2HR    = ca?.ltPuls        ?? null
   const estMaxHR = ca?.estMaxPuls ?? ca?.hogstaUpnaddPuls ?? r.maxHR
 
-  const protocolStr = ip.startWatt
-    ? `${ip.startWatt}W  +${ip.stepSize}W / ${ip.testDuration} min`
-    : ip.startSpeed
-    ? `${ip.startSpeed} km/h  +${ip.speedIncrement} km/h / ${ip.testDuration} min`
-    : ''
+  const exhaustionTimeMatch = test.notes?.match(/^Utmattning tid: (\d{2}:\d{2})\n?([\s\S]*)$/)
+  const exhaustionTime  = exhaustionTimeMatch?.[1] ?? null
+  const remainingNotes  = exhaustionTimeMatch ? exhaustionTimeMatch[2].trim() : (test.notes ?? '')
+
+  const maxWatt = (r.maxWatt ?? 0) > 0
+    ? r.maxWatt!
+    : (test.rawData.length > 0
+        ? Math.max(...test.rawData.filter(row => row.hr > 0).map(row => row.watt), 0) || null
+        : null)
+
+  const protocolLine = isSpeed
+    ? ((ip as any).startSpeed ? `${(ip as any).startSpeed} km/h  +${(ip as any).speedIncrement} km/h / ${ip.testDuration} min` : '')
+    : (ip.startWatt ? `${ip.startWatt}W  +${ip.stepSize}W / ${ip.testDuration} min` : '')
 
   return (
     <Document>
@@ -995,10 +939,11 @@ export function AktivitusReport({
           subtitle="Resultatöversikt"
           coachName={coachName}
           coachAvatarUrl={coachAvatarUrl}
+          protocolLine={isVO2 ? protocolLine : undefined}
         />
 
         {/* Performance chart */}
-        {(isTroskel || isVO2) && test.rawData.length >= 2 && (
+        {isTroskel && test.rawData.length >= 2 && (
           <View style={s.box}>
             <Text style={s.sectionLabel}>PRESTANDAGRAF</Text>
             <PerformanceChart
@@ -1039,38 +984,47 @@ export function AktivitusReport({
           </View>
         )}
 
-        {/* VO2max results */}
+        {/* VO2max results — single full-width blue card */}
         {isVO2 && (
-          <View style={s.box}>
-            <Text style={s.sectionLabel}>VO₂MAX</Text>
-            <View style={s.boxRow}>
-              <View style={[s.threshBox, s.threshBoxGreen]}>
-                <Text style={s.threshTitle}>VO₂ MAX</Text>
-                <Text style={[s.threshValue, { fontSize: 36 }]}>{fmt(r.vo2Max)}</Text>
-                <Text style={s.threshUnit}>ml/kg/min</Text>
-                <View style={s.threshDivider} />
-                <View style={s.threshStatRow}>
-                  <Text style={s.threshStatLabel}>Max puls</Text>
-                  <Text style={s.threshStatValue}>{r.maxHR ? `${r.maxHR} bpm` : '—'}</Text>
+          <View style={[s.box, { backgroundColor: C.blue }]}>
+            <Text style={[s.sectionLabel, { color: C.blueLight }]}>VO₂MAX</Text>
+            {/* Big value */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 14 }}>
+              <Text style={[s.threshValue, { fontSize: 44 }]}>{r.vo2Max != null ? String(r.vo2Max) : '—'}</Text>
+              <Text style={[s.threshUnit, { marginLeft: 6, marginBottom: 4 }]}>ml/kg/min</Text>
+            </View>
+            {/* Stats row */}
+            <View style={{ flexDirection: 'row', gap: 0, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 12 }}>
+              {r.maxHR != null && r.maxHR > 0 && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.threshTitle}>MAX PULS</Text>
+                  <Text style={[s.threshValue, { fontSize: 16 }]}>{r.maxHR} <Text style={{ fontSize: 8, fontFamily: 'Helvetica', color: C.blueLight }}>bpm</Text></Text>
                 </View>
-                <View style={s.threshStatRow}>
-                  <Text style={s.threshStatLabel}>Max laktat</Text>
-                  <Text style={s.threshStatValue}>{fmt(r.maxLactate, 'mmol')}</Text>
+              )}
+              {!isSpeed && (maxWatt ?? 0) > 0 && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.threshTitle}>MAX EFFEKT</Text>
+                  <Text style={[s.threshValue, { fontSize: 16 }]}>{maxWatt} <Text style={{ fontSize: 8, fontFamily: 'Helvetica', color: C.blueLight }}>W</Text></Text>
                 </View>
-                <View style={s.threshStatRow}>
-                  <Text style={s.threshStatLabel}>Kroppsvikt</Text>
-                  <Text style={s.threshStatValue}>{fmt(bw, 'kg')}</Text>
+              )}
+              {exhaustionTime && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.threshTitle}>UTMATTNINGSTID</Text>
+                  <Text style={[s.threshValue, { fontSize: 16 }]}>{exhaustionTime}</Text>
                 </View>
-              </View>
-              <View style={[s.threshBox, s.threshBoxBlue]}>
-                <Text style={s.threshTitle}>PROTOKOLL</Text>
-                <Text style={s.threshSubtitle}>{protocolStr || '—'}</Text>
-                <View style={s.threshDivider} />
-                <View style={s.threshStatRow}>
-                  <Text style={s.threshStatLabel}>Testplats</Text>
-                  <Text style={s.threshStatValue}>{test.testLocation}</Text>
+              )}
+              {r.maxLactate != null && r.maxLactate > 0 && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.threshTitle}>MAX LAKTAT</Text>
+                  <Text style={[s.threshValue, { fontSize: 16 }]}>{r.maxLactate.toFixed(1)} <Text style={{ fontSize: 8, fontFamily: 'Helvetica', color: C.blueLight }}>mmol/L</Text></Text>
                 </View>
-              </View>
+              )}
+              {bw != null && bw > 0 && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.threshTitle}>KROPPSVIKT</Text>
+                  <Text style={[s.threshValue, { fontSize: 16 }]}>{bw} <Text style={{ fontSize: 8, fontFamily: 'Helvetica', color: C.blueLight }}>kg</Text></Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1189,12 +1143,46 @@ export function AktivitusReport({
         )}
 
         {/* Notes */}
-        {test.notes?.trim() ? (
+        {remainingNotes ? (
           <View style={s.box}>
             <Text style={s.sectionLabel}>ANTECKNINGAR</Text>
-            <Text style={s.notesText}>{test.notes}</Text>
+            <Text style={s.notesText}>{remainingNotes}</Text>
           </View>
         ) : null}
+
+        {/* VO2max knowledge — inlined on same page */}
+        {isVO2 && (
+          <View style={s.box}>
+            <Text style={s.kwTitle}>Syreupptagningsförmåga</Text>
+            <Text style={[s.kwLead, { marginBottom: 8 }]}>Vad VO₂max-testet mäter — och vad ditt resultat innebär</Text>
+            <View style={s.kwDivider} />
+            <Text style={s.kwBody}>
+              Vid test av VO₂max mäts den maximala mängd syre som kroppen kan använda vid aerob förbränning. Vid VO₂max är de anaeroba energiprocesserna också i full gång och den effekt eller löpfart som nås vid VO₂max är därför högre än vad som teoretiskt krävs för att motsvara den aeroba förbränningen.
+            </Text>
+            <Text style={[s.kwBody, { marginTop: 6 }]}>
+              Maximal syreupptagningsförmåga anges ofta som absolut kapacitet (l/min), men då de flesta uthållighetsidrotter innebär uppbärande av den egna kroppsvikten används ofta ett relativt värde, det så kallade testvärdet (ml/kg·min⁻¹). VO₂max för kvinnor och män tävlandes på elitnivå är oftast inom 60–75 respektive 65–85 ml/kg·min⁻¹.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.kwHeading, { marginTop: 0 }]}>Central kapacitet</Text>
+                <Text style={s.kwBody}>Hjärtats pumpförmåga samt blodets förmåga att transportera syre. Bestämmer till största del VO₂max.</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.kwHeading, { marginTop: 0 }]}>Lokal kapacitet</Text>
+                <Text style={s.kwBody}>Hur syret tas upp i den arbetande muskulaturen. En hög lokal kapacitet medför god uthållighet.</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.kwHeading, { marginTop: 0 }]}>Referensvärden (Aktivitus)</Text>
+                {(gender === 'K' || !gender) && <Text style={s.kwBody}>Kvinnor: <Text style={{ fontFamily: 'Helvetica-Bold' }}>45 ml/kg</Text></Text>}
+                {(gender === 'M' || !gender) && <Text style={s.kwBody}>Män: <Text style={{ fontFamily: 'Helvetica-Bold' }}>54 ml/kg</Text></Text>}
+              </View>
+            </View>
+            <View style={[s.kwDivider, { marginTop: 10, marginBottom: 4 }]} />
+            <Text style={s.kwBody}>
+              Diskutera dina resultat och träningsupplägg med din coach. VO₂max-testet rekommenderas upprepas var 3–6 månad för att följa din konditionsutveckling. Välkommen tillbaka!
+            </Text>
+          </View>
+        )}
 
         <PageFooter />
       </Page>
@@ -1209,18 +1197,6 @@ export function AktivitusReport({
           coachName={coachName}
           testLeader={test.testLeader}
           coachAvatarUrl={coachAvatarUrl}
-        />
-      )}
-      {isVO2 && (
-        <VO2KnowledgePage
-          athleteName={athleteName}
-          testDate={testDate}
-          sport={test.sport}
-          testType={test.testType}
-          coachName={coachName}
-          testLeader={test.testLeader}
-          coachAvatarUrl={coachAvatarUrl}
-          gender={gender}
         />
       )}
     </Document>
