@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createTestAction, createWingateTestAction } from "@/app/actions/tests"
 import { WingateTimer } from "@/components/tests/wingate-recording-view"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { fullName } from "@/lib/utils"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
-import { Play, Pause, RotateCcw, Download } from "lucide-react"
+import { Play, Pause, RotateCcw, Download, WifiOff } from "lucide-react"
 import { RawDataPoint, SportType, TestType, ProtocolType, ClinicLocation, BikeSettings, CoachAssessment } from "@/types"
 import { LiveTestChart } from "@/components/tests/live-test-chart"
 import { calculateVo2Max, interpolateLactateThreshold } from "@/lib/calculations"
@@ -295,26 +295,27 @@ function StageTimer({
 
 // ── Confirm leave dialog ──────────────────────────────────────────────
 
-function ConfirmLeaveDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function ConfirmLeaveDialog({ onConfirm, onCancel, testLabel }: { onConfirm: () => void; onCancel: () => void; testLabel: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
-        <h2 className="text-base font-bold text-[#1D1D1F]">Osparade ändringar</h2>
+        <p className="text-base font-semibold text-[#1D1D1F]">Osparad {testLabel}</p>
         <p className="text-sm text-[#515154]">
-          Du har inmatad data som inte sparats. Om du lämnar försvinner all data.
+          Du har ett pågående test som inte är sparat. Ditt utkast sparas automatiskt
+          och du kan återuppta det via den gula bannern längst upp.
         </p>
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-[hsl(var(--border))] text-sm font-medium text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors"
-          >
-            Stanna kvar
-          </button>
+        <div className="flex gap-3">
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-xl bg-[#FF3B30] text-white text-sm font-semibold hover:bg-[#d93025] transition-colors"
+            className="flex-1 py-2 rounded-xl bg-[#FF3B30] text-white text-sm font-semibold hover:bg-[#d93025] transition-colors"
           >
             Lämna ändå
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-xl border border-[hsl(var(--border))] text-sm font-medium text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors"
+          >
+            Stanna kvar
           </button>
         </div>
       </div>
@@ -344,6 +345,7 @@ const EMPTY_COACH_ASSESSMENT: CoachAssessment = {
 
 export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeader, coachUid, guestMode = false, onGuestSessionEnd }: LiveRecordingViewProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState<"setup" | "recording">("setup")
   const [saving, setSaving] = useState(false)
   const [guestDownloadLoading, setGuestDownloadLoading] = useState(false)
@@ -351,6 +353,30 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   const [showConfirm, setShowConfirm] = useState(false)
   const pendingBack = useRef<(() => void) | null>(null)
   const [draftToRestore, setDraftToRestore] = useState<RecordingDraft | null>(null)
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== "undefined" ? navigator.onLine : true)
+
+  // ── Online/offline detection ──────────────────────────────────────
+  useEffect(() => {
+    const on  = () => setIsOnline(true)
+    const off = () => setIsOnline(false)
+    window.addEventListener("online",  on)
+    window.addEventListener("offline", off)
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off) }
+  }, [])
+
+  // ── Warn before closing tab during active recording ───────────────
+  useEffect(() => {
+    if (step !== "recording") return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = "" }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [step])
+
+  // ── Tell NavBar to hide during recording (all test types/sports) ──
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("akt:recording", { detail: step === "recording" }))
+    return () => { window.dispatchEvent(new CustomEvent("akt:recording", { detail: false })) }
+  }, [step])
 
   // ── Load coach profile for testLeader + testLocation pre-fill ───────
   useEffect(() => {
@@ -375,8 +401,13 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   useEffect(() => {
     if (guestMode) return
     const d = loadDraft()
-    if (d && (d.rows.some((r) => r.hr > 0 || r.lac > 0) || d.step === "recording"))
+    if (!d || (!d.rows.some((r) => r.hr > 0 || r.lac > 0) && d.step !== "recording")) return
+    if (searchParams.get("resume") === "1") {
+      applyDraft(d)
+      setStep("recording")
+    } else {
       setDraftToRestore(d)
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Setup form ────────────────────────────────────────────────────
@@ -452,7 +483,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       })
     } catch (e: unknown) {
       if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) { clearDraft(); throw e }
-      setError("Något gick fel. Försök igen.")
+      if (!navigator.onLine) {
+        setError("Ingen internetanslutning — testet är sparat lokalt. Ladda ner säkerhetskopia med nedladdningsknappen och försök spara igen när du är online.")
+      } else {
+        setError("Något gick fel. Försök igen.")
+      }
       setSaving(false)
     }
   }
@@ -890,7 +925,11 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       })
     } catch (e: unknown) {
       if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) { clearDraft(); throw e }
-      setError("Något gick fel. Försök igen.")
+      if (!navigator.onLine) {
+        setError("Ingen internetanslutning — testet är sparat lokalt. Ladda ner säkerhetskopia med nedladdningsknappen och försök spara igen när du är online.")
+      } else {
+        setError("Något gick fel. Försök igen.")
+      }
       setSaving(false)
     }
   }
@@ -916,7 +955,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               {" "}({draftRelativeTime(draftToRestore.savedAt)}). Vill du återuppta?
             </p>
             <div className="flex gap-2 shrink-0">
-              <Button size="sm" onClick={() => applyDraft(draftToRestore)}>Återuppta</Button>
+              <Button size="sm" onClick={() => { applyDraft(draftToRestore); setStep("recording") }}>Återuppta</Button>
               <Button size="sm" variant="outline" onClick={() => { clearDraft(); setDraftToRestore(null) }}>Ignorera</Button>
             </div>
           </div>
@@ -1298,6 +1337,21 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
             <span className="font-semibold">Gästläge:</span> Inga data sparas. Ladda ned resultaten som PDF när testet är klart.
           </div>
         )}
+        {!isOnline && !guestMode && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2">
+              <WifiOff className="h-4 w-4 flex-shrink-0" />
+              Ingen anslutning — data sparas tillfälligt lokalt i webbläsaren.
+            </span>
+            <button
+              onClick={handleEmergencyDownload}
+              className="shrink-0 flex items-center gap-1.5 font-semibold underline underline-offset-2 hover:text-amber-900 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Ladda ned säkerhetskopia
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Wingate — Cykel</h1>
@@ -1315,8 +1369,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 <Button variant="outline" onClick={handleGuestEnd}>Avsluta session</Button>
               </>
             ) : (
-              <Button onClick={handleWingateSave} disabled={saving}>
-                {saving ? "Sparar…" : "Spara test"}
+              <Button onClick={handleWingateSave} disabled={saving || !isOnline}>
+                {saving ? "Sparar…" : !isOnline ? "Väntar på nätverk…" : "Spara test"}
               </Button>
             )}
           </div>
@@ -1359,7 +1413,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         </div>
 
         {error && <p className="text-sm text-[hsl(var(--destructive))] text-center">{error}</p>}
-        {showConfirm && <ConfirmLeaveDialog onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
+        {showConfirm && <ConfirmLeaveDialog testLabel="Wingatetest" onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
       </div>
     )
   }
@@ -1373,6 +1427,21 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       {guestMode && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
           <span className="font-semibold">Gästläge:</span> Inga data sparas. Ladda ned resultaten som PDF när testet är klart.
+        </div>
+      )}
+      {!isOnline && !guestMode && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <WifiOff className="h-4 w-4 flex-shrink-0" />
+            Ingen anslutning — data sparas tillfälligt lokalt i webbläsaren.
+          </span>
+          <button
+            onClick={handleEmergencyDownload}
+            className="shrink-0 flex items-center gap-1.5 font-semibold underline underline-offset-2 hover:text-amber-900 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Ladda ned säkerhetskopia
+          </button>
         </div>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1428,8 +1497,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
               >
                 <Download className="h-4 w-4" />
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Sparar…" : "Spara test"}
+              <Button onClick={handleSave} disabled={saving || !isOnline}>
+                {saving ? "Sparar…" : !isOnline ? "Väntar på nätverk…" : "Spara test"}
               </Button>
               <Button variant="outline" onClick={() => requestBack(() => setStep("setup"))}>
                 Tillbaka
@@ -1911,7 +1980,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
       </div>
 
       {error && <p className="text-sm text-destructive font-medium">{error}</p>}
-      {showConfirm && <ConfirmLeaveDialog onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
+      {showConfirm && <ConfirmLeaveDialog testLabel={form.testType === "vo2max" ? "VO₂max-test" : form.testType === "wingate" ? "Wingatetest" : "tröskeltest"} onConfirm={() => { setShowConfirm(false); pendingBack.current?.() }} onCancel={() => setShowConfirm(false)} />}
     </div>
   )
 }

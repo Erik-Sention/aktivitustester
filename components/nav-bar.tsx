@@ -9,6 +9,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { Users, ShieldCheck, Menu, X } from "lucide-react"
 import { db, auth } from "@/lib/firebase"
 import type { CoachProfile } from "@/lib/coach-profile"
+import { loadDraft } from "@/lib/recording-draft"
 
 interface NavBarProps {
   userName: string
@@ -21,6 +22,14 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+
+  // Hide navbar during active test recording (all test types and sports)
+  useEffect(() => {
+    const handler = (e: Event) => setIsRecording((e as CustomEvent<boolean>).detail)
+    window.addEventListener("akt:recording", handler)
+    return () => window.removeEventListener("akt:recording", handler)
+  }, [])
 
   useEffect(() => {
     let unsubSnap: (() => void) | undefined
@@ -44,6 +53,8 @@ export function NavBar({ userName, role, uid }: NavBarProps) {
       unsubSnap?.()
     }
   }, [uid])
+
+  if (isRecording) return null
 
   const shownName = displayName || userName
   const initials = shownName
