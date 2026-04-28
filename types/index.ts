@@ -105,8 +105,13 @@ export interface BikeSettings {
   handlebarHorizontalMm: number | null
 }
 
+export interface SkiergSettings {
+  damper?: number | null
+}
+
 export interface SportSettings {
   bike?: BikeSettings
+  skierg?: SkiergSettings
   // kajak?: KajakSettings  -- framtida
 }
 

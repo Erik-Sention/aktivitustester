@@ -96,7 +96,7 @@ export function TestDetailClient({ id }: { id: string }) {
               <span className="ml-3 text-[#86868B]">·</span>
             )}
             {test.testType !== "wingate" && (test.inputParams.startWatt ?? 0) > 0 && (
-              <span className="ml-3">{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min</span>
+              <span className="ml-3">{test.inputParams.startWatt}W +{test.inputParams.stepSize}W / {test.inputParams.testDuration} min{test.settings?.skierg?.damper != null ? ` · Damper ${test.settings.skierg.damper}` : ""}</span>
             )}
             {test.testType !== "wingate" && isSpeedSport(test.sport) && (test.inputParams as any).startSpeed && (
               <span className="ml-3 text-[#86868B]">·</span>
@@ -247,6 +247,15 @@ export function TestDetailClient({ id }: { id: string }) {
               ltWatt={isSpeedSport(test.sport) ? test.coachAssessment.ltEffektSpeed : test.coachAssessment.ltEffektWatt}
               isSpeed={isSpeedSport(test.sport)}
             />
+          )}
+
+          {test.settings?.skierg?.damper != null && (
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-white p-5 shadow-apple">
+              <p className="mb-3 text-sm font-black uppercase tracking-widest text-primary">Skierg-inställningar</p>
+              <dl className="space-y-2 text-base">
+                <div className="flex justify-between"><dt className="text-primary">Damper</dt><dd className="font-semibold">{test.settings.skierg.damper}</dd></div>
+              </dl>
+            </div>
           )}
 
           {test.settings?.bike && (

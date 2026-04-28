@@ -55,6 +55,9 @@ const WATT_PRESETS = [
   { label: "80W / +40W", startWatt: 80, stepSize: 40 },
 ]
 
+const SKIERG_START_PRESETS = [40, 60, 80, 100, 120]
+const SKIERG_STEP_PRESETS  = [10, 15, 20, 30]
+
 // Sporttyper som använder fart/lutning istället för watt
 function isSpeedBased(sport: SportType): boolean {
   return sport === "lopning" || sport === "skidor_band"
@@ -446,6 +449,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
     startSpeed: "8",
     speedIncrement: "1",
     incline: "0",
+    // Skierg-specifikt
+    damperSetting: "",
   })
 
   // ── Bike settings ─────────────────────────────────────────────────
@@ -675,7 +680,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
   }
 
   function applyDraft(d: RecordingDraft) {
-    setForm(d.form)
+    setForm({ damperSetting: "", ...d.form })
     setStep(d.step)
     setRows(d.rows)
     setLacStrings(d.lacStrings)
@@ -937,6 +942,8 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
         vo2AbsoluteMlMin,
         settings: showBikeSettings && Object.keys(bikeSettings).length > 0
           ? { bike: bikeSettings as BikeSettings }
+          : form.sport === "skierg" && form.damperSetting
+          ? { skierg: { damper: parseInt(form.damperSetting) || null } }
           : undefined,
         coachAssessment: !isVo2 && hasCoachData ? coachAssessment : undefined,
       })
@@ -1174,7 +1181,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     </div>
                   </div>
                 ) : (
-                  /* Tröskeltest löpband: preset-knappar för startfart, ökning och lutning */
+                  /* Tröskeltest löpband/skidband: preset-knappar för startfart, ökning och lutning */
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
@@ -1199,7 +1206,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                       <div className="space-y-1.5">
                         <Label>Ökning/steg (km/h)</Label>
                         <div className="flex gap-2">
-                          {[0.5, 1.0].map((s) => (
+                          {(form.sport === "skidor_band" ? [0.5, 1.0, 1.5, 2.0] : [0.5, 1.0]).map((s) => (
                             <button key={s} type="button" onClick={() => update("speedIncrement", String(s))}
                               className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.speedIncrement === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                               +{s}
@@ -1211,7 +1218,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                     <div className="space-y-1.5">
                       <Label>Lutning (%)</Label>
                       <div className="flex gap-2">
-                        {[0, 1, 2, 3, 5].map((s) => (
+                        {(form.sport === "skidor_band" ? [3, 4] : [0, 1, 2, 3, 5]).map((s) => (
                           <button key={s} type="button" onClick={() => update("incline", String(s))}
                             className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.incline === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
                             {s}%
@@ -1255,28 +1262,61 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                 </div>
               </div>
             ) : form.protocol === "standard_3min" ? (
-              <div className="space-y-1.5">
-                <Label>Start & steg</Label>
-                <div className="flex gap-2">
-                  {WATT_PRESETS.map((p) => {
-                    const active = form.startWatt === String(p.startWatt) && form.stepSize === String(p.stepSize)
-                    return (
-                      <button
-                        key={p.label}
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, startWatt: String(p.startWatt), stepSize: String(p.stepSize) }))}
-                        className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                          active
-                            ? "bg-[#0071BA] text-white border-[#0071BA]"
-                            : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    )
-                  })}
+              form.sport === "skierg" ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>Start (W)</Label>
+                    <div className="flex gap-2">
+                      {SKIERG_START_PRESETS.map((w) => (
+                        <button key={w} type="button"
+                          onClick={() => update("startWatt", String(w))}
+                          className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.startWatt === String(w) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                          {w}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Steg (W)</Label>
+                    <div className="flex gap-2">
+                      {SKIERG_STEP_PRESETS.map((s) => (
+                        <button key={s} type="button"
+                          onClick={() => update("stepSize", String(s))}
+                          className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${form.stepSize === String(s) ? "bg-[#0071BA] text-white border-[#0071BA]" : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"}`}>
+                          +{s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="damperSetting">Damper-inställning</Label>
+                    <Input id="damperSetting" type="number" min="1" max="10" placeholder="t.ex. 4" value={form.damperSetting} onChange={(e) => update("damperSetting", e.target.value)} className="w-28" />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Start & steg</Label>
+                  <div className="flex gap-2">
+                    {WATT_PRESETS.map((p) => {
+                      const active = form.startWatt === String(p.startWatt) && form.stepSize === String(p.stepSize)
+                      return (
+                        <button
+                          key={p.label}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, startWatt: String(p.startWatt), stepSize: String(p.stepSize) }))}
+                          className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                            active
+                              ? "bg-[#0071BA] text-white border-[#0071BA]"
+                              : "bg-white text-secondary border-[hsl(var(--border))] hover:border-secondary"
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
@@ -1616,7 +1656,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                   <>
                     <th className="px-3 py-3 text-right w-20">Laktat</th>
                     <th className="px-3 py-3 text-right w-16">Borg</th>
-                    <th className="px-3 py-3 text-right w-20">Kad.</th>
+                    {!isSpeedBased(form.sport) && <th className="px-3 py-3 text-right w-20">Kad.</th>}
                   </>
                   <th className="px-1 py-3 w-8"></th>
                 </tr>
@@ -1689,21 +1729,23 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                             <span className="text-[#D1D1D6] font-semibold">—</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-right">
-                          {borgOk ? (
-                            <input
-                              ref={makeRef(i, "cadence")}
-                              type="number"
-                              value={row.cadence || ""}
-                              onChange={(e) => updateRow(i, "cadence", e.target.value)}
-                              onFocus={() => setActiveRow(i)}
-                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "cadence") } }}
-                              className="table-input-lg w-16"
-                            />
-                          ) : (
-                            <span className="text-[#D1D1D6] font-semibold">—</span>
-                          )}
-                        </td>
+                        {!isSpeedBased(form.sport) && (
+                          <td className="px-3 py-2 text-right">
+                            {borgOk ? (
+                              <input
+                                ref={makeRef(i, "cadence")}
+                                type="number"
+                                value={row.cadence || ""}
+                                onChange={(e) => updateRow(i, "cadence", e.target.value)}
+                                onFocus={() => setActiveRow(i)}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNextInput(i, "cadence") } }}
+                                className="table-input-lg w-16"
+                              />
+                            ) : (
+                              <span className="text-[#D1D1D6] font-semibold">—</span>
+                            )}
+                          </td>
+                        )}
                       </>
                       {/* Delete last stage */}
                       <td className="px-1 py-2 text-center">

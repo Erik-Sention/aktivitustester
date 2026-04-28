@@ -922,9 +922,12 @@ export function AktivitusReport({
         ? Math.max(...test.rawData.filter(row => row.hr > 0).map(row => row.watt), 0) || null
         : null)
 
+  const damperSuffix = test.sport === 'skierg' && (test.settings as any)?.skierg?.damper != null
+    ? `  ·  Damper ${(test.settings as any).skierg.damper}`
+    : ''
   const protocolLine = isSpeed
     ? ((ip as any).startSpeed ? `${(ip as any).startSpeed} km/h  +${(ip as any).speedIncrement} km/h / ${ip.testDuration} min` : '')
-    : (ip.startWatt ? `${ip.startWatt}W  +${ip.stepSize}W / ${ip.testDuration} min` : '')
+    : (ip.startWatt ? `${ip.startWatt}W  +${ip.stepSize}W / ${ip.testDuration} min${damperSuffix}` : '')
 
   return (
     <Document>
@@ -939,7 +942,7 @@ export function AktivitusReport({
           subtitle="Resultatöversikt"
           coachName={coachName}
           coachAvatarUrl={coachAvatarUrl}
-          protocolLine={isVO2 ? protocolLine : undefined}
+          protocolLine={(isVO2 || damperSuffix) ? protocolLine : undefined}
         />
 
         {/* Performance chart */}
