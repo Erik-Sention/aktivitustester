@@ -1199,7 +1199,7 @@ export function LiveRecordingView({ athletes, defaultAthleteId, defaultTestLeade
                             placeholder="Annan"
                             value={[8, 9, 10].includes(Number(form.startSpeed)) ? "" : form.startSpeed}
                             onChange={(e) => update("startSpeed", e.target.value)}
-                            className="w-20 text-center"
+                            className="w-20 text-center text-sm placeholder:text-xs"
                           />
                         </div>
                       </div>
