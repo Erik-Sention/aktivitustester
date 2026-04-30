@@ -228,6 +228,49 @@ export interface SerializedAthleteFile {
   uploadGroupId?: string   // shared by files uploaded together
 }
 
+// --- Body Composition ---
+
+export interface BodyCompositionData {
+  measuredAt: string            // ISO date string (YYYY-MM-DD)
+
+  // Core measurements
+  weight: number | null         // kg
+  heightCm: number | null       // cm
+  bodyFatPct: number | null     // %
+  fatMassKg: number | null      // kg
+  muscleMassKg: number | null   // kg (Skeletal Muscle Mass)
+  visceralFatLevel: number | null
+  bmr: number | null            // Basal (resting) BMR, kcal
+  activityBmr: number | null    // BMR adjusted for activity level, kcal
+  totalBodyWaterL: number | null // L
+  bmi: number | null
+
+  // Bodyview context & references
+  bodyFatCategory: string | null      // e.g. "Acceptabelt", "Hälsosam"
+  bodyFatHealthyMin: number | null    // % healthy range lower bound for age/gender
+  bodyFatHealthyMax: number | null    // % healthy range upper bound
+  healthyWeightMin: number | null     // kg
+  healthyWeightMax: number | null     // kg
+
+  // Recommendations
+  targetFatLossKg: number | null      // recommended kg of fat to lose
+  daysToGoal: number | null
+
+  // Explanatory text sections from original PDF (verbatim, editable in form)
+  bodyFatText: string | null   // paragraphs under "Ditt resultat / Kroppsfett"
+  bmiText: string | null       // paragraphs under "Din vikt / Ditt BMI"
+  bmrText: string | null       // paragraphs under "Din BMR"
+  recoText: string | null      // recommendations section text
+
+  // Disease risk multipliers (from Relativa Sjukdomsrisker section)
+  riskHeartDisease: number | null  // e.g. 1.2
+  riskStroke: number | null        // e.g. 1.4
+  riskDiabetes: number | null      // e.g. 2.3
+
+  // Coach note (free text, shown in PDF)
+  coachComment: string | null
+}
+
 // --- Auth session (returned to client components) ---
 
 export interface SessionUser {

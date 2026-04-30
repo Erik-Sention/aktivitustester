@@ -3,11 +3,30 @@
 import { useRef, useState, useEffect } from "react"
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { storage, db } from "@/lib/firebase"
+import { storage, db, auth } from "@/lib/firebase"
+import { getCoachProfileClient } from "@/lib/coach-profile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Upload, X, FileText } from "lucide-react"
+import { Upload, X, FileText, Sparkles } from "lucide-react"
+import { BodyCompositionParseView } from "./body-composition-parse-view"
+import type { BodyCompositionData } from "@/types"
+
+async function fetchAsBase64(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return undefined
+    const blob = await res.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(undefined)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return undefined
+  }
+}
 
 const RESULT_TYPES = ["Glukosanalys", "Blodprov", "EKG", "Kroppsammansättning", "Funktionsanalys", "Annan"]
 
@@ -21,6 +40,7 @@ const ACCEPTED_TYPES = [
 
 interface UploadResultDialogProps {
   athleteId: string
+  athleteName?: string
   onClose: () => void
   onUploaded?: () => void
   /** If set, new files are added to this existing group instead of creating a new one */
@@ -39,7 +59,40 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGroupId, initialResultType, initialDate, archiveOnly }: UploadResultDialogProps) {
+function uploadFileWithProgress(
+  file: File,
+  filePath: string,
+  onProgress: (pct: number) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const storageRef = ref(storage, filePath)
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type })
+    task.on(
+      "state_changed",
+      (snap) => onProgress(snap.bytesTransferred / snap.totalBytes),
+      reject,
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          resolve(url)
+        } catch (err) {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+export function UploadResultDialog({
+  athleteId,
+  athleteName = "",
+  onClose,
+  onUploaded,
+  existingGroupId,
+  initialResultType,
+  initialDate,
+  archiveOnly,
+}: UploadResultDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customTypeRef = useRef<HTMLInputElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -61,7 +114,15 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
   const [loading, setLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
 
-  // Auto-focus custom type field when "Annan" is selected
+  // step: 'form' = normal upload form, 'parse' = side-by-side body composition view
+  const [step, setStep] = useState<"form" | "parse">("form")
+
+  // True when Kroppsammansättning is selected and the first file is a PDF
+  const isBodyCompPdf =
+    resultType === "Kroppsammansättning" &&
+    files.length > 0 &&
+    files[0].type === "application/pdf"
+
   useEffect(() => {
     if (resultType === "Annan") {
       customTypeRef.current?.focus()
@@ -76,7 +137,6 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
     }
     setError(null)
     setFiles((prev) => {
-      // Avoid exact duplicates by name+size
       const existing = new Set(prev.map((f) => `${f.name}-${f.size}`))
       const unique = newFiles.filter((f) => !existing.has(`${f.name}-${f.size}`))
       setFileDisplayNames((dn) => [...dn, ...unique.map(() => "")])
@@ -93,30 +153,6 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
   function removeFile(index: number) {
     setFiles((prev) => prev.filter((_, i) => i !== index))
     setFileDisplayNames((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function uploadFileWithProgress(
-    file: File,
-    filePath: string,
-    onProgress: (pct: number) => void
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const storageRef = ref(storage, filePath)
-      const task = uploadBytesResumable(storageRef, file, { contentType: file.type })
-      task.on(
-        "state_changed",
-        (snap) => onProgress(snap.bytesTransferred / snap.totalBytes),
-        reject,
-        async () => {
-          try {
-            const url = await getDownloadURL(task.snapshot.ref)
-            resolve(url)
-          } catch (err) {
-            reject(err)
-          }
-        }
-      )
-    })
   }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -170,10 +206,113 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
     }
   }
 
+  async function handleBodyCompSave(data: BodyCompositionData) {
+    const originalFile = files[0]
+    const uploadGroupId = existingGroupId ?? crypto.randomUUID()
+    const category = "Kroppsammansättning"
+
+    setLoading(true)
+    setError(null)
+
+    // 1. Upload original PDF
+    const safeName = originalFile.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const originalPath = `athletes/${athleteId}/uploads/${uploadGroupId}/${safeName}`
+    const originalUrl = await uploadFileWithProgress(originalFile, originalPath, () => {})
+
+    await addDoc(collection(db, "athlete_files"), {
+      athleteId,
+      clinicId: "",
+      coachId: "",
+      resultType: originalFile.name,
+      category,
+      testDate: new Date(data.measuredAt),
+      fileName: originalFile.name,
+      storageUrl: originalUrl,
+      uploadGroupId,
+      createdAt: serverTimestamp(),
+      isArchived: false,
+    })
+
+    // 2. Generate Aktivitus PDF
+    const uid = auth.currentUser?.uid
+    const coachProfile = uid ? await getCoachProfileClient(uid).catch(() => null) : null
+    const coachName = coachProfile?.displayName ?? undefined
+    const coachAvatarUrl = coachProfile?.avatarUrl
+      ? await fetchAsBase64(`/api/proxy-image?url=${encodeURIComponent(coachProfile.avatarUrl)}`)
+      : undefined
+
+    const [{ pdf }, { BodyCompositionReport }] = await Promise.all([
+      import("@react-pdf/renderer"),
+      import("./body-composition-report-pdf"),
+    ])
+    const React = (await import("react")).default
+    const element = React.createElement(BodyCompositionReport, { data, athleteName, coachName, coachAvatarUrl })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blob: Blob = await pdf(element as any).toBlob()
+
+    // 3. Upload Aktivitus PDF
+    const aktivitusFileName = `aktivitus-kroppssammansattning-${data.measuredAt}.pdf`
+    const aktivitusFile = new File([blob], aktivitusFileName, { type: "application/pdf" })
+    const aktivitusPath = `athletes/${athleteId}/uploads/${uploadGroupId}/${aktivitusFileName}`
+    const aktivitusUrl = await uploadFileWithProgress(aktivitusFile, aktivitusPath, () => {})
+
+    await addDoc(collection(db, "athlete_files"), {
+      athleteId,
+      clinicId: "",
+      coachId: "",
+      resultType: aktivitusFileName,
+      category,
+      testDate: new Date(data.measuredAt),
+      fileName: aktivitusFileName,
+      storageUrl: aktivitusUrl,
+      uploadGroupId,
+      createdAt: serverTimestamp(),
+      isArchived: false,
+    })
+
+    onUploaded?.()
+    onClose()
+  }
+
   const isAnnan = resultType === "Annan"
   const effectiveType = isAnnan ? customResultType.trim() : resultType
   const canSubmit = !loading && files.length > 0 && !!testDate && !!effectiveType
 
+  // ── Parse step (full-width modal) ─────────────────────────────────────────
+  if (step === "parse") {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose() }}
+      >
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E5EA]">
+            <div>
+              <h2 className="text-base font-semibold text-[#1D1D1F]">Generera Aktivitusrapport</h2>
+              <p className="text-xs text-[#86868B] mt-0.5">Kontrollera de inlästa värdena mot originalet och spara</p>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="text-[#515154] hover:text-[#1D1D1F] transition-colors disabled:opacity-40"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            <BodyCompositionParseView
+              file={files[0]}
+              initialDate={testDate}
+              onSave={handleBodyCompSave}
+              onCancel={() => setStep("form")}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Normal form step ───────────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -214,7 +353,6 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                 ))}
               </div>
 
-              {/* "Annan" custom name field */}
               {isAnnan && (
                 <div className="pt-1">
                   <input
@@ -290,12 +428,10 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
                 if (e.target.files && e.target.files.length > 0) {
                   validateAndAddFiles(Array.from(e.target.files))
                 }
-                // Reset so same file can be re-selected
                 e.target.value = ""
               }}
             />
 
-            {/* Selected files list */}
             {files.length > 0 && (
               <ul className="space-y-1.5 pt-1">
                 {files.map((file, i) => (
@@ -349,14 +485,36 @@ export function UploadResultDialog({ athleteId, onClose, onUploaded, existingGro
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-              Avbryt
-            </Button>
-            <Button type="submit" className="flex-1" disabled={!canSubmit}>
-              {loading ? `Laddar upp… ${uploadProgress}%` : `Spara ${files.length > 1 ? `${files.length} filer` : "resultat"}`}
-            </Button>
-          </div>
+          {/* Action buttons */}
+          {isBodyCompPdf && !loading ? (
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!testDate) { setError("Välj datum innan du fortsätter"); return }
+                  setError(null)
+                  setStep("parse")
+                }}
+                disabled={!testDate}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0071BA] text-white font-semibold py-3 text-sm hover:bg-[#005fa0] transition-colors disabled:opacity-40"
+              >
+                <Sparkles className="h-4 w-4" />
+                Generera Aktivitusrapport
+              </button>
+              <Button type="submit" variant="outline" className="w-full" disabled={!canSubmit}>
+                Spara original
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2 pt-1">
+              <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+                Avbryt
+              </Button>
+              <Button type="submit" className="flex-1" disabled={!canSubmit}>
+                {loading ? `Laddar upp… ${uploadProgress}%` : `Spara ${files.length > 1 ? `${files.length} filer` : "resultat"}`}
+              </Button>
+            </div>
+          )}
         </form>
       </div>
     </div>

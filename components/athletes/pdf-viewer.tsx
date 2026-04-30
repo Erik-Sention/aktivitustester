@@ -24,7 +24,10 @@ export function PdfViewer({ url, pageWidth }: PdfViewerProps) {
   }
 
   // data: URLs are self-contained strings the worker reads inline — no proxy needed
-  const fileSource = url.startsWith("data:") ? url : `/api/proxy-image?url=${encodeURIComponent(url)}`
+  // blob: and data: URLs are self-contained — no proxy needed
+  const fileSource = url.startsWith("data:") || url.startsWith("blob:")
+    ? url
+    : `/api/proxy-image?url=${encodeURIComponent(url)}`
 
   return (
     <div className="flex-1 min-h-0 overflow-auto bg-[#F5F5F7]">

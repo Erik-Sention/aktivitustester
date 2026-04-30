@@ -1188,12 +1188,13 @@ export function AthleteTestsPanel({ tests, fileResults: initialFileResults, athl
     )}
 
       {showUpload && (
-        <UploadResultDialog athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} archiveOnly={requiresConsent} />
+        <UploadResultDialog athleteId={athleteId} athleteName={athleteName} onClose={() => setShowUpload(false)} onUploaded={fetchFiles} archiveOnly={requiresConsent} />
       )}
 
       {addToGroup && (
         <UploadResultDialog
           athleteId={athleteId}
+          athleteName={athleteName}
           existingGroupId={addToGroup.groupId}
           initialResultType={addToGroup.resultType}
           initialDate={addToGroup.testDateStr}
